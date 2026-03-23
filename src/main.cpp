@@ -22,10 +22,18 @@ enum class ENTITY_CATEGORY : uint8_t {
 	PLANT
 };
 
+enum class ENTITY_TYPE : uint8_t {
+	NONE = 0,
+	ZOMBIE_NORMAL,
+	ZOMBIE_JAPANESE,
+	ZOMBIE_BIG,
+	PLANT_NORMAL,
+	PLANT_SHROOM
+};
+
 struct Entity {
 	ENTITY_CATEGORY category;
-	Sprite sprite;
-	string type = "normal";
+	ENTITY_TYPE type;
 	float frameTimer = 1;
 	int	nframes = 6;
 	int health = 100;
@@ -35,7 +43,12 @@ struct Entity {
 	Clock frameClock;
 	Clock attackClock;
 	int attackTimer = 1;
+	Vector2f position;
 };
+
+Sprite sprite;
+
+// TODO: remove vectors and maps and replace them with arrays
 
 // Plants + Plant Grid
 vector<Entity> entities;
@@ -47,6 +60,12 @@ vector<Entity> zombie_types;
 Clock zombieClock;
 float nextZombieTimer = 1;
 float ZombieMinGapTime = 1;
+
+map<ENTITY_TYPE, Texture> textures;
+
+Texture& getTexture(ENTITY_TYPE& type) {
+	return textures[type];
+}
 
 // Helping - Functions
 
@@ -63,7 +82,7 @@ Entity& getEntity(Vector2i grid, ENTITY_CATEGORY category = ENTITY_CATEGORY::NON
 	Entity entity{};
 	for (Entity& entity : entities) {
 		if (category != ENTITY_CATEGORY::NONE && entity.category != category) continue;
-		if (gridCell(entity.sprite.getPosition()) != grid) continue;
+		if (gridCell(entity.position) != grid) continue;
 
 		return entity;
 	}
@@ -73,41 +92,51 @@ Entity& getEntity(Vector2i grid, ENTITY_CATEGORY category = ENTITY_CATEGORY::NON
 // Define Characters - Functions
 
 // ground
-Sprite defineGroundSprite(Texture& groundTexture) {
-	groundTexture.loadFromFile("assets/ground.png");
-	groundTexture.setRepeated(true);
+Sprite defineGroundSprite(Texture& tex) {
+	tex.loadFromFile("assets/ground.png");
+	tex.setRepeated(true);
 	Sprite groundSp;
-	groundSp.setTexture(groundTexture);
+	groundSp.setTexture(tex);
 	IntRect groundTexRect(0, 0, 1200, 1200);
 	groundSp.setTextureRect(groundTexRect);
 	return groundSp;
 }
 // plants
-Entity defineNormalPlant(Texture& plantTexture) {
-	plantTexture.loadFromFile("assets/plant.png");
-	Entity plant = { ENTITY_CATEGORY::PLANT, Sprite(plantTexture), "plant", .05, 28 };
+Entity defineNormalPlant() {
+	Texture tex;
+	tex.loadFromFile("assets/plant.png");
+	textures[ENTITY_TYPE::PLANT_NORMAL] = tex;
+	Entity plant = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_NORMAL, .05, 28 };
 	return plant;
 }
-Entity defineShroomPlant(Texture& shroomTexture) {
-	shroomTexture.loadFromFile("assets/shroom.png");
-	Entity shroom = { ENTITY_CATEGORY::PLANT, Sprite(shroomTexture), "shroom", .1, 30, 500, 0 };
+Entity defineShroomPlant() {
+	Texture tex;
+	tex.loadFromFile("assets/shroom.png");
+	textures[ENTITY_TYPE::PLANT_SHROOM] = tex;
+	Entity shroom = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_SHROOM, .1, 30, 500, 0 };
 	return shroom;
 }
 // zombies
-Entity defineNormalZombie(Texture& zombieTex) {
-	zombieTex.loadFromFile("assets/zombie4.png");
-	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, Sprite(zombieTex), "normal", .1, 20, 100, 10 };
+Entity defineNormalZombie() {
+	Texture tex;
+	tex.loadFromFile("assets/zombie4.png");
+	textures[ENTITY_TYPE::ZOMBIE_NORMAL] = tex;
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL, .1, 20, 100, 10 };
 	zombie.xvel = .05;
 	return zombie;
 }
-Entity defineJapaneseZombie(Texture& zombieTex) {
-	zombieTex.loadFromFile("assets/japanese.png");
-	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, Sprite(zombieTex), "japanese", .01, 20, 200, 70, .05 };
+Entity defineJapaneseZombie() {
+	Texture tex;
+	tex.loadFromFile("assets/japanese.png");
+	textures[ENTITY_TYPE::ZOMBIE_JAPANESE] = tex;
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE, .01, 20, 200, 70, .05 };
 	return zombie;
 }
-Entity defineBigZombie(Texture& zombieTex) {
-	zombieTex.loadFromFile("assets/big-zombie.png");
-	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, Sprite(zombieTex), "big", .1, 38, 500, 30, .05 };
+Entity defineBigZombie() {
+	Texture tex;
+	tex.loadFromFile("assets/big-zombie.png");
+	textures[ENTITY_TYPE::ZOMBIE_BIG] = tex;
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_BIG, .1, 38, 500, 30, .05 };
 	return zombie;
 }
 
@@ -121,15 +150,19 @@ void DrawPlantsGrid(RenderWindow& window) {
 		if (plant.frameClock.getElapsedTime().asSeconds() >= plant.frameTimer) {
 			plant.frameClock.restart();
 			plant.frame++, plant.frame %= plant.nframes;
-			plant.sprite.setTextureRect(IntRect{
-				plant.frame * cellWidth,
-				0,
-				cellWidth,
-				cellHeight
-				});
 		}
+		sprite.setTextureRect(IntRect{
+			plant.frame * cellWidth,
+			0,
+			cellWidth,
+			cellHeight
+			});
 		// Draw cell character
-		window.draw(plant.sprite);
+
+		sprite.setPosition(plant.position);
+		sprite.setTexture(getTexture(plant.type));
+
+		window.draw(sprite);
 	}
 }
 void DrawZombies(RenderWindow& window) {
@@ -144,13 +177,13 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.frameClock.getElapsedTime().asSeconds() >= zombie.frameTimer) {
 			zombie.frameClock.restart();
 			zombie.frame++, zombie.frame %= zombie.nframes;
-			zombie.sprite.setTextureRect(IntRect{ zombie.frame * cellWidth, 0, cellWidth, cellHeight });
 		}
+		sprite.setTextureRect(IntRect{ zombie.frame * cellWidth, 0, cellWidth, cellHeight });
 
 		// move
-		zombie.sprite.move(-zombie.xvel, 0);
-		auto [r, c] = gridCell(zombie.sprite.getPosition());
-		if (zombie.sprite.getPosition().x <= 0 + edgeSpace) {	// edge
+		zombie.position.x -= zombie.xvel;
+		auto [r, c] = gridCell(zombie.position);
+		if (zombie.position.x <= 0 + edgeSpace) {	// edge
 			zombie.category = ENTITY_CATEGORY::NONE;
 		} else {		// plant
 			// Eat
@@ -169,7 +202,10 @@ void DrawZombies(RenderWindow& window) {
 			}
 		}
 
-		window.draw(zombie.sprite);
+		sprite.setPosition(zombie.position);
+		sprite.setTexture(getTexture(zombie.type));
+
+		window.draw(sprite);
 	}
 }
 void CheckTimer_AddZombie(RenderWindow& window) {
@@ -182,9 +218,8 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		int zombie_type_index = rand() % zombie_types.size();
 		Entity newZombie = zombie_types[zombie_type_index];
 
-		newZombie.sprite.setPosition(windowWidth, (rand() % gridRows) * cellHeight);
-		newZombie.sprite.setTextureRect(IntRect{ 0, 0, cellWidth, cellHeight });
-		auto [r, c] = gridCell(newZombie.sprite.getPosition());
+		newZombie.position = Vector2f(windowWidth, (rand() % gridRows) * cellHeight);
+		auto [r, c] = gridCell(newZombie.position);
 		entities.push_back(newZombie);
 	}
 }
@@ -195,22 +230,19 @@ int main() {
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
-	Texture groundTexture;
-	Sprite ground = defineGroundSprite(groundTexture);
+	Texture groundTex;
+	Sprite ground = defineGroundSprite(groundTex);
 
 	// Plants
-	Texture  plantTexture, shroomTexture;
-	Entity plant = defineNormalPlant(plantTexture);
-	Entity shroom = defineShroomPlant(shroomTexture);
+	Entity plant = defineNormalPlant();
+	Entity shroom = defineShroomPlant();
 
 	plant_types = { plant, shroom };
 
 	// Zombies
-	Texture zombieTexture, japaneseTexture, bigTexture;
-
-	Entity zombie = defineNormalZombie(zombieTexture);
-	Entity zombieJapanese = defineJapaneseZombie(japaneseTexture);
-	Entity zombieBig = defineBigZombie(bigTexture);
+	Entity zombie = defineNormalZombie();
+	Entity zombieJapanese = defineJapaneseZombie();
+	Entity zombieBig = defineBigZombie();
 
 	zombie_types = { zombie, zombieJapanese, zombieBig };
 
@@ -231,7 +263,7 @@ int main() {
 					Entity plant;
 					plant = plant_types[rand() % 2];
 					int x = j * cellWidth, y = i * cellHeight;
-					plant.sprite.setPosition(x, y);
+					plant.position = Vector2f(x, y);
 
 					entities.push_back(plant);
 				}
@@ -251,5 +283,8 @@ int main() {
 
 		window.display();
 	}
+
+	textures.clear();
+
 	return 0;
 }
