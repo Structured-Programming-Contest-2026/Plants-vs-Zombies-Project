@@ -107,9 +107,11 @@ Sprite defineGroundSprite(Texture& tex) {
 // plants
 Entity defineNormalPlant() {
 	Texture tex;
-	tex.loadFromFile("assets/plant.png");
+	tex.loadFromFile("assets/Repeater.png");
 	textures[ENTITY_TYPE::PLANT_NORMAL] = tex;
-	Entity plant = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_NORMAL, .05, 28 };
+	Entity plant = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_NORMAL, .05 };
+	plant.nframes = 14;
+	//plant.nframes = 28;
 	return plant;
 }
 Entity defineShroomPlant() {
