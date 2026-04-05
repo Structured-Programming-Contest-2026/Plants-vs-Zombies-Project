@@ -78,11 +78,14 @@ Vector2i gridCell_imp(Vector2f pos) {
 Vector2i gridCell(Vector2i pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 Vector2i gridCell(Vector2f pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 
-Entity& getEntity(Vector2i grid, ENTITY_CATEGORY category = ENTITY_CATEGORY::NONE) {
+Entity& getEntity(Vector2i gridPos) {
+	// Returns only Plant or None - maybe later we can get all entites in a cell 
 	Entity entity{};
+	entity.category = ENTITY_CATEGORY::NONE;
 	for (Entity& entity : entities) {
-		if (category != ENTITY_CATEGORY::NONE && entity.category != category) continue;
-		if (gridCell(entity.position) != grid) continue;
+		//if (category != ENTITY_CATEGORY::PLANT && entity.category != category) continue; // category specified and doesn't match
+		if (entity.category != ENTITY_CATEGORY::PLANT) continue;	// killed - empty cell
+		if (gridCell(entity.position) != gridPos) continue;
 
 		return entity;
 	}
@@ -187,7 +190,7 @@ void DrawZombies(RenderWindow& window) {
 			zombie.category = ENTITY_CATEGORY::NONE;
 		} else {		// plant
 			// Eat
-			Entity& plant = getEntity({ r, c }, ENTITY_CATEGORY::PLANT);
+			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) {
 				zombie.xvel = 0;
 				if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
@@ -260,6 +263,7 @@ int main() {
 			else if (Mouse::isButtonPressed(Mouse::Left)) {
 				auto [i, j] = gridCell(Mouse::getPosition(window));
 				if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
+					cout << "Placing Plant at " << i << " " << j << endl;
 					Entity plant;
 					plant = plant_types[rand() % 2];
 					int x = j * cellWidth, y = i * cellHeight;
