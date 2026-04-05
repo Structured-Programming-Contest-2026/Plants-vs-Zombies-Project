@@ -6,6 +6,8 @@
 using namespace std;
 using namespace sf;
 
+float dt = 1.0f;
+
 // Global Variables
 const int
 gridRows = 5,
@@ -24,6 +26,7 @@ enum class ENTITY_CATEGORY : uint8_t {
 
 enum class ENTITY_TYPE : uint8_t {
 	NONE = 0,
+	SUN,
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
@@ -54,6 +57,33 @@ Sprite sprite;
 vector<Entity> entities;
 vector<Entity> plant_types;
 
+struct Sun {
+	Vector2f position;
+	Clock lifeClock;
+	float distance = 500.0f;
+	bool clicked = true;
+};
+
+#define MAX_SUNS 16
+
+Clock sunSpawnClock;
+int money = 100;
+Sun suns[MAX_SUNS];
+
+bool isSunAlive(const Sun& sun) {
+	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10;
+}
+
+bool addSun(Sun sun) {
+	for (int i = 0; i < MAX_SUNS; i++) {
+		if (!isSunAlive(suns[i])) {
+			suns[i] = sun;
+			return true;
+		}
+	}
+	return false;
+}
+
 // Zombies + Zombie List + Zombie Types	- we can have multiple zombies at a time, so we will keep them in a list
 vector<Entity> zombie_types;
 // Zombie Clock - to add new zombie after some time interval
@@ -63,7 +93,7 @@ float ZombieMinGapTime = 1;
 
 map<ENTITY_TYPE, Texture> textures;
 
-Texture& getTexture(ENTITY_TYPE& type) {
+Texture& getTexture(ENTITY_TYPE type) {
 	return textures[type];
 }
 
@@ -147,6 +177,24 @@ Entity defineBigZombie() {
 
 // Drawing - Functions 
 
+void UpdateSuns(RenderWindow& window) {
+	for (int i = 0; i < MAX_SUNS; i++) {
+		Sun& sun = suns[i];
+		if (!isSunAlive(sun)) continue;
+
+		if (sun.position.y <= sun.distance) {
+			sun.position.y += 50.0f * dt;
+		}
+
+		Texture& tex = getTexture(ENTITY_TYPE::SUN);
+		sprite.setPosition(sun.position);
+		sprite.setTexture(tex);
+		sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
+
+		window.draw(sprite);
+	}
+}
+
 void DrawPlantsGrid(RenderWindow& window) {
 	for (Entity& plant : entities) {
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
@@ -228,6 +276,19 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		entities.push_back(newZombie);
 	}
 }
+void CheckTimer_AddSun(RenderWindow& window) {
+	if (sunSpawnClock.getElapsedTime().asSeconds() >= 7) {
+		cout << "New Sun\n";
+		sunSpawnClock.restart();
+
+		Sun sun{};
+		sun.position = Vector2f(rand() % (windowWidth - 200), -215);
+		sun.distance = rand() % 750;
+		sun.clicked = false;
+
+		addSun(sun);
+	}
+}
 
 
 
@@ -254,30 +315,58 @@ int main() {
 
 	entities.push_back(plant);
 
+	textures[ENTITY_TYPE::SUN].loadFromFile("assets/sun.png");
+
 	// Game Loop
 
+	Clock dtClock;
+
 	while (window.isOpen()) {
+		sf::Time dtTime = dtClock.restart();
+		dt = dtTime.asSeconds();
+
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
 			}
 			// Events
 			else if (Mouse::isButtonPressed(Mouse::Left)) {
-				auto [i, j] = gridCell(Mouse::getPosition(window));
-				if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
-					cout << "Placing Plant at " << i << " " << j << endl;
-					Entity plant;
-					plant = plant_types[rand() % 2];
-					int x = j * cellWidth, y = i * cellHeight;
-					plant.position = Vector2f(x, y);
+				Vector2i pos = Mouse::getPosition(window);
 
-					entities.push_back(plant);
+				bool clickedOnSun = false;
+
+				for (int i = 0; i < MAX_SUNS; i++) {
+					Sun& sun = suns[i];
+					if (!isSunAlive(sun)) continue;
+
+					if (pos.x >= sun.position.x && pos.x <= sun.position.x + 200 && pos.y >= sun.position.y && pos.y <= sun.position.y + 200) {
+						money += 25;
+
+						cout << "You now have " << money << endl;
+
+						suns[i].clicked = true;
+						clickedOnSun = true;
+						break;
+					}
+				}
+
+				if (!clickedOnSun) {
+					auto [i, j] = gridCell(pos);
+					if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
+						cout << "Placing Plant at " << i << " " << j << endl;
+						Entity plant;
+						plant = plant_types[rand() % 2];
+						int x = j * cellWidth, y = i * cellHeight;
+						plant.position = Vector2f(x, y);
+
+						entities.push_back(plant);
+					}
 				}
 			}
 		}
 
-		// New Zombie after Timer 
 		CheckTimer_AddZombie(window);
+		CheckTimer_AddSun(window);
 
 		// Drawing
 
@@ -286,6 +375,7 @@ int main() {
 
 		DrawPlantsGrid(window);
 		DrawZombies(window);
+		UpdateSuns(window);
 
 		window.display();
 	}
