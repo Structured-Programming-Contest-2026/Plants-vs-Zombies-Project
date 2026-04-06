@@ -36,6 +36,8 @@ enum class ENTITY_TYPE : uint8_t {
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
 	SUN,
+	SEEDBANK,
+
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
@@ -325,6 +327,34 @@ void CheckTimer_AddSun(RenderWindow& window) {
 	}
 }
 
+// There is a bug in SFML that causes the program to crash when exiting
+// Making this a pointer and deleting it early prevents that crash
+Font* font;
+
+void DrawUI(RenderWindow& window) {
+	// seeds
+	{
+		const Vector2f pos = Vector2f(10.0f, 0);
+
+		Texture& tex = getTexture(TEXTURE_TYPE::SEEDBANK);
+
+		sprite.setPosition(pos);
+		sprite.setTexture(tex);
+		sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
+		sprite.setScale(Vector2f(1.25f, 1.25f));
+
+		window.draw(sprite);
+		sprite.setScale(Vector2f(1.0f, 1.0f));
+
+		Text text;
+		text.setFont(*font);
+		text.setString(std::to_string(money));
+		text.setFillColor(Color());
+		text.setPosition(pos + Vector2f(25, 72));
+
+		window.draw(text);
+	}
+}
 
 
 int main() {
@@ -351,6 +381,10 @@ int main() {
 	entities.push_back(plant);
 
 	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::SEEDBANK].loadFromFile("assets/seedbank.png");
+
+	font = new Font();
+	font->loadFromFile("assets/impact.ttf");
 
 	// Game Loop
 
@@ -412,9 +446,12 @@ int main() {
 		DrawZombies(window);
 		UpdateSuns(window);
 
+		DrawUI(window);
+
 		window.display();
 	}
 
+	delete font;
 	textures.clear();
 
 	return 0;
