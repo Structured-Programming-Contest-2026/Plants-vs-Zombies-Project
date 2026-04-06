@@ -62,6 +62,7 @@ struct Entity {
 	Clock attackClock;
 	int attackTimer = 1;
 	Vector2f position;
+	int price = 100;
 };
 
 Sprite sprite;
@@ -371,6 +372,13 @@ void DrawUI(RenderWindow& window) {
 		sprite.setScale(Vector2f(0.75f, 0.75f));
 
 		Sprite plantSprite;
+		plantSprite.setScale(Vector2f(0.35f, 0.35f));
+		plantSprite.setTextureRect(IntRect{
+			0,
+			0,
+			cellWidth,
+			cellHeight
+			});
 
 		int i = -1;
 		for (auto& plant : plant_types) {
@@ -382,6 +390,7 @@ void DrawUI(RenderWindow& window) {
 
 			if (mousePos.x >= spritePos.x && mousePos.x <= spritePos.x + size.x && mousePos.y >= spritePos.y && mousePos.y <= spritePos.y + size.y) {
 				sprite.setColor(Color(128, 128, 128, 255));
+				plantSprite.setColor(Color(128, 128, 128, 255));
 
 				if (Mouse::isButtonPressed(Mouse::Left)) {
 					uiInteracted = true;
@@ -389,20 +398,20 @@ void DrawUI(RenderWindow& window) {
 				}
 			} else {
 				sprite.setColor(Color(255, 255, 255, 255));
+				plantSprite.setColor(Color(255, 255, 255, 255));
 			}
 
 			plantSprite.setPosition(spritePos + Vector2f(0, 10));
 			plantSprite.setTexture(getEntityTexture(plant.type));
-			plantSprite.setScale(Vector2f(0.35f, 0.35f));
-			plantSprite.setTextureRect(IntRect{
-				0,
-				0,
-				cellWidth,
-				cellHeight
-				});
 
 			window.draw(sprite);
 			window.draw(plantSprite);
+
+			text.setString(std::to_string(plant.price));
+
+			text.setPosition(spritePos + Vector2f(10, 77));
+			text.setCharacterSize(24);
+			window.draw(text);
 		}
 	}
 }
@@ -452,6 +461,9 @@ int main() {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
+				// FOR TESTING ONLY
+				money += 1000;
 			}
 		}
 
@@ -488,13 +500,17 @@ int main() {
 			if (!uiInteracted) {
 				auto [i, j] = gridCell(mousePos);
 				if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
-					cout << "Placing Plant at " << i << " " << j << endl;
 					Entity plant;
-					plant = plant_types[selectedPlant];
-					int x = j * cellWidth, y = i * cellHeight;
-					plant.position = Vector2f(x, y);
 
-					entities.push_back(plant);
+					if (money >= plant.price) {
+						cout << "Placing Plant at " << i << " " << j << endl;
+						plant = plant_types[selectedPlant];
+						int x = j * cellWidth, y = i * cellHeight;
+						plant.position = Vector2f(x, y);
+
+						entities.push_back(plant);
+						money -= plant.price;
+					}
 				}
 			}
 		}
