@@ -26,6 +26,15 @@ enum class ENTITY_CATEGORY : uint8_t {
 
 enum class ENTITY_TYPE : uint8_t {
 	NONE = 0,
+	ZOMBIE_NORMAL,
+	ZOMBIE_JAPANESE,
+	ZOMBIE_BIG,
+	PLANT_NORMAL,
+	PLANT_SHROOM
+};
+
+enum class TEXTURE_TYPE : uint8_t {
+	NONE = 0,
 	SUN,
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -91,10 +100,36 @@ Clock zombieClock;
 float nextZombieTimer = 1;
 float ZombieMinGapTime = 1;
 
-map<ENTITY_TYPE, Texture> textures;
+map<TEXTURE_TYPE, Texture> textures;
 
-Texture& getTexture(ENTITY_TYPE type) {
+Texture& getTexture(TEXTURE_TYPE type) {
 	return textures[type];
+}
+
+Texture& getEntityTexture(ENTITY_TYPE type) {
+	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
+	switch (type) {
+	case ENTITY_TYPE::ZOMBIE_NORMAL:
+		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
+		break;
+	case ENTITY_TYPE::ZOMBIE_JAPANESE:
+		textureType = TEXTURE_TYPE::ZOMBIE_JAPANESE;
+		break;
+	case ENTITY_TYPE::ZOMBIE_BIG:
+		textureType = TEXTURE_TYPE::ZOMBIE_BIG;
+		break;
+	case ENTITY_TYPE::PLANT_NORMAL:
+		textureType = TEXTURE_TYPE::PLANT_NORMAL;
+		break;
+	case ENTITY_TYPE::PLANT_SHROOM:
+		textureType = TEXTURE_TYPE::PLANT_SHROOM;
+		break;
+	default:
+		textureType = TEXTURE_TYPE::NONE;
+		break;
+	}
+
+	return textures[textureType];
 }
 
 // Helping - Functions
@@ -138,7 +173,7 @@ Sprite defineGroundSprite(Texture& tex) {
 Entity defineNormalPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Repeater.png");
-	textures[ENTITY_TYPE::PLANT_NORMAL] = tex;
+	textures[TEXTURE_TYPE::PLANT_NORMAL] = tex;
 	Entity plant = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_NORMAL, .05 };
 	plant.nframes = 14;
 	//plant.nframes = 28;
@@ -147,7 +182,7 @@ Entity defineNormalPlant() {
 Entity defineShroomPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/shroom.png");
-	textures[ENTITY_TYPE::PLANT_SHROOM] = tex;
+	textures[TEXTURE_TYPE::PLANT_SHROOM] = tex;
 	Entity shroom = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_SHROOM, .1, 30, 500, 0 };
 	return shroom;
 }
@@ -155,7 +190,7 @@ Entity defineShroomPlant() {
 Entity defineNormalZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/zombie4.png");
-	textures[ENTITY_TYPE::ZOMBIE_NORMAL] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_NORMAL] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL, .1, 20, 100, 10 };
 	zombie.xvel = .05;
 	return zombie;
@@ -163,14 +198,14 @@ Entity defineNormalZombie() {
 Entity defineJapaneseZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/japanese.png");
-	textures[ENTITY_TYPE::ZOMBIE_JAPANESE] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_JAPANESE] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE, .01, 20, 200, 70, .05 };
 	return zombie;
 }
 Entity defineBigZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/big-zombie.png");
-	textures[ENTITY_TYPE::ZOMBIE_BIG] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_BIG] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_BIG, .1, 38, 500, 30, .05 };
 	return zombie;
 }
@@ -186,7 +221,7 @@ void UpdateSuns(RenderWindow& window) {
 			sun.position.y += 50.0f * dt;
 		}
 
-		Texture& tex = getTexture(ENTITY_TYPE::SUN);
+		Texture& tex = getTexture(TEXTURE_TYPE::SUN);
 		sprite.setPosition(sun.position);
 		sprite.setTexture(tex);
 		sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
@@ -213,7 +248,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		// Draw cell character
 
 		sprite.setPosition(plant.position);
-		sprite.setTexture(getTexture(plant.type));
+		sprite.setTexture(getEntityTexture(plant.type));
 
 		window.draw(sprite);
 	}
@@ -256,7 +291,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		sprite.setPosition(zombie.position);
-		sprite.setTexture(getTexture(zombie.type));
+		sprite.setTexture(getEntityTexture(zombie.type));
 
 		window.draw(sprite);
 	}
@@ -315,7 +350,7 @@ int main() {
 
 	entities.push_back(plant);
 
-	textures[ENTITY_TYPE::SUN].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/sun.png");
 
 	// Game Loop
 
