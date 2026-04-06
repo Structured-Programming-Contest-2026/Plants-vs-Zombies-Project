@@ -85,7 +85,7 @@ struct Sun {
 #define MAX_SUNS 16
 
 Clock sunSpawnClock;
-int money = 100;
+int money = 3000;
 Sun suns[MAX_SUNS];
 
 bool isSunAlive(const Sun& sun) {
@@ -487,7 +487,7 @@ int main() {
 				if (!isSunAlive(sun)) continue;
 
 				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-					money += 25;
+					money += 50;
 
 					cout << "You now have " << money << endl;
 
