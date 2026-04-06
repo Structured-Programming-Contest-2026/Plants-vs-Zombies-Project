@@ -7,6 +7,9 @@ using namespace std;
 using namespace sf;
 
 float dt = 1.0f;
+Vector2i mousePos;
+
+bool uiInteracted = false;
 
 // Global Variables
 const int
@@ -37,6 +40,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
 	SUN,
 	SEEDBANK,
+	SEEDPACKET,
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -67,6 +71,8 @@ Sprite sprite;
 // Plants + Plant Grid
 vector<Entity> entities;
 vector<Entity> plant_types;
+
+int selectedPlant = 0;
 
 struct Sun {
 	Vector2f position;
@@ -132,6 +138,10 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 	}
 
 	return textures[textureType];
+}
+
+void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
+	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
 
 // Helping - Functions
@@ -336,12 +346,13 @@ void DrawUI(RenderWindow& window) {
 	{
 		const Vector2f pos = Vector2f(10.0f, 0);
 
-		Texture& tex = getTexture(TEXTURE_TYPE::SEEDBANK);
+		Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
 
+		Sprite sprite;
 		sprite.setPosition(pos);
-		sprite.setTexture(tex);
-		sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
-		sprite.setScale(Vector2f(1.25f, 1.25f));
+		sprite.setTexture(seedBank);
+		resizeSpriteToTex(sprite, seedBank);
+		sprite.setScale(Vector2f(1.4f, 1.4f));
 
 		window.draw(sprite);
 		sprite.setScale(Vector2f(1.0f, 1.0f));
@@ -350,9 +361,49 @@ void DrawUI(RenderWindow& window) {
 		text.setFont(*font);
 		text.setString(std::to_string(money));
 		text.setFillColor(Color());
-		text.setPosition(pos + Vector2f(25, 72));
+		text.setPosition(pos + Vector2f(32, 82));
 
 		window.draw(text);
+
+		Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
+		sprite.setTexture(seedPacket);
+		resizeSpriteToTex(sprite, seedPacket);
+		sprite.setScale(Vector2f(0.75f, 0.75f));
+
+		Sprite plantSprite;
+
+		int i = -1;
+		for (auto& plant : plant_types) {
+			i++;
+			Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
+			sprite.setPosition(spritePos);
+
+			Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
+
+			if (mousePos.x >= spritePos.x && mousePos.x <= spritePos.x + size.x && mousePos.y >= spritePos.y && mousePos.y <= spritePos.y + size.y) {
+				sprite.setColor(Color(128, 128, 128, 255));
+
+				if (Mouse::isButtonPressed(Mouse::Left)) {
+					uiInteracted = true;
+					selectedPlant = i;
+				}
+			} else {
+				sprite.setColor(Color(255, 255, 255, 255));
+			}
+
+			plantSprite.setPosition(spritePos + Vector2f(0, 10));
+			plantSprite.setTexture(getEntityTexture(plant.type));
+			plantSprite.setScale(Vector2f(0.35f, 0.35f));
+			plantSprite.setTextureRect(IntRect{
+				0,
+				0,
+				cellWidth,
+				cellHeight
+				});
+
+			window.draw(sprite);
+			window.draw(plantSprite);
+		}
 	}
 }
 
@@ -382,6 +433,7 @@ int main() {
 
 	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/sun.png");
 	textures[TEXTURE_TYPE::SEEDBANK].loadFromFile("assets/seedbank.png");
+	textures[TEXTURE_TYPE::SEEDPACKET].loadFromFile("assets/seedpacket.png");
 
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
@@ -393,44 +445,13 @@ int main() {
 	while (window.isOpen()) {
 		sf::Time dtTime = dtClock.restart();
 		dt = dtTime.asSeconds();
+		mousePos = Mouse::getPosition(window);
+
+		uiInteracted = false;
 
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
-			}
-			// Events
-			else if (Mouse::isButtonPressed(Mouse::Left)) {
-				Vector2i pos = Mouse::getPosition(window);
-
-				bool clickedOnSun = false;
-
-				for (int i = 0; i < MAX_SUNS; i++) {
-					Sun& sun = suns[i];
-					if (!isSunAlive(sun)) continue;
-
-					if (pos.x >= sun.position.x && pos.x <= sun.position.x + 200 && pos.y >= sun.position.y && pos.y <= sun.position.y + 200) {
-						money += 25;
-
-						cout << "You now have " << money << endl;
-
-						suns[i].clicked = true;
-						clickedOnSun = true;
-						break;
-					}
-				}
-
-				if (!clickedOnSun) {
-					auto [i, j] = gridCell(pos);
-					if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
-						cout << "Placing Plant at " << i << " " << j << endl;
-						Entity plant;
-						plant = plant_types[rand() % 2];
-						int x = j * cellWidth, y = i * cellHeight;
-						plant.position = Vector2f(x, y);
-
-						entities.push_back(plant);
-					}
-				}
 			}
 		}
 
@@ -447,6 +468,36 @@ int main() {
 		UpdateSuns(window);
 
 		DrawUI(window);
+
+		if (!uiInteracted && Mouse::isButtonPressed(Mouse::Left)) {
+			for (int i = 0; i < MAX_SUNS; i++) {
+				Sun& sun = suns[i];
+				if (!isSunAlive(sun)) continue;
+
+				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
+					money += 25;
+
+					cout << "You now have " << money << endl;
+
+					suns[i].clicked = true;
+					uiInteracted = true;
+					break;
+				}
+			}
+
+			if (!uiInteracted) {
+				auto [i, j] = gridCell(mousePos);
+				if (getEntity({ i , j }).category == ENTITY_CATEGORY::NONE) {
+					cout << "Placing Plant at " << i << " " << j << endl;
+					Entity plant;
+					plant = plant_types[selectedPlant];
+					int x = j * cellWidth, y = i * cellHeight;
+					plant.position = Vector2f(x, y);
+
+					entities.push_back(plant);
+				}
+			}
+		}
 
 		window.display();
 	}
