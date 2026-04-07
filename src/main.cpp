@@ -8,6 +8,8 @@ using namespace sf;
 
 float dt = 1.0f;
 Vector2i mousePos;
+// left - right
+bool mouseJustClicked[2];
 
 bool uiInteracted = false;
 
@@ -392,7 +394,7 @@ void DrawUI(RenderWindow& window) {
 				sprite.setColor(Color(128, 128, 128, 255));
 				plantSprite.setColor(Color(128, 128, 128, 255));
 
-				if (Mouse::isButtonPressed(Mouse::Left)) {
+				if (mouseJustClicked[0]) {
 					uiInteracted = true;
 					selectedPlant = i;
 				}
@@ -457,10 +459,15 @@ int main() {
 		mousePos = Mouse::getPosition(window);
 
 		uiInteracted = false;
+		mouseJustClicked[0] = false;
+		mouseJustClicked[1] = false;
 
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
+			} else if (event.type == sf::Event::MouseButtonPressed) {
+				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
+				else if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[1] = true;
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				money += 1000;
@@ -481,13 +488,13 @@ int main() {
 
 		DrawUI(window);
 
-		if (!uiInteracted && Mouse::isButtonPressed(Mouse::Left)) {
+		if (!uiInteracted && mouseJustClicked[0]) {
 			for (int i = 0; i < MAX_SUNS; i++) {
 				Sun& sun = suns[i];
 				if (!isSunAlive(sun)) continue;
 
 				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-					money += 50;
+					money += 25;
 
 					cout << "You now have " << money << endl;
 
