@@ -30,7 +30,14 @@ enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
 	ZOMBIE,
 	PLANT,
-	Bullet,//new
+	Bullet,
+};
+
+//zombie states
+enum class ZOMBIE_STATE : uint8_t {
+	WALKING = 0,
+	EATING,
+	DYING,
 };
 
 enum class ENTITY_TYPE : uint8_t {
@@ -38,11 +45,12 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
+	ZOMBIE_TORCHLIGHT,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
 
-	NormalBullet,//new
+	NormalBullet,
 };
 
 enum class TEXTURE_TYPE : uint8_t {
@@ -54,10 +62,12 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
+	ZOMBIE_TORCHLIGHT,
+
 	PLANT_NORMAL,
 	PLANT_SHROOM,
 
-	NormalBullet,//new
+	NormalBullet,
 };
 
 struct Entity {
@@ -74,9 +84,15 @@ struct Entity {
 	int attackTimer = 1;
 	Vector2f position;
 	int price = 25;
+	float scale = 1.0f;
 };
 
-Sprite sprite;
+//Independet Sprites
+
+Sprite plantSprite;
+Sprite zombieSprite;
+Sprite bulletSprite;
+Sprite uiSprite;
 
 // TODO: remove vectors and maps and replace them with arrays :)
 
@@ -96,7 +112,7 @@ struct Sun {
 #define MAX_SUNS 16
 
 Clock sunSpawnClock;
-int money = 50;
+int money = 3000;
 Sun suns[MAX_SUNS];
 
 bool isSunAlive(const Sun& sun) {
@@ -130,6 +146,7 @@ Texture& getTexture(TEXTURE_TYPE type) {
 Texture& getEntityTexture(ENTITY_TYPE type) {
 	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
 	switch (type) {
+		//zmobies 
 	case ENTITY_TYPE::ZOMBIE_NORMAL:
 		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
 		break;
@@ -139,12 +156,17 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBIE_BIG:
 		textureType = TEXTURE_TYPE::ZOMBIE_BIG;
 		break;
+	case ENTITY_TYPE::ZOMBIE_TORCHLIGHT:
+		textureType = TEXTURE_TYPE::ZOMBIE_TORCHLIGHT;
+		break;
+		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
 		textureType = TEXTURE_TYPE::PLANT_NORMAL;
 		break;
 	case ENTITY_TYPE::PLANT_SHROOM:
 		textureType = TEXTURE_TYPE::PLANT_SHROOM;
 		break;
+		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
 		break;
@@ -204,10 +226,6 @@ Entity defineNormalPlant()
 		Texture tex;
 		tex.loadFromFile("assets/Repeater.png");
 		textures[TEXTURE_TYPE::PLANT_NORMAL] = tex;
-		//Entity plant = { ENTITY_CATEGORY::PLANT, ENTITY_TYPE::PLANT_NORMAL, .05 };
-		//plant.animation_frames = 14;
-		////plant.nframes = 28;
-		//return plant;
 		Entity planet;
 		planet.category = ENTITY_CATEGORY::PLANT;
 		planet.type = ENTITY_TYPE::PLANT_NORMAL;
@@ -235,7 +253,8 @@ Entity defineShroomPlant() {
 	shroom.price = 15;
 
 	return shroom;
-}// zombies
+}
+// zombies
 Entity defineNormalZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/zombie4.png");
@@ -263,10 +282,28 @@ Entity defineBigZombie() {
 	zombie.health = 500;
 	zombie.attack = 30;
 	zombie.x_vel = 0.05f;
-
+	zombie.scale = 1.1f;
 	return zombie;
 }
 
+Entity defineTorchlightZombie() {
+	Texture tex;
+	tex.loadFromFile("assets/torchlightzombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT] = tex;
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_TORCHLIGHT;
+
+	zombie.health = 200;
+	zombie.attack = 20;
+	zombie.x_vel = 0.05f;
+	zombie.frameTimer = 0.1f;
+	zombie.animation_frames = 8;
+	zombie.scale = 0.8f;
+
+	return zombie;
+}
 //bullets
 
 Entity defineNormalBullet() {
@@ -295,23 +332,23 @@ void UpdateSuns(RenderWindow& window) {
 		}
 
 		Texture& tex = getTexture(TEXTURE_TYPE::SUN);
-		sprite.setPosition(sun.position);
-		sprite.setTexture(tex);
-		sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
+		uiSprite.setPosition(sun.position);
+		uiSprite.setTexture(tex);
+		uiSprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 
-		window.draw(sprite);
+		window.draw(uiSprite);
 	}
 }
 
 void DrawPlantsGrid(RenderWindow& window) {
-	vector<Entity> newBullets;//temporary vector to hold new bullets created during this loop, to avoid modifying the main entities vector while iterating over it
+	vector<Entity> newBullets;//temporary vector
 	for (Entity& plant : entities) {
-		if (plant.category != ENTITY_CATEGORY::PLANT) continue;// skip non-plant entities
+		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
 		if (plant.frameClock.getElapsedTime().asSeconds() >= plant.frameTimer) {
 			plant.frameClock.restart();
 			plant.current_frame++, plant.current_frame %= plant.animation_frames;// update animation frame based on timer
 		}
-		sprite.setTextureRect(IntRect{
+		plantSprite.setTextureRect(IntRect{
 			plant.current_frame * cellWidth,
 			0,
 			cellWidth,
@@ -326,9 +363,9 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 
 
-		sprite.setPosition(plant.position);
-		sprite.setTexture(getEntityTexture(plant.type));
-		window.draw(sprite);
+		plantSprite.setPosition(plant.position);
+		plantSprite.setTexture(getEntityTexture(plant.type));
+		window.draw(plantSprite);
 	}
 	for (Entity& bullet : newBullets) {
 		entities.push_back(bullet);
@@ -339,20 +376,31 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.category != ENTITY_CATEGORY::ZOMBIE) continue;
 
 		// dead
-		// Note: We don't remove the zombie from the list .. kept as dead for now, to avoid complications with erasing from vector while iterating
 		if (zombie.health <= 0) continue;
+		
+		//crop its size
+		Texture& zombieTex = getEntityTexture(zombie.type);
+		int frameWidth = zombieTex.getSize().x / zombie.animation_frames;
+		int frameHeight = zombieTex.getSize().y;
 
 		// animation
 		if (zombie.frameClock.getElapsedTime().asSeconds() >= zombie.frameTimer) {
 			zombie.frameClock.restart();
 			zombie.current_frame++, zombie.current_frame %= zombie.animation_frames;
 		}
-		sprite.setTextureRect(IntRect{ zombie.current_frame * cellWidth, 0, cellWidth, cellHeight });
+
+		zombieSprite.setTextureRect(IntRect
+			{
+			zombie.current_frame * frameWidth,
+			0,
+			frameWidth,
+			frameHeight
+			});
 
 		// move
 		zombie.position.x -= zombie.x_vel;
 		auto [r, c] = gridCell(zombie.position);
-		if (zombie.position.x <= 0 + edgeSpace) {	// edge
+		if (zombie.position.x <= 0 + edgeSpace) {
 			zombie.category = ENTITY_CATEGORY::NONE;
 		}
 		else {		// plant
@@ -370,16 +418,21 @@ void DrawZombies(RenderWindow& window) {
 					}
 				}
 			}
-			else
-			{
+			else {
 				zombie.x_vel = .05; // no plant - move normally edit_bug
 			}
 		}
+		
+		float actualHeight = frameHeight * zombie.scale;
+		Vector2f adjustedPosition = zombie.position;
+		adjustedPosition.y -= (actualHeight - cellHeight);
 
-		sprite.setPosition(zombie.position);
-		sprite.setTexture(getEntityTexture(zombie.type));
+		zombieSprite.setPosition(adjustedPosition);
+		zombieSprite.setTexture(getEntityTexture(zombie.type));
 
-		window.draw(sprite);
+		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
+
+		window.draw(zombieSprite);
 	}
 }
 void UpdateAndDrawBullets(RenderWindow& window) {
@@ -418,10 +471,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 		if (bullet.category == ENTITY_CATEGORY::Bullet) {
 			Texture& bulletTex = getEntityTexture(bullet.type);
-			sprite.setTexture(bulletTex);
-			sprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
-			sprite.setPosition(bullet.position);
-			window.draw(sprite);
+			bulletSprite.setTexture(bulletTex);
+			bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
+			bulletSprite.setPosition(bullet.position);
+			window.draw(bulletSprite);
 		}
 	}
 }
@@ -551,13 +604,14 @@ int main() {
 	Entity zombie = defineNormalZombie();
 	Entity zombieJapanese = defineJapaneseZombie();
 	Entity zombieBig = defineBigZombie();
+	Entity zombieTorch = defineTorchlightZombie();
 
-	zombie_types = { zombie, zombieJapanese, zombieBig };
+	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch };
 
 
 	//entities.push_back(plant);
 
-	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET].loadFromFile("assets/seedpacket.png");
 
