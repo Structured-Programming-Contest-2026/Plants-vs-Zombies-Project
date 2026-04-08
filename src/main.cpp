@@ -49,6 +49,7 @@ enum class ENTITY_TYPE : uint8_t {
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
+	PLANT_SUNFLOWER,
 
 	NormalBullet,
 };
@@ -66,6 +67,7 @@ enum class TEXTURE_TYPE : uint8_t {
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
+	PLANT_SUNFLOWER,
 
 	NormalBullet,
 };
@@ -166,6 +168,9 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_SHROOM:
 		textureType = TEXTURE_TYPE::PLANT_SHROOM;
 		break;
+	case ENTITY_TYPE::PLANT_SUNFLOWER:
+		textureType = TEXTURE_TYPE::PLANT_SUNFLOWER;
+		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
@@ -254,6 +259,24 @@ Entity defineShroomPlant() {
 
 	return shroom;
 }
+
+Entity defineSunflower() {
+	Texture tex;
+	tex.loadFromFile("assets/sunflower.png");
+	textures[TEXTURE_TYPE::PLANT_SUNFLOWER] = tex;
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_SUNFLOWER;
+	plant.frameTimer = 0.15f;
+	plant.animation_frames = 8;
+	plant.health = 80;
+	plant.attack = 0;
+	plant.price = 50;
+	plant.scale=1.0;
+
+	return plant;
+}
 // zombies
 Entity defineNormalZombie() {
 	Texture tex;
@@ -341,32 +364,61 @@ void UpdateSuns(RenderWindow& window) {
 }
 
 void DrawPlantsGrid(RenderWindow& window) {
-	vector<Entity> newBullets;//temporary vector
+	vector<Entity> newBullets; //temporary vector
 	for (Entity& plant : entities) {
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
+
+		//smart crop
+		Texture& plantTex = getEntityTexture(plant.type);
+		int frameWidth = plantTex.getSize().x / plant.animation_frames;
+		int frameHeight = plantTex.getSize().y;
+
 		if (plant.frameClock.getElapsedTime().asSeconds() >= plant.frameTimer) {
 			plant.frameClock.restart();
-			plant.current_frame++, plant.current_frame %= plant.animation_frames;// update animation frame based on timer
+			plant.current_frame++, plant.current_frame %= plant.animation_frames;
 		}
 		plantSprite.setTextureRect(IntRect{
-			plant.current_frame * cellWidth,
+			plant.current_frame * frameWidth,
 			0,
-			cellWidth,
-			cellHeight
-			});// set the texture rect to show the correct animation frame for the plant
+			frameWidth,
+			frameHeight
+			});
 
-		if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
-			plant.attackClock.restart();// reset the attack timer for the plant
-			Entity newBullet = defineNormalBullet();
-			newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-			newBullets.push_back(newBullet);
+		if (plant.type != ENTITY_TYPE::PLANT_SUNFLOWER) {
+		
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
+				plant.attackClock.restart();
+				Entity newBullet = defineNormalBullet();
+				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+				newBullets.push_back(newBullet);
+			}
 		}
+		else
+		{
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
+				plant.attackClock.restart();
 
+				Sun newSun{};
+				newSun.position = plant.position;
+				newSun.distance = plant.position.y + 50;
+				newSun.clicked = false;
+				newSun.lifeClock.restart();
+
+				addSun(newSun);
+				cout << "Sunflower produced a sun!" << endl;
+			}
+		}
 
 		plantSprite.setPosition(plant.position);
 		plantSprite.setTexture(getEntityTexture(plant.type));
+
+		plantSprite.setScale(Vector2f(plant.scale, plant.scale));
+
 		window.draw(plantSprite);
+
+		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
 	}
+
 	for (Entity& bullet : newBullets) {
 		entities.push_back(bullet);
 	}
@@ -517,15 +569,14 @@ void DrawUI(RenderWindow& window) {
 		const Vector2f pos = Vector2f(10.0f, 0);
 
 		Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
+		
+		uiSprite.setPosition(pos);
+		uiSprite.setTexture(seedBank);
+		resizeSpriteToTex(uiSprite, seedBank);
+		uiSprite.setScale(Vector2f(1.4f, 1.4f));
 
-		Sprite sprite;
-		sprite.setPosition(pos);
-		sprite.setTexture(seedBank);
-		resizeSpriteToTex(sprite, seedBank);
-		sprite.setScale(Vector2f(1.4f, 1.4f));
-
-		window.draw(sprite);
-		sprite.setScale(Vector2f(1.0f, 1.0f));
+		window.draw(uiSprite);
+		uiSprite.setScale(Vector2f(1.0f, 1.0f));
 
 		Text text;
 		text.setFont(*font);
@@ -536,49 +587,46 @@ void DrawUI(RenderWindow& window) {
 		window.draw(text);
 
 		Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
-		sprite.setTexture(seedPacket);
-		resizeSpriteToTex(sprite, seedPacket);
-		sprite.setScale(Vector2f(0.75f, 0.75f));
+		uiSprite.setTexture(seedPacket);
+		resizeSpriteToTex(uiSprite, seedPacket);
+		uiSprite.setScale(Vector2f(0.75f, 0.75f));
 
-		Sprite plantSprite;
-		plantSprite.setScale(Vector2f(0.35f, 0.35f));
-		plantSprite.setTextureRect(IntRect{
-			0,
-			0,
-			cellWidth,
-			cellHeight
-			});
 
 		int i = -1;
 		for (auto& plant : plant_types) {
 			i++;
 			Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
-			sprite.setPosition(spritePos);
+			uiSprite.setPosition(spritePos);
 
 			Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
 
-			if (mousePos.x >= spritePos.x && mousePos.x <= spritePos.x + size.x && mousePos.y >= spritePos.y && mousePos.y <= spritePos.y + size.y) {
-				sprite.setColor(Color(128, 128, 128, 255));
-				plantSprite.setColor(Color(128, 128, 128, 255));
+			uiSprite.setColor(Color(255, 255, 255, 255));
+			plantSprite.setColor(Color(255, 255, 255, 255));
 
+			if (mousePos.x >= spritePos.x && mousePos.x <= spritePos.x + size.x && mousePos.y >= spritePos.y && mousePos.y <= spritePos.y + size.y) {
 				if (mouseJustClicked[0]) {
 					uiInteracted = true;
 					selectedPlant = i;
 				}
 			}
-			else {
-				sprite.setColor(Color(255, 255, 255, 255));
-				plantSprite.setColor(Color(255, 255, 255, 255));
-			}
 
-			plantSprite.setPosition(spritePos + Vector2f(0, 10));
-			plantSprite.setTexture(getEntityTexture(plant.type));
+			//Smart Crop
+			Texture& tex = getEntityTexture(plant.type);
+			int frameWidth = tex.getSize().x / plant.animation_frames;
+			int frameHeight = tex.getSize().y;
 
-			window.draw(sprite);
+			plantSprite.setTexture(tex);
+			plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
+
+			plantSprite.setPosition(spritePos + Vector2f(10, 20));
+
+			float scaleFactor = 55.0f / frameHeight;
+			plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
+
+			window.draw(uiSprite);
 			window.draw(plantSprite);
 
 			text.setString(std::to_string(plant.price));
-
 			text.setPosition(spritePos + Vector2f(10, 77));
 			text.setCharacterSize(24);
 			window.draw(text);
@@ -597,8 +645,8 @@ int main() {
 	// Plants
 	Entity plant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
-
-	plant_types = { plant, shroom };
+	Entity sunflower = defineSunflower();
+	plant_types = { plant, shroom ,sunflower };
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
