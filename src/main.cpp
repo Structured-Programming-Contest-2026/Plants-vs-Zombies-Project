@@ -53,6 +53,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
 	ZOMBIE_TORCHLIGHT,
+	ZOMBIE_RA,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -71,6 +72,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_JAPANESE,
 	ZOMBIE_BIG,
 	ZOMBIE_TORCHLIGHT,
+	ZOMBIE_RA,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -165,6 +167,9 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_TORCHLIGHT:
 		textureType = TEXTURE_TYPE::ZOMBIE_TORCHLIGHT;
+		break;
+	case ENTITY_TYPE:: ZOMBIE_RA:
+		textureType = TEXTURE_TYPE::ZOMBIE_RA;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -344,6 +349,22 @@ Entity defineTorchlightZombie() {
 	zombie.animation_frames = 8;
 	zombie.scale = 0.8f;
 
+	return zombie;
+}
+
+Entity defineRaZombie() {
+	Texture tex;
+	tex.loadFromFile("assets/RaZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_RA] = tex;
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_RA;
+	zombie.health = 200;
+	zombie.attack = 20;
+	zombie.animation_frames = 20;
+	zombie.x_vel = 0.05;
+	zombie.frameTimer = 0.11;
 	return zombie;
 }
 //bullets
@@ -711,7 +732,9 @@ int main() {
 	Entity zombieJapanese = defineJapaneseZombie();
 	Entity zombieBig = defineBigZombie();
 	Entity zombieTorch = defineTorchlightZombie();
-	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch };
+	Entity zombieRa = defineRaZombie();
+
+	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch, zombieRa };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/Sun3.png");
