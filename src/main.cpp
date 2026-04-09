@@ -113,23 +113,20 @@ vector<Entity> plant_types;
 
 int selectedPlant = 0;
 
+// Suns
+#define MAX_SUNS 16
+Clock sunSpawnClock;
+int money = 3000;
 struct Sun {
 	Vector2f position;
 	Clock lifeClock;
 	float distance = 500.0f;
 	bool clicked = true;
 };
-
-#define MAX_SUNS 16
-
-Clock sunSpawnClock;
-int money = 3000;
 Sun suns[MAX_SUNS];
-
 bool isSunAlive(const Sun& sun) {
 	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
 }
-
 bool addSun(Sun sun) {
 	for (int i = 0; i < MAX_SUNS; i++) {
 		if (!isSunAlive(suns[i])) {
@@ -148,12 +145,11 @@ Clock zombieClock;
 float nextZombieTimer = 3;
 float ZombieMinGapTime = 3;
 
+// Textures
 map<TEXTURE_TYPE, Texture> textures;
-
 Texture& getTexture(TEXTURE_TYPE type) {
 	return textures[type];
 }
-
 Texture& getEntityTexture(ENTITY_TYPE type) {
 	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
 	switch (type) {
@@ -191,7 +187,6 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 
 	return textures[textureType];
 }
-
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
@@ -704,6 +699,7 @@ int main() {
 		(float)windowHeight / (float)groundTex.getSize().y
 	);
 
+	// Loading Textures + Defining entities
 	// Plants
 	Entity plant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
@@ -715,16 +711,14 @@ int main() {
 	Entity zombieJapanese = defineJapaneseZombie();
 	Entity zombieBig = defineBigZombie();
 	Entity zombieTorch = defineTorchlightZombie();
-
 	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch };
 
-
-	//entities.push_back(plant);
-
+	// Other Textures
 	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET].loadFromFile("assets/seedpacket.png");
 
+	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
 
@@ -773,6 +767,7 @@ int main() {
 
 		if (!uiInteracted && mouseJustClicked[0]) {
 			for (int i = 0; i < MAX_SUNS; i++) {
+				// Check all suns + Add clicked suns to money
 				Sun& sun = suns[i];
 				if (!isSunAlive(sun)) continue;
 
