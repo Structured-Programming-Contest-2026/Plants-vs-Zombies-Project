@@ -7,8 +7,6 @@
 using namespace std;
 using namespace sf;
 
-#define width 1920
-#define height 1080
 #define gridraws 5
 #define gridcols 9
 #define cellwidth 140
@@ -30,8 +28,8 @@ gridRows = gridraws,
 gridCols = gridcols,
 cellWidth = cellwidth,
 cellHeight = cellheight,
-windowWidth = width,
-windowHeight = height;
+windowWidth = 1920,
+windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 
 enum class ENTITY_CATEGORY : uint8_t {
@@ -65,6 +63,10 @@ enum class ENTITY_TYPE : uint8_t {
 
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
+	LOGO,
+	LEVEL_SELECTOR_BACKGROUND,
+	LEVEL_OPTION_BACKGROUND,
+	LEVEL_PLAY_BUTTON,
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
@@ -94,10 +96,10 @@ struct Entity {
 	int health = 100;
 	int attack = 15;
 	int price = 25;
-	int n_animations=1, currentAnimationIndex=0;
+	int n_animations = 1, currentAnimationIndex = 0;
 	Animation animations[10];
 	Animation currentAnimation;
-	
+
 	int animationForCycles = -1;
 
 	float x_vel = 0.05f;
@@ -128,11 +130,11 @@ struct Entity {
 		// next frame + check animation finish
 		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
 			currentAnimation.clock.restart();
-			int & f = currentAnimation.currentFrame, & cycles = currentAnimation.cycles;
+			int& f = currentAnimation.currentFrame, & cycles = currentAnimation.cycles;
 			f++;
 			if (f >= currentAnimation.frames) {
 				cycles++;
-				if (cycles >= animationForCycles && animationForCycles!=-1) {
+				if (cycles >= animationForCycles && animationForCycles != -1) {
 					setCurrentAnimation(0); // reset to default
 					animationForCycles = -1;
 					afterAnimation(*this);
@@ -141,13 +143,19 @@ struct Entity {
 			f %= currentAnimation.frames;
 		}
 	}
-	void doAnimation(int forCycles=1, int idx=0) {
+	void doAnimation(int forCycles = 1, int idx = 0) {
 		// forCycles = (-1)  ---> Infinite / Manual change
 		animationForCycles = forCycles;
 		setCurrentAnimation(idx);
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 };
+
+// TODO: this will later include stuff like difficulty, grid size, ...
+struct Level {
+};
+
+Level* currentLevel = nullptr;
 
 //Independet Sprites
 
@@ -220,7 +228,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBIE_TORCHLIGHT:
 		textureType = TEXTURE_TYPE::ZOMBIE_TORCHLIGHT;
 		break;
-	case ENTITY_TYPE:: ZOMBIE_RA:
+	case ENTITY_TYPE::ZOMBIE_RA:
 		textureType = TEXTURE_TYPE::ZOMBIE_RA;
 		break;
 		//plantes
@@ -251,7 +259,7 @@ Texture& getDefaultEntityTexture(ENTITY_TYPE type) {
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
-IntRect getFrameRect(Entity &entity) {
+IntRect getFrameRect(Entity& entity) {
 	// Smart Crop
 	// auto frame dimensions
 	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex];
@@ -273,8 +281,7 @@ IntRect getFrameRect(Entity &entity) {
 
 // Helping - Functions
 
-Vector2i gridCell_imp(Vector2f pos)
-{
+Vector2i gridCell_imp(Vector2f pos) {
 	int column = (pos.x - offsetX) / cellWidth;
 	int raw = (pos.y - offsetY) / cellHeight;
 	return { raw, column };
@@ -283,19 +290,16 @@ Vector2i gridCell_imp(Vector2f pos)
 Vector2i gridCell(Vector2i pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 Vector2i gridCell(Vector2f pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 
-Entity& getEntity(Vector2i gridPos)
-{
+Entity& getEntity(Vector2i gridPos) {
 
 	static Entity emptyEntity{};
 	emptyEntity.category = ENTITY_CATEGORY::NONE;
 
-	for (Entity& entity : entities) 
-	{
+	for (Entity& entity : entities) {
 
 		if (entity.category != ENTITY_CATEGORY::PLANT || entity.isDead) continue;
 
-		if (entity.gridRow == gridPos.x && entity.gridCol == gridPos.y) 
-		{
+		if (entity.gridRow == gridPos.x && entity.gridCol == gridPos.y) {
 			return entity;
 		}
 	}
@@ -305,6 +309,7 @@ Entity& getEntity(Vector2i gridPos)
 // Define Characters - Functions
 
 // ground
+Sprite ground;
 Sprite defineGroundSprite(Texture& tex) {
 	tex.loadFromFile("assets/background.png");
 	if (!tex.loadFromFile("assets/background.png")) {
@@ -319,13 +324,12 @@ Sprite defineGroundSprite(Texture& tex) {
 	/*IntRect groundTexRect(0, 0, width, height);
 	groundSp.setTextureRect(groundTexRect);*/
 	groundSp.setTextureRect(IntRect(0, 0, (int)tex.getSize().x, (int)tex.getSize().y));
-	
+
 	return groundSp;
 }
 // plants
-Entity defineNormalPlant()
-{
-	
+Entity defineNormalPlant() {
+
 	Texture tex;
 	tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
@@ -344,7 +348,7 @@ Entity defineNormalPlant()
 	planet.animations[0].frames = 14;
 	planet.setCurrentAnimation(0);
 	return planet;
-	
+
 }
 Entity defineShroomPlant() {
 	Texture tex;
@@ -377,7 +381,7 @@ Entity defineSunflower() {
 	plant.health = 80;
 	plant.attack = 0;
 	plant.price = 50;
-	plant.scale=1.2;
+	plant.scale = 1.2;
 
 	// Idle animation
 	plant.n_animations = 1;
@@ -408,7 +412,7 @@ Entity defineJapaneseZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/japanese.png");
 	textures[TEXTURE_TYPE::ZOMBIE_JAPANESE][Default_Texture_Index] = tex;
-	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE};
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE };
 	zombie.health = 70;
 	zombie.attack = 200;
 	zombie.x_vel = .05;
@@ -442,7 +446,7 @@ Entity defineBigZombie() {
 	anim.frames = 59;
 	anim.frameTimer = 0.05f;
 	zombie.animations[1] = anim; // dying animation
-	
+
 	zombie.setCurrentAnimation(0);
 
 	return zombie;
@@ -546,7 +550,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 		// plant attacking system
 		if (plant.type != ENTITY_TYPE::PLANT_SUNFLOWER) {
-		
+
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
 
 				bool zombieInLane = false;
@@ -555,8 +559,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 						if (abs(zombie.position.y - plant.position.y) < 100.0f &&
 							zombie.position.x > plant.position.x &&
-							zombie.position.x < windowWidth - 50.0f)
-						{
+							zombie.position.x < windowWidth - 50.0f) {
 							zombieInLane = true;
 							break;
 						}
@@ -570,9 +573,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullets.push_back(newBullet);
 				}
 			}
-		}
-		else
-		{
+		} else {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -606,7 +607,7 @@ void DrawZombies(RenderWindow& window) {
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
-				
+
 				zombie.doAnimation(1, 1); // play dying animation once
 				zombie.afterAnimation = [&zombie](Entity& entity) {
 					zombie.isDead = true;	// TODO: maybe make isDead and health<=0 in another way?
@@ -617,25 +618,24 @@ void DrawZombies(RenderWindow& window) {
 			//else if(!zombie.isDead){
 			//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
 			//}
-			else if(zombie.isDead){
+			else if (zombie.isDead) {
 				// health done and animation finished, so we remove the zombie
 				zombie.category = ENTITY_CATEGORY::NONE;
 				continue;
 			}
 		}
-		
+
 		// Animation
 		zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
-		
+
 		// move
 		zombie.position.x -= zombie.x_vel;
 		auto [r, c] = gridCell(zombie.position);
 		if (zombie.position.x <= 0 + edgeSpace) {
 			zombie.category = ENTITY_CATEGORY::NONE;
-		}
-		else {		// plant
+		} else {		// plant
 			// Eat
 			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) {
@@ -650,19 +650,18 @@ void DrawZombies(RenderWindow& window) {
 						cout << "Plant Killed\n";
 					}
 				}
-			}
-			else if(zombie.health > 0) {
+			} else if (zombie.health > 0) {
 				zombie.x_vel = .05; // no plant - has health - move normally edit_bug
 			}
 		}
-		
+
 		int frameHeight = frameRect.getSize().y;
 		float actualHeight = frameHeight * zombie.scale;
 		Vector2f adjustedPosition = zombie.position;
 		adjustedPosition.y -= (actualHeight - cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
-		if(zombie.currentAnimationIndex !=0)
+		if (zombie.currentAnimationIndex != 0)
 			printf("text type %i -- idx %i\n", getTextureType(zombie.type), zombie.currentAnimationIndex);
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
 
@@ -724,7 +723,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		int zombie_type_index = rand() % zombie_types.size();
 		Entity newZombie = zombie_types[zombie_type_index];
 
-		newZombie.position = Vector2f(width,offsetY + (rand() % gridraws) * cellheight);
+		newZombie.position = Vector2f(windowWidth, offsetY + (rand() % gridraws) * cellheight);
 		auto [raw, column] = gridCell(newZombie.position);
 		entities.push_back(newZombie);
 	}
@@ -753,7 +752,7 @@ void DrawUI(RenderWindow& window) {
 		const Vector2f pos = Vector2f(10.0f, 0);
 
 		Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
-		
+
 		uiSprite.setPosition(pos);
 		uiSprite.setTexture(seedBank);
 		resizeSpriteToTex(uiSprite, seedBank);
@@ -819,12 +818,207 @@ void DrawUI(RenderWindow& window) {
 }
 
 
+void UpdateLevel(RenderWindow& window) {
+	CheckTimer_AddZombie(window);
+	CheckTimer_AddSun(window);
+
+	// Drawing
+
+	window.clear(Color::Black);
+	window.draw(ground);
+
+	DrawPlantsGrid(window);
+	DrawZombies(window);
+	UpdateAndDrawBullets(window);
+	UpdateSuns(window);
+
+	DrawUI(window);
+	/*DrawDebugGrid(window);*/
+
+	if (!uiInteracted && mouseJustClicked[0]) {
+		for (int i = 0; i < MAX_SUNS; i++) {
+			// Check all suns + Add clicked suns to money
+			Sun& sun = suns[i];
+			if (!isSunAlive(sun)) continue;
+
+			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
+				money += 25;
+
+				cout << "You now have " << money << endl;
+
+				suns[i].clicked = true;
+				uiInteracted = true;
+				break;
+			}
+		}
+
+		if (!uiInteracted) {
+			auto [row, col] = gridCell(mousePos);
+
+			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+
+				if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
+					Entity plant;
+
+					if (money >= plant_types[selectedPlant].price) {
+						cout << "Placing Plant at " << row << " " << col << endl;
+						plant = plant_types[selectedPlant];
+
+						plant.gridRow = row;
+						plant.gridCol = col;
+
+						Texture& tex = getDefaultEntityTexture(plant.type);
+						int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
+						int plantHeight = (tex.getSize().y / plant.n_animations) * plant.scale;
+
+						//centrize
+						int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
+
+						//alighn to the bottom
+						int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
+
+						plant.position = Vector2f(x, y);
+
+						entities.push_back(plant);
+						money -= plant.price;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+void DrawMainMenu(RenderWindow& window) {
+	Vector2f windowSize = { windowWidth, windowHeight };
+
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	{
+		Sprite logoSprite;
+
+		Texture logoTex = getTexture(TEXTURE_TYPE::LOGO);
+		logoSprite.setTexture(logoTex);
+		logoSprite.setOrigin(Vector2f(logoTex.getSize()) / 2.0f);
+		logoSprite.setPosition(windowSize.x / 2.0f, 100.0f);
+
+		window.draw(logoSprite);
+	}
+
+	Text text;
+
+	static int selectedLevel = 0;
+	static int previousSelectedLevel = -1;
+	static Clock selectionChanged;
+
+	Texture levelTex = getTexture(TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND);
+	Vector2f levelTexSize = Vector2f(levelTex.getSize());
+	sprite.setTexture(levelTex);
+	sprite.setOrigin(levelTexSize / 2.0f);
+
+	bool levelClicked = false;
+
+	const float animationDuration = 0.5f;
+
+	float animationProgress = std::min(selectionChanged.getElapsedTime().asSeconds(), animationDuration) / animationDuration;
+	// ease in out
+	animationProgress = -(cos(animationProgress * 3.14159265358979323846f) - 1) / 2;
+
+	float offset = selectedLevel * animationProgress + std::max(previousSelectedLevel, 0) * (1 - animationProgress);
+
+	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
+
+	for (int i = 0; i < 6; i++) {
+		bool selected = i == selectedLevel;
+		bool hovered = false;
+
+		Vector2f pos = initialPos + Vector2f((i - offset) * int(levelTex.getSize().x), 0);
+
+		Vector2f scale = { 1, 1 };
+		if (mousePos.x >= pos.x - levelTexSize.x / 2.0f && mousePos.x <= pos.x + levelTexSize.x / 2.0f &&
+			mousePos.y >= pos.y - levelTexSize.x / 2.0f && mousePos.y <= pos.y + levelTexSize.y / 2.0f) {
+
+			hovered = true;
+
+			if (!levelClicked && mouseJustClicked[0] && selectedLevel != i) {
+				previousSelectedLevel = selectedLevel;
+				selectedLevel = i;
+				selectionChanged.restart();
+				levelClicked = true;
+			}
+		}
+
+		if (previousSelectedLevel == i) {
+			scale = Vector2f(1.0f, 1.0f) * (1 - animationProgress) + Vector2f(0.75f, 0.75f) * animationProgress;
+		} else if (!selected) {
+			scale = Vector2f(0.75f, 0.75f);
+		}
+
+		if (!selected && !hovered) {
+			sprite.setColor(Color(128, 128, 128, 255));
+		} else {
+			sprite.setColor(Color::White);
+		}
+
+		sprite.setScale(scale);
+		sprite.setPosition(pos);
+
+		window.draw(sprite);
+
+		text.setFont(*font);
+		text.setString(std::string("Level ") + std::to_string(i + 1));
+		text.setFillColor(Color());
+		FloatRect textrc = text.getLocalBounds();
+		text.setOrigin(textrc.width / 2.0f, textrc.width / 2.0f);
+
+		text.setPosition(pos + Vector2f(0, (1 + scale.y - 0.75) * 120));
+
+		window.draw(text);
+	}
+
+	{
+		Vector2f pos = initialPos + Vector2f(0, levelTexSize.y / 2.0f);
+
+		Sprite playButton;
+		Texture playTex = getTexture(TEXTURE_TYPE::LEVEL_PLAY_BUTTON);
+		Vector2f playTexSize = Vector2f(playTex.getSize());
+
+		playButton.setTexture(playTex);
+
+		playButton.setOrigin(playTexSize / 2.0f);
+		playButton.setPosition(pos);
+		playButton.setScale(Vector2f(0.5f, 0.5f));
+		playButton.setColor(Color::White);
+
+		if (playButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+			playButton.setColor(Color(128, 128, 128, 255));
+
+			if (mouseJustClicked[0]) {
+				currentLevel = new Level();
+			}
+		}
+
+		window.draw(playButton);
+	}
+}
+
+
 int main() {
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
 	Texture groundTex;
-	Sprite ground = defineGroundSprite(groundTex);
+	ground = defineGroundSprite(groundTex);
 	//New
 	ground.setScale
 	(
@@ -849,6 +1043,10 @@ int main() {
 	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch, zombieRa };
 
 	// Other Textures
+	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
@@ -873,86 +1071,19 @@ int main() {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
-			}
-			else if (event.type == sf::Event::MouseButtonPressed) {
+			} else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
 				else if (event.mouseButton.button == sf::Mouse::Right) mouseJustClicked[1] = true; //edit_bug
-			}
-			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				money += 1000;
 			}
 		}
 
-		CheckTimer_AddZombie(window);
-		CheckTimer_AddSun(window);
-
-		// Drawing
-
-		window.clear(Color::Black);
-		window.draw(ground);
-
-		DrawPlantsGrid(window);
-		DrawZombies(window);
-		UpdateAndDrawBullets(window);
-		UpdateSuns(window);
-
-		DrawUI(window);
-		/*DrawDebugGrid(window);*/
-
-		if (!uiInteracted && mouseJustClicked[0]) {
-			for (int i = 0; i < MAX_SUNS; i++) {
-				// Check all suns + Add clicked suns to money
-				Sun& sun = suns[i];
-				if (!isSunAlive(sun)) continue;
-
-				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-					money += 25;
-
-					cout << "You now have " << money << endl;
-
-					suns[i].clicked = true;
-					uiInteracted = true;
-					break;
-				}
-			}
-
-			if (!uiInteracted)
-			{
-				auto [row, col] = gridCell(mousePos);
-
-				if (row >= 0 && row < gridRows && col >= 0 && col < gridCols)
-				{
-
-					if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE)
-					{
-						Entity plant;
-
-						if (money >= plant_types[selectedPlant].price) {
-							cout << "Placing Plant at " << row << " " << col << endl;
-							plant = plant_types[selectedPlant];
-
-							plant.gridRow = row;
-							plant.gridCol = col;
-
-							Texture& tex = getDefaultEntityTexture(plant.type);
-							int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
-							int plantHeight = (tex.getSize().y / plant.n_animations) * plant.scale;
-
-							//centrize
-							int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
-
-							//alighn to the bottom
-							int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
-
-							plant.position = Vector2f(x, y);
-
-							entities.push_back(plant);
-							money -= plant.price;
-						}
-					}
-				}
-			}
+		if (currentLevel == nullptr) {
+			DrawMainMenu(window);
+		} else {
+			UpdateLevel(window);
 		}
 
 		window.display();
