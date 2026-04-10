@@ -53,6 +53,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SHROOM,
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
+	PLANT_CHOMPER,
 
 	NormalBullet,
 };
@@ -77,6 +78,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SHROOM,
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
+	PLANT_CHOMPER,
 
 	NormalBullet,
 };
@@ -245,6 +247,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_WALLNUT:
 		textureType = TEXTURE_TYPE::PLANT_WALLNUT;
 		break;
+	case ENTITY_TYPE::PLANT_CHOMPER:
+		textureType = TEXTURE_TYPE::PLANT_CHOMPER;
+		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
@@ -395,6 +400,36 @@ Entity defineSunflower() {
 	plant.setCurrentAnimation(0);
 
 	return plant;
+}
+Entity defineChomperPlant(){
+	Entity Chomper;
+	Chomper.category = ENTITY_CATEGORY::PLANT;
+	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
+	Chomper.health = 100;
+	Chomper.price = 150;
+	
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
+
+	Chomper.num_animations = 3;
+	Animation a;
+	a.frames = 13;
+	a.frameTimer = 0.1f;
+	Chomper.animations[0] = a; // IDLE Animation
+	a.frames = 9;
+	a.frameTimer = 0.1f;
+	Chomper.animations[1] = a; // ATTACK Animation
+	a.frames = 6;
+	a.frameTimer = 0.1f;
+	Chomper.animations[2] = a; // DIGEST Animation
+
+	Chomper.setCurrentAnimation(0);
+
+	return Chomper;
 }
 // zombies
 Entity defineNormalZombie() {
@@ -596,6 +631,31 @@ void DrawPlantsGrid(RenderWindow& window) {
 				cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
 		}
+		else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
+			if (plant.currentAnimationIndex == 0) { // IDLE
+				for (Entity& zombie : entities) {
+					if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) continue;
+
+					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+					bool inFront = zombie.position.x > plant.position.x &&
+						zombie.position.x < plant.position.x + cellwidth * 1.2;
+
+					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
+						zombie.health = 0;
+						zombie.category = ENTITY_CATEGORY::NONE;
+
+						plant.DoAnimation(1, 1);
+						plant.afterAnimation = [](Entity& entity) {
+							entity.DoAnimation(1, 2);
+							entity.afterAnimation = [](Entity& entity) {
+								entity.DoAnimation(-1, 0);
+								};
+							};
+						break;
+					}
+				}
+			}
+		}
 
 		// Animation
 		plant.nextFrame(); // next frame
@@ -603,7 +663,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 		// plant attacking system
 		if ((plant.type != ENTITY_TYPE::PLANT_SUNFLOWER)
-			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)) {
+			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)
+			&& (plant.type != ENTITY_TYPE::PLANT_CHOMPER)) {
 
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
@@ -627,7 +688,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullets.push_back(newBullet);
 				}
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -1105,7 +1167,8 @@ int main() {
 	Entity shroom = defineShroomPlant();
 	Entity sunflower = defineSunflower();
 	Entity wallnut = defineWallnut();
-	plant_types = { plant, shroom ,sunflower ,wallnut };
+	Entity chomper = defineChomperPlant();
+	plant_types = { plant, shroom ,sunflower ,wallnut , chomper};
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
