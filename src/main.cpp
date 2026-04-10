@@ -405,7 +405,7 @@ Entity defineChomperPlant(){
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
-	Chomper.health = 100;
+	Chomper.health = 200;
 	Chomper.price = 150;
 	
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
@@ -643,10 +643,11 @@ void DrawPlantsGrid(RenderWindow& window) {
 					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
 						zombie.health = 0;
 						zombie.category = ENTITY_CATEGORY::NONE;
+						plant.attackClock.restart().asSeconds();
 
 						plant.DoAnimation(1, 1);
 						plant.afterAnimation = [](Entity& entity) {
-							entity.DoAnimation(1, 2);
+							entity.DoAnimation(10, 2);
 							entity.afterAnimation = [](Entity& entity) {
 								entity.DoAnimation(-1, 0);
 								};
