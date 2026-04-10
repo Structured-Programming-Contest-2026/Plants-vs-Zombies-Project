@@ -3,6 +3,7 @@
 #define SFML_STATIC
 #include <SFML/Graphics.hpp>
 #include <functional>
+#include <cmath>
 
 using namespace std;
 using namespace sf;
@@ -259,8 +260,9 @@ void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 IntRect getFrameRect(Entity& entity) {
 	// Smart Crop
 	// auto frame dimensions
-	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex]; //muust be num%10=0 if not resize it
-	int frameWidth = tex.getSize().x / entity.currentAnimation.frames;
+	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex]; //must be num%10=0 if not resize it
+	float frameWidthF = float(tex.getSize().x) / float(entity.currentAnimation.frames);
+	int frameWidth = round(frameWidthF);
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
