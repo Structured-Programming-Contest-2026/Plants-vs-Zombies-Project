@@ -132,7 +132,7 @@ struct Entity {
 			f++;
 			if (f >= currentAnimation.frames) {
 				cycles++;
-				if (cycles > animationForCycles && animationForCycles!=-1) {
+				if (cycles >= animationForCycles && animationForCycles!=-1) {
 					setCurrentAnimation(0); // reset to default
 					animationForCycles = -1;
 					afterAnimation(*this);
@@ -145,6 +145,7 @@ struct Entity {
 		// forCycles = (-1)  ---> Infinite / Manual change
 		animationForCycles = forCycles;
 		setCurrentAnimation(idx);
+		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 };
 
@@ -196,11 +197,14 @@ float nextZombieTimer = 3;
 float ZombieMinGapTime = 3;
 
 // Textures
-map<TEXTURE_TYPE, Texture> textures;
+map<TEXTURE_TYPE, Texture[10]> textures;
+#define Default_Texture_Index 0
+
 Texture& getTexture(TEXTURE_TYPE type) {
-	return textures[type];
+	return textures[type][Default_Texture_Index];
 }
-Texture& getEntityTexture(ENTITY_TYPE type) {
+TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
+	// To use textures[getTextureType(entity.type)][entity.currentAnimationIndex] on setting texture of sprites
 	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
 	switch (type) {
 		//zmobies 
@@ -237,8 +241,12 @@ Texture& getEntityTexture(ENTITY_TYPE type) {
 		textureType = TEXTURE_TYPE::NONE;
 		break;
 	}
-
-	return textures[textureType];
+	return textureType;
+}
+Texture& getDefaultEntityTexture(ENTITY_TYPE type) {
+	// Returns default ([0]) texture of the entity type
+	TEXTURE_TYPE textureType = getTextureType(type);
+	return textures[textureType][Default_Texture_Index];
 }
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
@@ -246,9 +254,9 @@ void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 IntRect getFrameRect(Entity &entity) {
 	// Smart Crop
 	// auto frame dimensions
-	Texture& tex = getEntityTexture(entity.type);
+	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex];
 	int frameWidth = tex.getSize().x / entity.currentAnimation.frames;
-	int frameHeight = tex.getSize().y / entity.n_animations;
+	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
 	entity.nextFrame();
@@ -256,7 +264,7 @@ IntRect getFrameRect(Entity &entity) {
 	// crop current frame
 	IntRect textureRect = {
 		entity.currentAnimation.currentFrame * frameWidth,
-		entity.currentAnimationIndex * frameHeight,
+		0,
 		frameWidth,
 		frameHeight
 	};
@@ -317,29 +325,31 @@ Sprite defineGroundSprite(Texture& tex) {
 // plants
 Entity defineNormalPlant()
 {
-	{
-		Texture tex;
-		tex.loadFromFile("assets/Repeater.png");
-		textures[TEXTURE_TYPE::PLANT_NORMAL] = tex;
-		Entity planet;
-		planet.category = ENTITY_CATEGORY::PLANT;
-		planet.type = ENTITY_TYPE::PLANT_NORMAL;
-		planet.health = 100;
-		planet.attack = 1000;
-		planet.price = 25;
+	
+	Texture tex;
+	tex.loadFromFile("assets/Repeater.png");
+	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
+	/*tex.loadFromFile("assets/Repeater.png");
+	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
+	Entity planet;
+	planet.category = ENTITY_CATEGORY::PLANT;
+	planet.type = ENTITY_TYPE::PLANT_NORMAL;
+	planet.health = 100;
+	planet.attack = 1000;
+	planet.price = 25;
 
-		// Idle animation
-		planet.n_animations = 1;
-		planet.animations[0].frameTimer = 0.1f;
-		planet.animations[0].frames = 14;
-		planet.setCurrentAnimation(0);
-		return planet;
-	}
+	// Idle animation
+	planet.n_animations = 1;
+	planet.animations[0].frameTimer = 0.1f;
+	planet.animations[0].frames = 14;
+	planet.setCurrentAnimation(0);
+	return planet;
+	
 }
 Entity defineShroomPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/shroom.png");
-	textures[TEXTURE_TYPE::PLANT_SHROOM] = tex;
+	textures[TEXTURE_TYPE::PLANT_SHROOM][Default_Texture_Index] = tex;
 
 	Entity shroom;
 	shroom.category = ENTITY_CATEGORY::PLANT;
@@ -359,7 +369,7 @@ Entity defineShroomPlant() {
 Entity defineSunflower() {
 	Texture tex;
 	tex.loadFromFile("assets/sunflower.png");
-	textures[TEXTURE_TYPE::PLANT_SUNFLOWER] = tex;
+	textures[TEXTURE_TYPE::PLANT_SUNFLOWER][Default_Texture_Index] = tex;
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -381,7 +391,7 @@ Entity defineSunflower() {
 Entity defineNormalZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/zombie4.png");
-	textures[TEXTURE_TYPE::ZOMBIE_NORMAL] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][Default_Texture_Index] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL };
 	zombie.x_vel = .05;
 	zombie.scale = 1.0;
@@ -397,7 +407,7 @@ Entity defineNormalZombie() {
 Entity defineJapaneseZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/japanese.png");
-	textures[TEXTURE_TYPE::ZOMBIE_JAPANESE] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_JAPANESE][Default_Texture_Index] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE};
 	zombie.health = 70;
 	zombie.attack = 200;
@@ -411,9 +421,10 @@ Entity defineJapaneseZombie() {
 	return zombie;
 }
 Entity defineBigZombie() {
-	Texture tex;
-	tex.loadFromFile("assets/big-zombie2.png");
-	textures[TEXTURE_TYPE::ZOMBIE_BIG] = tex;
+	// Walk + Dying Textures
+	textures[TEXTURE_TYPE::ZOMBIE_BIG][0].loadFromFile("assets/big-zombie-walking.png");;
+	textures[TEXTURE_TYPE::ZOMBIE_BIG][1].loadFromFile("assets/big-zombie-dying.png");
+
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBIE_BIG;
@@ -422,25 +433,24 @@ Entity defineBigZombie() {
 	zombie.x_vel = 0.05f;
 	zombie.scale = 1.1f;
 
-	// Walk animation
+	// Walk + Dying animations
 	zombie.n_animations = 2;
 	Animation anim;
 	anim.frames = 38;
 	anim.frameTimer = 0.1f;
 	zombie.animations[0] = anim; // walking animation
 	anim.frames = 59;
-	anim.frameTimer = 0.01f;
+	anim.frameTimer = 0.05f;
 	zombie.animations[1] = anim; // dying animation
 	
 	zombie.setCurrentAnimation(0);
 
 	return zombie;
 }
-
 Entity defineTorchlightZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/torchlightzombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][Default_Texture_Index] = tex;
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -457,11 +467,10 @@ Entity defineTorchlightZombie() {
 	zombie.setCurrentAnimation(0);
 	return zombie;
 }
-
 Entity defineRaZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/RaZombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_RA] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_RA][Default_Texture_Index] = tex;
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -477,11 +486,10 @@ Entity defineRaZombie() {
 	return zombie;
 }
 //bullets
-
 Entity defineNormalBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/bullet.png");
-	textures[TEXTURE_TYPE::NormalBullet] = tex;
+	textures[TEXTURE_TYPE::NormalBullet][Default_Texture_Index] = tex;
 
 	Entity bullet{};
 	bullet.category = ENTITY_CATEGORY::Bullet;
@@ -581,7 +589,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 
 		plantSprite.setPosition(plant.position);
-		plantSprite.setTexture(getEntityTexture(plant.type));
+		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
 		plantSprite.setScale(Vector2f(plant.scale, plant.scale));
 		window.draw(plantSprite);
 		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
@@ -597,18 +605,18 @@ void DrawZombies(RenderWindow& window) {
 
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
-			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { 
-				// health done but not started dying animation yet
+			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
 				
 				zombie.doAnimation(1, 1); // play dying animation once
 				zombie.afterAnimation = [&zombie](Entity& entity) {
 					zombie.isDead = true;	// TODO: maybe make isDead and health<=0 in another way?
 					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
 					};
+				zombie.x_vel = 0;
 			}
-			else if(!zombie.isDead){
-				// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
-			}
+			//else if(!zombie.isDead){
+			//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
+			//}
 			else if(zombie.isDead){
 				// health done and animation finished, so we remove the zombie
 				zombie.category = ENTITY_CATEGORY::NONE;
@@ -643,8 +651,8 @@ void DrawZombies(RenderWindow& window) {
 					}
 				}
 			}
-			else {
-				zombie.x_vel = .05; // no plant - move normally edit_bug
+			else if(zombie.health > 0) {
+				zombie.x_vel = .05; // no plant - has health - move normally edit_bug
 			}
 		}
 		
@@ -654,7 +662,9 @@ void DrawZombies(RenderWindow& window) {
 		adjustedPosition.y -= (actualHeight - cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
-		zombieSprite.setTexture(getEntityTexture(zombie.type));
+		if(zombie.currentAnimationIndex !=0)
+			printf("text type %i -- idx %i\n", getTextureType(zombie.type), zombie.currentAnimationIndex);
+		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
 
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
 
@@ -696,7 +706,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 		}
 
 		if (bullet.category == ENTITY_CATEGORY::Bullet) {
-			Texture& bulletTex = getEntityTexture(bullet.type);
+			Texture& bulletTex = getDefaultEntityTexture(bullet.type);
 			bulletSprite.setTexture(bulletTex);
 			bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
 			bulletSprite.setPosition(bullet.position);
@@ -784,8 +794,8 @@ void DrawUI(RenderWindow& window) {
 				}
 			}
 
-			//Smart Crop [ Seed Packets ? ]
-			Texture& tex = getEntityTexture(plant.type);
+			//Smart Crop [ Each Seed Packets ? ]
+			Texture& tex = getDefaultEntityTexture(plant.type);
 			int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
 			int frameHeight = tex.getSize().y / plant.n_animations;
 
@@ -839,9 +849,9 @@ int main() {
 	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch, zombieRa };
 
 	// Other Textures
-	textures[TEXTURE_TYPE::SUN].loadFromFile("assets/Sun3.png");
-	textures[TEXTURE_TYPE::SEEDBANK].loadFromFile("assets/seedbank.png");
-	textures[TEXTURE_TYPE::SEEDPACKET].loadFromFile("assets/seedpacket.png");
+	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
+	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
+	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 
 	// Font
 	font = new Font();
@@ -925,7 +935,7 @@ int main() {
 							plant.gridRow = row;
 							plant.gridCol = col;
 
-							Texture& tex = getEntityTexture(plant.type);
+							Texture& tex = getDefaultEntityTexture(plant.type);
 							int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
 							int plantHeight = (tex.getSize().y / plant.n_animations) * plant.scale;
 
