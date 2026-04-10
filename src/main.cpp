@@ -3,15 +3,16 @@
 #define SFML_STATIC
 #include <SFML/Graphics.hpp>
 #include <functional>
+#include <cmath>
 
 using namespace std;
 using namespace sf;
 
 #define gridraws 5
 #define gridcols 9
-#define cellwidth 140
-#define cellheight 165
-#define offsetX 500
+#define cellwidth 150
+#define cellheight 170
+#define offsetX 470
 #define offsetY 100
 #define edgespace -100
 
@@ -39,12 +40,6 @@ enum class ENTITY_CATEGORY : uint8_t {
 	Bullet,
 };
 
-////zombie states
-//enum class ZOMBIE_STATE : uint8_t {
-//	WALKING = 0,
-//	EATING,
-//	DYING,
-//};
 
 enum class ENTITY_TYPE : uint8_t {
 	NONE = 0,
@@ -57,6 +52,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_NORMAL,
 	PLANT_SHROOM,
 	PLANT_SUNFLOWER,
+	PLANT_WALLNUT,
 
 	NormalBullet,
 };
@@ -80,9 +76,11 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_NORMAL,
 	PLANT_SHROOM,
 	PLANT_SUNFLOWER,
+	PLANT_WALLNUT,
 
 	NormalBullet,
 };
+
 struct Animation {
 	int frames = 1;
 	float frameTimer = 1.0f;
@@ -90,17 +88,20 @@ struct Animation {
 	int cycles = 0;
 	Clock clock;
 };
+
 struct Entity {
 	ENTITY_CATEGORY category;
 	ENTITY_TYPE type;
 	int health = 100;
 	int attack = 15;
 	int price = 25;
-	int n_animations = 1, currentAnimationIndex = 0;
+
+	int num_animations = 1,
+		currentAnimationIndex = 0;
 	Animation animations[10];
 	Animation currentAnimation;
 
-	int animationForCycles = -1;
+	int AnimationForCycles = -1;
 
 	float x_vel = 0.05f;
 	Clock attackClock;
@@ -118,11 +119,11 @@ struct Entity {
 		currentAnimationIndex = idx;
 		currentAnimation = animations[currentAnimationIndex];
 	}
-	void setAllAnimations(int n, Animation anim) {
-		// example : all animations are the same size, time, etc .. 
+	void setAllAnimations(int num, Animation anim) {
+		// example : all animations are the same size, time, etc .. 
 		// so zombie.setAllAnimations(2, {frames, frameTimer})
-		n_animations = n;
-		for (int i = 0; i < n; i++) {
+		num_animations = num;
+		for (int i = 0; i < num; i++) {
 			animations[i] = anim;
 		}
 	}
@@ -130,22 +131,22 @@ struct Entity {
 		// next frame + check animation finish
 		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
 			currentAnimation.clock.restart();
-			int& f = currentAnimation.currentFrame, & cycles = currentAnimation.cycles;
-			f++;
-			if (f >= currentAnimation.frames) {
+			int& frame = currentAnimation.currentFrame, & cycles = currentAnimation.cycles;
+			frame++;
+			if (frame >= currentAnimation.frames) {
 				cycles++;
-				if (cycles >= animationForCycles && animationForCycles != -1) {
+				if (cycles >= AnimationForCycles && AnimationForCycles != -1) {
 					setCurrentAnimation(0); // reset to default
-					animationForCycles = -1;
-					afterAnimation(*this);
+					AnimationForCycles = -1;
+					afterAnimation(*this); //Not Understood
 				}
 			}
-			f %= currentAnimation.frames;
+			frame %= currentAnimation.frames;
 		}
 	}
-	void doAnimation(int forCycles = 1, int idx = 0) {
-		// forCycles = (-1)  ---> Infinite / Manual change
-		animationForCycles = forCycles;
+	void DoAnimation(int forCycles = 1, int idx = 0) {
+		// forCycles = (-1)  ---> Infinite / Manual change
+		AnimationForCycles = forCycles;
 		setCurrentAnimation(idx);
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
@@ -184,7 +185,7 @@ struct Sun {
 };
 Sun suns[MAX_SUNS];
 bool isSunAlive(const Sun& sun) {
-	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
+	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
 }
 bool addSun(Sun sun) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -215,7 +216,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	// To use textures[getTextureType(entity.type)][entity.currentAnimationIndex] on setting texture of sprites
 	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
 	switch (type) {
-		//zmobies 
+		//zmobies 
 	case ENTITY_TYPE::ZOMBIE_NORMAL:
 		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
 		break;
@@ -241,6 +242,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_SUNFLOWER:
 		textureType = TEXTURE_TYPE::PLANT_SUNFLOWER;
 		break;
+	case ENTITY_TYPE::PLANT_WALLNUT:
+		textureType = TEXTURE_TYPE::PLANT_WALLNUT;
+		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
@@ -262,8 +266,9 @@ void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 IntRect getFrameRect(Entity& entity) {
 	// Smart Crop
 	// auto frame dimensions
-	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex];
-	int frameWidth = tex.getSize().x / entity.currentAnimation.frames;
+	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex]; //must be num%10=0 if not resize it
+	float frameWidthF = float(tex.getSize().x) / float(entity.currentAnimation.frames);
+	int frameWidth = round(frameWidthF);
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
@@ -343,7 +348,7 @@ Entity defineNormalPlant() {
 	planet.price = 25;
 
 	// Idle animation
-	planet.n_animations = 1;
+	planet.num_animations = 1;
 	planet.animations[0].frameTimer = 0.1f;
 	planet.animations[0].frames = 14;
 	planet.setCurrentAnimation(0);
@@ -363,7 +368,7 @@ Entity defineShroomPlant() {
 	shroom.price = 15;
 	shroom.scale = 0.9;
 	// Idle animation
-	shroom.n_animations = 1;
+	shroom.num_animations = 1;
 	shroom.animations[0].frameTimer = 0.1f;
 	shroom.animations[0].frames = 30;
 	shroom.setCurrentAnimation(0);
@@ -384,7 +389,7 @@ Entity defineSunflower() {
 	plant.scale = 1.2;
 
 	// Idle animation
-	plant.n_animations = 1;
+	plant.num_animations = 1;
 	plant.animations[0].frameTimer = 0.15f;
 	plant.animations[0].frames = 8;
 	plant.setCurrentAnimation(0);
@@ -402,7 +407,7 @@ Entity defineNormalZombie() {
 	zombie.attack = 10;
 	zombie.health = 100;
 	// Walk animation
-	zombie.n_animations = 1;
+	zombie.num_animations = 1;
 	zombie.animations[0].frames = 20;
 	zombie.animations[0].frameTimer = .1f;
 	zombie.setCurrentAnimation(0);
@@ -417,7 +422,7 @@ Entity defineJapaneseZombie() {
 	zombie.attack = 200;
 	zombie.x_vel = .05;
 	// Walk animation
-	zombie.n_animations = 1;
+	zombie.num_animations = 1;
 	zombie.animations[0].frames = 20;
 	zombie.animations[0].frameTimer = .01f;
 	zombie.setCurrentAnimation(0);
@@ -426,7 +431,7 @@ Entity defineJapaneseZombie() {
 }
 Entity defineBigZombie() {
 	// Walk + Dying Textures
-	textures[TEXTURE_TYPE::ZOMBIE_BIG][0].loadFromFile("assets/big-zombie-walking.png");;
+	textures[TEXTURE_TYPE::ZOMBIE_BIG][0].loadFromFile("assets/big-zombie-walking.png");
 	textures[TEXTURE_TYPE::ZOMBIE_BIG][1].loadFromFile("assets/big-zombie-dying.png");
 
 	Entity zombie{};
@@ -438,7 +443,7 @@ Entity defineBigZombie() {
 	zombie.scale = 1.1f;
 
 	// Walk + Dying animations
-	zombie.n_animations = 2;
+	zombie.num_animations = 2;
 	Animation anim;
 	anim.frames = 38;
 	anim.frameTimer = 0.1f;
@@ -451,6 +456,38 @@ Entity defineBigZombie() {
 
 	return zombie;
 }
+
+// ÏÇáÉ áÊÚÑíÝ ÇáÜ Wall-nut
+Entity defineWallnut() {
+	Entity wallnut{};
+	wallnut.category = ENTITY_CATEGORY::PLANT;
+	wallnut.type = ENTITY_TYPE::PLANT_WALLNUT;
+	wallnut.health = 400;
+	wallnut.price = 50;
+	wallnut.scale = 2.0f;
+
+
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][0].loadFromFile("assets/wallnut.png");
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][0].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][1].loadFromFile("assets/crackedwallnut.png");
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][1].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][2].loadFromFile("assets/DamagedWallnut.png");
+	textures[TEXTURE_TYPE::PLANT_WALLNUT][2].setSmooth(false);
+
+	wallnut.num_animations = 3;
+	Animation anim;
+	anim.frames = 8;
+	anim.frameTimer = 0.1f;
+
+	wallnut.animations[0] = anim; //Full
+	wallnut.animations[1] = anim; //half
+	wallnut.animations[2] = anim; //Dying
+
+	wallnut.setCurrentAnimation(0);
+
+	return wallnut;
+}
+
 Entity defineTorchlightZombie() {
 	Texture tex;
 	tex.loadFromFile("assets/torchlightzombie.png");
@@ -465,7 +502,7 @@ Entity defineTorchlightZombie() {
 	zombie.x_vel = 0.05f;
 	zombie.scale = 0.8f;
 	// Walk animation
-	zombie.n_animations = 1;
+	zombie.num_animations = 1;
 	zombie.animations[0].frameTimer = 0.1f;
 	zombie.animations[0].frames = 8;
 	zombie.setCurrentAnimation(0);
@@ -483,7 +520,7 @@ Entity defineRaZombie() {
 	zombie.attack = 20;
 	zombie.x_vel = 0.05;
 	// Walk animation
-	zombie.n_animations = 1;
+	zombie.num_animations = 1;
 	zombie.animations[0].frameTimer = 0.11f;
 	zombie.animations[0].frames = 20;
 	zombie.setCurrentAnimation(0);
@@ -504,7 +541,7 @@ Entity defineNormalBullet() {
 
 	return bullet;
 }
-// Drawing - Functions 
+// Drawing - Functions 
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -544,14 +581,31 @@ void DrawPlantsGrid(RenderWindow& window) {
 	for (Entity& plant : entities) {
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
 
+		if (plant.type == ENTITY_TYPE::PLANT_WALLNUT) {
+			int CurrentState = 0;
+			if (plant.health <= 250) {
+				CurrentState = 1;
+			}
+			if (plant.health <= 125) {
+				CurrentState = 2;
+			}
+
+			//change state
+			if (plant.currentAnimationIndex != CurrentState) {
+				plant.setCurrentAnimation(CurrentState);
+				cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
+			}
+		}
+
 		// Animation
 		plant.nextFrame(); // next frame
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop texture
 
 		// plant attacking system
-		if (plant.type != ENTITY_TYPE::PLANT_SUNFLOWER) {
+		if ((plant.type != ENTITY_TYPE::PLANT_SUNFLOWER)
+			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)) {
 
-			if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 				bool zombieInLane = false;
 				for (Entity& zombie : entities) {
@@ -573,7 +627,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullets.push_back(newBullet);
 				}
 			}
-		} else {
+		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -608,7 +662,7 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.health <= 0) {
 			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
 
-				zombie.doAnimation(1, 1); // play dying animation once
+				zombie.DoAnimation(1, 1); // play dying animation once
 				zombie.afterAnimation = [&zombie](Entity& entity) {
 					zombie.isDead = true;	// TODO: maybe make isDead and health<=0 in another way?
 					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
@@ -661,10 +715,7 @@ void DrawZombies(RenderWindow& window) {
 		adjustedPosition.y -= (actualHeight - cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
-		if (zombie.currentAnimationIndex != 0)
-			printf("text type %i -- idx %i\n", getTextureType(zombie.type), zombie.currentAnimationIndex);
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
-
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
 
 		window.draw(zombieSprite);
@@ -796,7 +847,7 @@ void DrawUI(RenderWindow& window) {
 			//Smart Crop [ Each Seed Packets ? ]
 			Texture& tex = getDefaultEntityTexture(plant.type);
 			int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
-			int frameHeight = tex.getSize().y / plant.n_animations;
+			int frameHeight = tex.getSize().y;
 
 			plantSprite.setTexture(tex);
 			plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
@@ -817,8 +868,11 @@ void DrawUI(RenderWindow& window) {
 	}
 }
 
+RectangleShape gameOverScreen;
+bool isGameOver;
 
 void UpdateLevel(RenderWindow& window) {
+
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
 
@@ -827,64 +881,83 @@ void UpdateLevel(RenderWindow& window) {
 	window.clear(Color::Black);
 	window.draw(ground);
 
-	DrawPlantsGrid(window);
-	DrawZombies(window);
-	UpdateAndDrawBullets(window);
-	UpdateSuns(window);
+	if (isGameOver == true) {
+		window.draw(gameOverScreen);
+	}
 
-	DrawUI(window);
-	/*DrawDebugGrid(window);*/
+	else {
 
-	if (!uiInteracted && mouseJustClicked[0]) {
-		for (int i = 0; i < MAX_SUNS; i++) {
-			// Check all suns + Add clicked suns to money
-			Sun& sun = suns[i];
-			if (!isSunAlive(sun)) continue;
 
-			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-				money += 25;
+		DrawPlantsGrid(window);
+		DrawZombies(window);
+		UpdateAndDrawBullets(window);
+		UpdateSuns(window);
+		DrawUI(window);
+		/*DrawDebugGrid(window);*/
 
-				cout << "You now have " << money << endl;
+		if (!uiInteracted && mouseJustClicked[0]) {
+			for (int i = 0; i < MAX_SUNS; i++) {
+				// Check all suns + Add clicked suns to money
+				Sun& sun = suns[i];
+				if (!isSunAlive(sun)) continue;
 
-				suns[i].clicked = true;
-				uiInteracted = true;
-				break;
+				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
+					money += 25;
+
+					cout << "You now have " << money << endl;
+
+					suns[i].clicked = true;
+					uiInteracted = true;
+					break;
+				}
 			}
-		}
 
-		if (!uiInteracted) {
-			auto [row, col] = gridCell(mousePos);
+			if (!uiInteracted) {
+				auto [row, col] = gridCell(mousePos);
 
-			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+				if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
 
-				if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
-					Entity plant;
+					if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
+						Entity plant;
 
-					if (money >= plant_types[selectedPlant].price) {
-						cout << "Placing Plant at " << row << " " << col << endl;
-						plant = plant_types[selectedPlant];
+						if (money >= plant_types[selectedPlant].price) {
+							cout << "Placing Plant at " << row << " " << col << endl;
+							plant = plant_types[selectedPlant];
 
-						plant.gridRow = row;
-						plant.gridCol = col;
+							plant.gridRow = row;
+							plant.gridCol = col;
 
-						Texture& tex = getDefaultEntityTexture(plant.type);
-						int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
-						int plantHeight = (tex.getSize().y / plant.n_animations) * plant.scale;
+							Texture& tex = getDefaultEntityTexture(plant.type);
+							int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
+							int plantHeight = tex.getSize().y * plant.scale;
 
-						//centrize
-						int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
+							//centrize
+							int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
 
-						//alighn to the bottom
-						int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
+							//alighn to the bottom
+							int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
 
-						plant.position = Vector2f(x, y);
+							plant.position = Vector2f(x, y);
 
-						entities.push_back(plant);
-						money -= plant.price;
+							entities.push_back(plant);
+							money -= plant.price;
+						}
 					}
 				}
 			}
 		}
+		for (Entity& zombie : entities) {
+			if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
+			{
+				if (zombie.position.x <= 0)//end of the screen
+				{
+					isGameOver = true;
+					cout << "Zombies ate your brains!\n";
+					break;
+				}
+			}
+		}
+
 	}
 }
 
@@ -1031,7 +1104,8 @@ int main() {
 	Entity plant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
 	Entity sunflower = defineSunflower();
-	plant_types = { plant, shroom ,sunflower };
+	Entity wallnut = defineWallnut();
+	plant_types = { plant, shroom ,sunflower ,wallnut };
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -1055,12 +1129,22 @@ int main() {
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
 
+	//losing state
+
+	bool isGameOver = false;
+	Texture gameOverTex;
+	gameOverTex.loadFromFile("assets/gameover.png");
+	gameOverScreen.setSize(Vector2f(800.0f, 664.0f));
+	gameOverScreen.setTexture(&gameOverTex);
+	gameOverScreen.setOrigin(250.0f, 350.0f);
+	gameOverScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
+
 	// Game Loop
 
-	Clock dtClock;
+	Clock DeltaTimeClock;
 
 	while (window.isOpen()) {
-		sf::Time dtTime = dtClock.restart();
+		sf::Time dtTime = DeltaTimeClock.restart();
 		delta_time = dtTime.asSeconds();
 		mousePos = Mouse::getPosition(window);
 
@@ -1080,10 +1164,10 @@ int main() {
 			}
 		}
 
-		if (currentLevel == nullptr) {
-			DrawMainMenu(window);
-		} else {
+		if (currentLevel != nullptr) {
 			UpdateLevel(window);
+		} else {
+			DrawMainMenu(window);
 		}
 
 		window.display();
