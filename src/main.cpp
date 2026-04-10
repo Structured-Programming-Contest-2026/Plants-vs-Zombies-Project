@@ -662,10 +662,7 @@ void DrawZombies(RenderWindow& window) {
 		adjustedPosition.y -= (actualHeight - cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
-		if(zombie.currentAnimationIndex !=0)
-			printf("text type %i -- idx %i\n", getTextureType(zombie.type), zombie.currentAnimationIndex);
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
-
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
 
 		window.draw(zombieSprite);
