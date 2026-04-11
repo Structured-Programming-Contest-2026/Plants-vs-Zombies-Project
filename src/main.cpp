@@ -769,7 +769,7 @@ void DrawZombies(RenderWindow& window) {
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
-				
+
 				zombie.DoAnimation(1, 1); // play dying animation once
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 					zombie.scale = 1.3f;
@@ -812,11 +812,6 @@ void DrawZombies(RenderWindow& window) {
 
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.health > 0) { // for ra
 
-			int myIndex = -1;
-			for (int j = 0; j < entities.size(); j++) {
-				if (entities[j].id == zombie.id) { myIndex = j; break; }
-			}
-
 			// start ability
 			if (!zombie.isUsingAbility && anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
 
@@ -838,7 +833,7 @@ void DrawZombies(RenderWindow& window) {
 					for (int i = 0; i < MAX_SUNS; i++) {
 						if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
 							suns[i].targeted = true;
-							suns[i].ownerIndex = myIndex;
+							suns[i].ownerIndex = zombie.id;
 							suns[i].lifeClock.restart();
 						}
 					}
@@ -849,7 +844,7 @@ void DrawZombies(RenderWindow& window) {
 			if (zombie.isUsingAbility) {
 				for (int i = 0; i < MAX_SUNS; i++) {
 					Sun& sun = suns[i];
-					if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != myIndex) continue;
+					if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != zombie.id) continue;
 
 					float dx = zombie.position.x - sun.position.x;
 					float dy = zombie.position.y - sun.position.y;
@@ -873,14 +868,15 @@ void DrawZombies(RenderWindow& window) {
 
 			bool hasLiveSuns = false;
 			for (int i = 0; i < MAX_SUNS; i++) {
-				if (suns[i].ownerIndex == myIndex && isSunAlive(suns[i]))
+				if (suns[i].ownerIndex == zombie.id && isSunAlive(suns[i]))
 					hasLiveSuns = true;
 			}
 
 			// end ability
 			if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
+				
 				for (int i = 0; i < MAX_SUNS; i++) {
-					if (suns[i].ownerIndex == myIndex) {
+					if (suns[i].ownerIndex == zombie.id) {
 						suns[i].targeted = false;
 						suns[i].ownerIndex = -1;
 					}
