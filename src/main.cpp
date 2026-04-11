@@ -34,6 +34,8 @@ windowWidth = width,
 windowHeight = height;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 
+int nextEntityId = 0; // ra test
+
 enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
 	ZOMBIE,
@@ -108,6 +110,14 @@ struct Entity {
 	int gridRow = -1;
 	int gridCol = -1;
 
+	bool isUsingAbility = false; // for ra
+	Clock abilityClock; // for ra
+	float abilityDuration = 1.5f; // for ra
+
+	int storedSunValue = 0; // for ra
+	int maxSunValue = 350; // for ra
+	int id = -1; // ra test
+
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = nullptr;	// called after animation finish (if animationForCycles != -1)
 
@@ -173,6 +183,9 @@ struct Sun {
 	Clock lifeClock;
 	float distance = 500.0f;
 	bool clicked = true;
+	
+	bool targeted = false; // for ra
+	int ownerIndex = -1; // for ra
 };
 Sun suns[MAX_SUNS];
 bool isSunAlive(const Sun& sun) {
@@ -272,6 +285,14 @@ IntRect getFrameRect(Entity &entity) {
 }
 
 // Helping - Functions
+
+bool anySunAlive() { // for ra
+	for (int i = 0; i < MAX_SUNS; i++) {
+		if (isSunAlive(suns[i]))
+			return true;
+	}
+	return false;
+}
 
 Vector2i gridCell_imp(Vector2f pos)
 {
@@ -468,9 +489,10 @@ Entity defineTorchlightZombie() {
 	return zombie;
 }
 Entity defineRaZombie() {
-	Texture tex;
-	tex.loadFromFile("assets/RaZombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_RA][Default_Texture_Index] = tex;
+
+	textures[TEXTURE_TYPE::ZOMBIE_RA][0].loadFromFile("assets/RaZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_RA][1].loadFromFile("assets/RaZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_RA][2].loadFromFile("assets/RaZombieAbility.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -478,11 +500,24 @@ Entity defineRaZombie() {
 	zombie.health = 200;
 	zombie.attack = 20;
 	zombie.x_vel = 0.05;
-	// Walk animation
-	zombie.n_animations = 1;
-	zombie.animations[0].frameTimer = 0.11f;
-	zombie.animations[0].frames = 20;
+	// Animations
+	zombie.n_animations = 3;
+	Animation anim;
+	// walk
+	anim.frames = 20;
+	anim.frameTimer = 0.11f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 65;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+	// ability
+	anim.frames = 30;
+	anim.frameTimer = 0.08f;
+	zombie.animations[2] = anim;
+
 	zombie.setCurrentAnimation(0);
+
 	return zombie;
 }
 //bullets
@@ -507,7 +542,7 @@ void UpdateSuns(RenderWindow& window) {
 		Sun& sun = suns[i];
 		if (!isSunAlive(sun)) continue;
 
-		if (sun.position.y <= sun.distance) {
+		if (sun.position.y <= sun.distance && !sun.targeted) {
 			sun.position.y += 50.0f * delta_time;
 		}
 
@@ -516,8 +551,16 @@ void UpdateSuns(RenderWindow& window) {
 		uiSprite.setTexture(tex);
 		uiSprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 
+		if (sun.targeted) { // for ra
+			uiSprite.setColor(Color(255, 80, 80));
+		}
+		else {
+			uiSprite.setColor(Color(255, 255, 255));
+		}
+
 		window.draw(uiSprite);
 	}
+	uiSprite.setColor(Color(255, 255, 255)); // for ra
 }
 
 //we will remove it later
@@ -608,7 +651,25 @@ void DrawZombies(RenderWindow& window) {
 			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
 				
 				zombie.doAnimation(1, 1); // play dying animation once
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
+					zombie.scale = 1.3f;
 				zombie.afterAnimation = [&zombie](Entity& entity) {
+
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
+						int sunsToDrop = zombie.storedSunValue / 25;
+
+						for (int i = 0; i < sunsToDrop; i++) {
+							Sun newSun{};
+							newSun.position = zombie.position;
+							newSun.clicked = false;
+							newSun.lifeClock.restart();
+
+							addSun(newSun);
+						}
+
+						zombie.storedSunValue = 0;
+					}
+
 					zombie.isDead = true;	// TODO: maybe make isDead and health<=0 in another way?
 					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
 					};
@@ -623,11 +684,95 @@ void DrawZombies(RenderWindow& window) {
 				continue;
 			}
 		}
-		
 		// Animation
 		zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
+
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.health > 0) { // for ra
+
+			int myIndex = -1;
+			for (int j = 0; j < entities.size(); j++) {
+				if (entities[j].id == zombie.id) { myIndex = j; break; }
+			}
+
+			// start ability
+			if (!zombie.isUsingAbility && anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
+
+				bool hasUnclaimedSun = false;
+				for (int i = 0; i < MAX_SUNS; i++) {
+					if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
+						hasUnclaimedSun = true;
+						break;
+					}
+				}
+
+				if (hasUnclaimedSun) {
+
+					zombie.isUsingAbility = true;
+					zombie.abilityClock.restart();
+					zombie.x_vel = 0;
+					zombie.doAnimation(-1, 2);
+					zombie.scale = 1.5f;
+
+					for (int i = 0; i < MAX_SUNS; i++) {
+						if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
+							suns[i].targeted = true;
+							suns[i].ownerIndex = myIndex;
+							suns[i].lifeClock.restart();
+						}
+					}
+				}
+			}
+
+			// pull suns
+			if (zombie.isUsingAbility) {
+
+				for (int i = 0; i < MAX_SUNS; i++) {
+					Sun& sun = suns[i];
+					if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != myIndex) continue;
+
+					float dx = zombie.position.x - sun.position.x;
+					float dy = zombie.position.y - sun.position.y;
+					float dist = sqrt(dx * dx + dy * dy);
+
+					if (dist > 1.0f) {
+						sun.position.x += (dx / dist) * 300.0f * delta_time;
+						sun.position.y += (dy / dist) * 300.0f * delta_time;
+					}
+
+					if (dist < 60.0f) {
+						if (zombie.storedSunValue + 25 <= zombie.maxSunValue) {
+							sun.clicked = true;
+							sun.targeted = false;
+							sun.ownerIndex = -1;
+							zombie.storedSunValue += 25;
+						}
+					}
+				}
+			}
+
+			bool hasLiveSuns = false;
+			for (int i = 0; i < MAX_SUNS; i++) {
+				if (suns[i].ownerIndex == myIndex && isSunAlive(suns[i]))
+					hasLiveSuns = true;
+			}
+
+			// end ability
+			if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
+				for (int i = 0; i < MAX_SUNS; i++) {
+					if (suns[i].ownerIndex == myIndex) {
+						suns[i].targeted = false;
+						suns[i].ownerIndex = -1;
+					}
+				}
+
+				zombie.isUsingAbility = false;
+				zombie.x_vel = 0.05f;
+				zombie.setCurrentAnimation(0);
+				zombie.scale = 1.0f;
+			}
+		}
 		
 		// move
 		zombie.position.x -= zombie.x_vel;
@@ -652,7 +797,9 @@ void DrawZombies(RenderWindow& window) {
 				}
 			}
 			else if(zombie.health > 0) {
-				zombie.x_vel = .05; // no plant - has health - move normally edit_bug
+				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
+					zombie.x_vel = .05; // no plant - has health - move normally edit_bug
+				}
 			}
 		}
 		
@@ -726,6 +873,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 
 		newZombie.position = Vector2f(width,offsetY + (rand() % gridraws) * cellheight);
 		auto [raw, column] = gridCell(newZombie.position);
+		newZombie.id = nextEntityId++; // ra test
 		entities.push_back(newZombie);
 	}
 }
@@ -912,6 +1060,7 @@ int main() {
 					cout << "You now have " << money << endl;
 
 					suns[i].clicked = true;
+					suns[i].targeted = false; // for ra
 					uiInteracted = true;
 					break;
 				}
