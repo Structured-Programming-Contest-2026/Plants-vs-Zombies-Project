@@ -65,6 +65,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	LOGO,
 	LEVEL_SELECTOR_BACKGROUND,
 	LEVEL_OPTION_BACKGROUND,
+	LEVEL_BACKGROUND,
 	LEVEL_PLAY_BUTTON,
 	SUN,
 	SEEDBANK,
@@ -169,6 +170,7 @@ struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 300;
+	string bgPath = "assets/background.png";
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -1177,6 +1179,7 @@ void startLevel(int level) {
 		currentLevel = &levels[level];	// Note: level is 1 indexed
 		money = currentLevel->startingSuns;
 		isGameOver = false;
+		ground.setTexture(getTexture(TEXTURE_TYPE::LEVEL_BACKGROUND));
 	}
 }
 void DrawMainMenu(RenderWindow& window) {
@@ -1330,15 +1333,6 @@ int main() {
 	Entity zombieTorch = defineTorchlightZombie();
 	Entity zombieRa = defineRaZombie();
 
-	// Levels
-	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
-	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, };
-	levels[1].startingSuns = 300;
-
-	levels[2].plant_types = { sunflower, shroom, chomper };
-	levels[2].zombie_types = { zombieTorch, zombieRa };
-	levels[2].startingSuns = 50;
-
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
@@ -1348,9 +1342,26 @@ int main() {
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 
+	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
+	for (int lvl = 1; lvl < levels.size(); lvl++) {
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(levels[lvl].bgPath);
+	}
+
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
+
+
+	// Levels
+	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
+	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, };
+	levels[1].startingSuns = 300;
+	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
+
+	levels[2].plant_types = { sunflower, shroom, chomper };
+	levels[2].zombie_types = { zombieTorch, zombieRa };
+	levels[2].startingSuns = 50;	
+
 
 	//losing state
 
