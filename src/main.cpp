@@ -166,8 +166,12 @@ struct Entity {
 
 // TODO: this will later include stuff like difficulty, grid size, ...
 struct Level {
+	vector<Entity> zombie_types;
+	vector<Entity> plant_types;
+	int startingSuns = 300;
 };
-
+int number_levels = 6;
+vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 
 //Independet Sprites
@@ -179,10 +183,7 @@ Sprite uiSprite;
 
 // TODO: remove vectors and maps and replace them with arrays :)
 
-// Plants + Plant Grid
 vector<Entity> entities;
-vector<Entity> plant_types;
-
 int selectedPlant = 0;
 
 // Suns
@@ -212,8 +213,6 @@ bool addSun(Sun sun) {
 	return false;
 }
 
-// Zombies + Zombie List + Zombie Types	- we can have multiple zombies at a time, so we will keep them in a list
-vector<Entity> zombie_types;
 // Zombie Clock - to add new zombie after some time interval
 Clock zombieClock;
 //Sending Zombies
@@ -654,7 +653,6 @@ void DrawDebugGrid(RenderWindow& window) {
 		}
 	}
 }
-
 void DrawPlantsGrid(RenderWindow& window) {
 	vector<Entity> newBullets; //temporary vector
 	for (Entity& plant : entities) {
@@ -761,7 +759,6 @@ void DrawPlantsGrid(RenderWindow& window) {
 		entities.push_back(bullet);
 	}
 }
-
 void DrawZombies(RenderWindow& window) {
 	for (Entity& zombie : entities) {
 		if (zombie.category != ENTITY_CATEGORY::ZOMBIE) continue;
@@ -972,14 +969,17 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 	}
 }
 void CheckTimer_AddZombie(RenderWindow& window) {
+	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
+	
 	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
 		cout << "New Zombie\n";
 		zombieClock.restart();
 		nextZombieTimer = ZombieMinGapTime + rand() % 10;//I will edit it
 
 		// get random zombie type
-		int zombie_type_index = rand() % zombie_types.size();
-		Entity newZombie = zombie_types[zombie_type_index];
+		cout << "Current Level Zombies: " << currentLevel->zombie_types.size() << endl;
+		int zombie_type_index = rand() % currentLevel->zombie_types.size();
+		Entity newZombie = currentLevel->zombie_types[zombie_type_index];
 
 		newZombie.position = Vector2f(windowWidth, offsetY + (rand() % gridraws) * cellheight);
 		auto [raw, column] = gridCell(newZombie.position);
@@ -1035,7 +1035,7 @@ void DrawUI(RenderWindow& window) {
 
 
 		int i = -1;
-		for (auto& plant : plant_types) {
+		for (auto& plant : currentLevel->plant_types) {
 			i++;
 			Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
 			uiSprite.setPosition(spritePos);
@@ -1129,9 +1129,9 @@ void UpdateLevel(RenderWindow& window) {
 					if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
 						Entity plant;
 
-						if (money >= plant_types[selectedPlant].price) {
+						if (money >= currentLevel->plant_types[selectedPlant].price) {
 							cout << "Placing Plant at " << row << " " << col << endl;
-							plant = plant_types[selectedPlant];
+							plant = currentLevel->plant_types[selectedPlant];
 
 							plant.gridRow = row;
 							plant.gridCol = col;
@@ -1170,7 +1170,15 @@ void UpdateLevel(RenderWindow& window) {
 	}
 }
 
-
+void startLevel(int level) {
+	// Set currentLevel and other global variables based on the selected level
+	if (level < levels.size()) {
+		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
+		currentLevel = &levels[level];	// Note: level is 1 indexed
+		money = currentLevel->startingSuns;
+		isGameOver = false;
+	}
+}
 void DrawMainMenu(RenderWindow& window) {
 	Vector2f windowSize = { windowWidth, windowHeight };
 
@@ -1286,14 +1294,13 @@ void DrawMainMenu(RenderWindow& window) {
 			playButton.setColor(Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
-				currentLevel = new Level();
+				startLevel(selectedLevel + 1);
 			}
 		}
 
 		window.draw(playButton);
 	}
 }
-
 
 int main() {
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
@@ -1310,12 +1317,11 @@ int main() {
 
 	// Loading Textures + Defining entities
 	// Plants
-	Entity plant = defineNormalPlant();
+	Entity repeaterPlant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
 	Entity sunflower = defineSunflower();
 	Entity wallnut = defineWallnut();
 	Entity chomper = defineChomperPlant();
-	plant_types = { plant, shroom ,sunflower ,wallnut , chomper};
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -1324,8 +1330,25 @@ int main() {
 	Entity zombieTorch = defineTorchlightZombie();
 	Entity zombieRa = defineRaZombie();
 
-	//zombie_types = { zombieRa };
-	zombie_types = { zombie, zombieJapanese, zombieBig ,zombieTorch, zombieRa };
+	// Levels
+	levels[1].plant_types = {
+		sunflower,
+		repeaterPlant,
+		wallnut,
+	};
+	levels[1].zombie_types = {
+		zombie,
+		zombieJapanese,
+		zombieBig,
+	};
+	levels[1].startingSuns = 300;
+
+	levels[2] = {
+		{ zombieTorch, zombieRa },
+		{ sunflower ,shroom , chomper},
+		50
+	};
+	
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -1375,6 +1398,7 @@ int main() {
 			}
 		}
 
+		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
 			UpdateLevel(window);
 		} else {
