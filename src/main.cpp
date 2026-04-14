@@ -67,6 +67,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
 	LEVEL_PLAY_BUTTON,
+	SEED_CHOOSER,
+	SEED_CHOOSER_BUTTON,
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
@@ -171,6 +173,8 @@ struct Level {
 	vector<Entity> plant_types;
 	int startingSuns = 300;
 	string bgPath = "assets/background.png";
+	bool arePlantsSelected = false;
+	vector<Entity> selectedPlants;
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -1002,74 +1006,85 @@ void CheckTimer_AddSun(RenderWindow& window) {
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
 
-void DrawUI(RenderWindow& window) {
-	// seeds
-	{
-		const Vector2f pos = Vector2f(10.0f, 0);
+void DrawSeeds(RenderWindow& window) {
+	const Vector2f pos = Vector2f(10.0f, 0);
 
-		Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
+	Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
 
-		uiSprite.setPosition(pos);
-		uiSprite.setTexture(seedBank);
-		resizeSpriteToTex(uiSprite, seedBank);
-		uiSprite.setScale(Vector2f(1.4f, 1.4f));
+	uiSprite.setPosition(pos);
+	uiSprite.setTexture(seedBank);
+	resizeSpriteToTex(uiSprite, seedBank);
+	uiSprite.setScale(Vector2f(1.4f, 1.4f));
 
-		window.draw(uiSprite);
-		uiSprite.setScale(Vector2f(1.0f, 1.0f));
+	window.draw(uiSprite);
+	uiSprite.setScale(Vector2f(1.0f, 1.0f));
 
-		Text text;
-		text.setFont(*font);
-		text.setString(std::to_string(money));
-		text.setFillColor(Color());
-		text.setPosition(pos + Vector2f(32, 82));
+	Text text;
+	text.setFont(*font);
+	text.setString(std::to_string(money));
+	text.setFillColor(Color());
+	text.setPosition(pos + Vector2f(32, 82));
 
-		window.draw(text);
+	window.draw(text);
 
-		Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
-		uiSprite.setTexture(seedPacket);
-		resizeSpriteToTex(uiSprite, seedPacket);
-		uiSprite.setScale(Vector2f(0.75f, 0.75f));
+	Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
+	uiSprite.setTexture(seedPacket);
+	resizeSpriteToTex(uiSprite, seedPacket);
+	uiSprite.setScale(Vector2f(0.75f, 0.75f));
 
+	int removePlant = -1;
 
-		int i = -1;
-		for (auto& plant : currentLevel->plant_types) {
-			i++;
-			Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
-			uiSprite.setPosition(spritePos);
+	int i = -1;
+	for (auto& plant : currentLevel->selectedPlants) {
+		i++;
+		Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
+		uiSprite.setPosition(spritePos);
 
-			Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
+		Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
 
-			uiSprite.setColor(Color(255, 255, 255, 255));
-			plantSprite.setColor(Color(255, 255, 255, 255));
+		uiSprite.setColor(Color(255, 255, 255, 255));
+		plantSprite.setColor(Color(255, 255, 255, 255));
 
-			if (mousePos.x >= spritePos.x && mousePos.x <= spritePos.x + size.x && mousePos.y >= spritePos.y && mousePos.y <= spritePos.y + size.y) {
-				if (mouseJustClicked[0]) {
-					uiInteracted = true;
+		if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+			uiSprite.setColor(Color(128, 128, 128, 255));
+			plantSprite.setColor(Color(128, 128, 128, 255));
+
+			if (mouseJustClicked[0]) {
+				uiInteracted = true;
+				if (currentLevel->arePlantsSelected) {
 					selectedPlant = i;
+				} else {
+					removePlant = i;
 				}
 			}
-
-			//Smart Crop [ Each Seed Packets ? ]
-			Texture& tex = getDefaultEntityTexture(plant.type);
-			int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
-			int frameHeight = tex.getSize().y;
-
-			plantSprite.setTexture(tex);
-			plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
-
-			plantSprite.setPosition(spritePos + Vector2f(10, 20));
-
-			float scaleFactor = 55.0f / frameHeight;
-			plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
-
-			window.draw(uiSprite);
-			window.draw(plantSprite);
-
-			text.setString(std::to_string(plant.price));
-			text.setPosition(spritePos + Vector2f(10, 77));
-			text.setCharacterSize(24);
-			window.draw(text);
 		}
+
+		//Smart Crop [ Each Seed Packets ? ]
+		Texture& tex = getDefaultEntityTexture(plant.type);
+		int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
+		int frameHeight = tex.getSize().y;
+
+		plantSprite.setTexture(tex);
+		plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
+
+		plantSprite.setPosition(spritePos + Vector2f(10, 20));
+
+		float scaleFactor = 55.0f / frameHeight;
+		plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
+
+		window.draw(uiSprite);
+		window.draw(plantSprite);
+
+		text.setString(std::to_string(plant.price));
+		text.setPosition(spritePos + Vector2f(10, 77));
+		text.setCharacterSize(24);
+		window.draw(text);
+	}
+	uiSprite.setColor(Color(255, 255, 255, 255));
+	plantSprite.setColor(Color(255, 255, 255, 255));
+
+	if (removePlant != -1) {
+		currentLevel->selectedPlants.erase(currentLevel->selectedPlants.begin() + removePlant);
 	}
 }
 
@@ -1088,82 +1103,187 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
+		return;
 	}
 
-	else {
+	if (!currentLevel->arePlantsSelected) {
+		DrawSeeds(window);
 
+		Sprite bgSprite;
+		bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
+		bgSprite.setPosition(Vector2f(10, 123.0f));
+		bgSprite.setScale(Vector2f(1.5f, 1.5f));
 
-		DrawPlantsGrid(window);
-		DrawZombies(window);
-		UpdateAndDrawBullets(window);
-		UpdateSuns(window);
-		DrawUI(window);
-		/*DrawDebugGrid(window);*/
+		window.draw(bgSprite);
 
-		if (!uiInteracted && mouseJustClicked[0]) {
-			for (int i = 0; i < MAX_SUNS; i++) {
-				// Check all suns + Add clicked suns to money
-				Sun& sun = suns[i];
-				if (!isSunAlive(sun)) continue;
+		Text text;
+		text.setFont(*font);
+		text.setString("Choose your plants");
+		text.setFillColor(Color(255, 255, 255, 128));
+		text.setPosition(Vector2f(240, 130.0f));
 
-				if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-					money += 25;
+		window.draw(text);
 
-					cout << "You now have " << money << endl;
+		text.setFillColor(Color());
 
-					suns[i].clicked = true;
-					suns[i].targeted = false; // for ra
-					uiInteracted = true;
+		Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
+
+		Sprite seedBg;
+		seedBg.setTexture(seedPacket);
+		resizeSpriteToTex(seedBg, seedPacket);
+		seedBg.setScale(Vector2f(0.75f, 0.75f));
+
+		int i = -1;
+		for (auto& plant : currentLevel->plant_types) {
+			i++;
+			Vector2f spritePos = Vector2f(50.0f, 190.0f) + Vector2f((i % 7) * (seedPacket.getSize().x - 10.0f), 10.0f + (i / 7) * 130.0f);
+			seedBg.setPosition(spritePos);
+
+			Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
+
+			seedBg.setColor(Color(255, 255, 255, 255));
+			plantSprite.setColor(Color(255, 255, 255, 255));
+
+			bool disabled = false;
+
+			for (auto& selectedPlant : currentLevel->selectedPlants) {
+				if (selectedPlant.type == plant.type) {
+					disabled = true;
 					break;
 				}
 			}
 
-			if (!uiInteracted) {
-				auto [row, col] = gridCell(mousePos);
+			if (disabled) {
+				seedBg.setColor(Color(64, 64, 64, 255));
+				plantSprite.setColor(Color(64, 64, 64, 255));
+			} else if (seedBg.getGlobalBounds().contains(Vector2f(mousePos))) {
+				seedBg.setColor(Color(128, 128, 128, 255));
+				plantSprite.setColor(Color(128, 128, 128, 255));
+				if (mouseJustClicked[0]) {
+					uiInteracted = true;
+					currentLevel->selectedPlants.push_back(plant);
+				}
+			}
 
-				if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+			window.draw(seedBg);
 
-					if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
-						Entity plant;
+			//Smart Crop [ Each Seed Packets ? ]
+			Texture& tex = getDefaultEntityTexture(plant.type);
+			int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
+			int frameHeight = tex.getSize().y;
 
-						if (money >= currentLevel->plant_types[selectedPlant].price) {
-							cout << "Placing Plant at " << row << " " << col << endl;
-							plant = currentLevel->plant_types[selectedPlant];
+			plantSprite.setTexture(tex);
+			plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
 
-							plant.gridRow = row;
-							plant.gridCol = col;
+			plantSprite.setPosition(spritePos + Vector2f(10, 20));
 
-							Texture& tex = getDefaultEntityTexture(plant.type);
-							int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
-							int plantHeight = tex.getSize().y * plant.scale;
+			float scaleFactor = 55.0f / frameHeight;
+			plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
 
-							//centrize
-							int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
+			window.draw(plantSprite);
 
-							//alighn to the bottom
-							int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
+			text.setString(std::to_string(plant.price));
+			text.setPosition(spritePos + Vector2f(10, 77));
+			text.setCharacterSize(24);
+			window.draw(text);
+		}
 
-							plant.position = Vector2f(x, y);
+		Sprite startButton;
 
-							entities.push_back(plant);
-							money -= plant.price;
-						}
+		startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
+		startButton.setScale(Vector2f(1.5f, 1.5f));
+		startButton.setPosition(Vector2f(250.0f, 780.0f));
+
+		if (currentLevel->selectedPlants.size() == 0) {
+			startButton.setColor(Color(64, 64, 64, 255));
+		} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+			startButton.setColor(Color(128, 128, 128, 255));
+			if (mouseJustClicked[0]) {
+				currentLevel->arePlantsSelected = true;
+			}
+		}
+
+		window.draw(startButton);
+
+		text.setString("Start Game");
+		text.setPosition(startButton.getPosition() + Vector2f(40, 8.0f));
+		text.setScale(Vector2f(1.5f, 1.5f));
+		text.setFillColor(Color(255, 255, 255, 128));
+
+		window.draw(text);
+
+		return;
+	}
+
+	DrawPlantsGrid(window);
+	DrawZombies(window);
+	UpdateAndDrawBullets(window);
+	UpdateSuns(window);
+	DrawSeeds(window);
+	/*DrawDebugGrid(window);*/
+
+	if (!uiInteracted && mouseJustClicked[0]) {
+		for (int i = 0; i < MAX_SUNS; i++) {
+			// Check all suns + Add clicked suns to money
+			Sun& sun = suns[i];
+			if (!isSunAlive(sun)) continue;
+
+			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
+				money += 25;
+
+				cout << "You now have " << money << endl;
+
+				suns[i].clicked = true;
+				suns[i].targeted = false; // for ra
+				uiInteracted = true;
+				break;
+			}
+		}
+
+		if (!uiInteracted) {
+			auto [row, col] = gridCell(mousePos);
+
+			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+
+				if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
+					Entity plant;
+
+					if (money >= currentLevel->selectedPlants[selectedPlant].price) {
+						cout << "Placing Plant at " << row << " " << col << endl;
+						plant = currentLevel->selectedPlants[selectedPlant];
+
+						plant.gridRow = row;
+						plant.gridCol = col;
+
+						Texture& tex = getDefaultEntityTexture(plant.type);
+						int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
+						int plantHeight = tex.getSize().y * plant.scale;
+
+						//centrize
+						int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
+
+						//alighn to the bottom
+						int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
+
+						plant.position = Vector2f(x, y);
+
+						entities.push_back(plant);
+						money -= plant.price;
 					}
 				}
 			}
 		}
-		for (Entity& zombie : entities) {
-			if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
+	}
+	for (Entity& zombie : entities) {
+		if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
+		{
+			if (zombie.position.x <= 0)//end of the screen
 			{
-				if (zombie.position.x <= 0)//end of the screen
-				{
-					isGameOver = true;
-					cout << "Zombies ate your brains!\n";
-					break;
-				}
+				isGameOver = true;
+				cout << "Zombies ate your brains!\n";
+				break;
 			}
 		}
-
 	}
 }
 
@@ -1333,6 +1453,8 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
+	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
+	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
