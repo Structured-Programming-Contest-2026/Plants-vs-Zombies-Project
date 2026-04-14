@@ -157,6 +157,16 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="doc\DEVELOPMENT_GUIDE.md" />
+    <None Include="doc\EXAMPLES.md" />
+    <None Include="doc\FLOW_DIAGRAMS.md" />
+    <None Include="doc\GETTING_STARTED.md" />
+    <None Include="doc\INDEX.md" />
+    <None Include="doc\QUICK_REFERENCE.md" />
+    <None Include="doc\README.md" />
+    <None Include="doc\TROUBLESHOOTING.md" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
