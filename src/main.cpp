@@ -197,7 +197,7 @@ struct Sun {
 	Clock lifeClock;
 	float distance = 500.0f;
 	bool clicked = true;
-	
+
 	bool targeted = false; // for ra
 	int ownerIndex = -1; // for ra
 };
@@ -313,8 +313,7 @@ bool anySunAlive() { // for ra
 	return false;
 }
 
-Vector2i gridCell_imp(Vector2f pos)
-{
+Vector2i gridCell_imp(Vector2f pos) {
 	int column = (pos.x - offsetX) / cellWidth;
 	int raw = (pos.y - offsetY) / cellHeight;
 	return { raw, column };
@@ -424,13 +423,13 @@ Entity defineSunflower() {
 
 	return plant;
 }
-Entity defineChomperPlant(){
+Entity defineChomperPlant() {
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
 	Chomper.health = 200;
 	Chomper.price = 150;
-	
+
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
@@ -631,8 +630,7 @@ void UpdateSuns(RenderWindow& window) {
 
 		if (sun.targeted) { // for ra
 			uiSprite.setColor(Color(255, 80, 80));
-		}
-		else {
+		} else {
 			uiSprite.setColor(Color(255, 255, 255));
 		}
 
@@ -674,8 +672,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				plant.setCurrentAnimation(CurrentState);
 				cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
 					if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) continue;
@@ -733,8 +730,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullets.push_back(newBullet);
 				}
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -768,7 +764,7 @@ void DrawZombies(RenderWindow& window) {
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
-				
+
 				zombie.DoAnimation(1, 1); // play dying animation once
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 					zombie.scale = 1.3f;
@@ -803,7 +799,7 @@ void DrawZombies(RenderWindow& window) {
 				continue;
 			}
 		}
-		
+
 		// Animation
 		zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
@@ -873,7 +869,7 @@ void DrawZombies(RenderWindow& window) {
 
 			// end ability
 			if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
-				
+
 				for (int i = 0; i < MAX_SUNS; i++) {
 					if (suns[i].ownerIndex == zombie.id) {
 						suns[i].targeted = false;
@@ -886,7 +882,7 @@ void DrawZombies(RenderWindow& window) {
 				zombie.scale = 1.0f;
 			}
 		}
-		
+
 		// move
 		zombie.position.x -= zombie.x_vel;
 		auto [r, c] = gridCell(zombie.position);
@@ -907,14 +903,13 @@ void DrawZombies(RenderWindow& window) {
 						cout << "Plant Killed\n";
 					}
 				}
-			}
-			else if(zombie.health > 0) {
+			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
 					zombie.x_vel = .05; // no plant - has health - move normally edit_bug
 				}
 			}
 		}
-		
+
 		int frameHeight = frameRect.getSize().y;
 		float actualHeight = frameHeight * zombie.scale;
 		Vector2f adjustedPosition = zombie.position;
@@ -972,7 +967,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 }
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
-	
+
 	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
 		cout << "New Zombie\n";
 		zombieClock.restart();
@@ -1176,7 +1171,7 @@ void startLevel(int level) {
 	// Set currentLevel and other global variables based on the selected level
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
-		currentLevel = &levels[level];	// Note: level is 1 indexed
+		currentLevel = new Level(levels[level]);	// Note: level is 1 indexed
 		money = currentLevel->startingSuns;
 		isGameOver = false;
 		ground.setTexture(getTexture(TEXTURE_TYPE::LEVEL_BACKGROUND));
@@ -1360,7 +1355,7 @@ int main() {
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
 	levels[2].zombie_types = { zombieTorch, zombieRa };
-	levels[2].startingSuns = 50;	
+	levels[2].startingSuns = 50;
 
 
 	//losing state
