@@ -532,6 +532,7 @@ Entity defineChomperPlant() {
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
 	Chomper.health = 200;
 	Chomper.price = 150;
+	Chomper.scale = 0.85;
 
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
@@ -719,7 +720,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 					bool inFront = zombie.position.x > plant.position.x &&
-						zombie.position.x < plant.position.x + cellwidth * 1.2;
+						zombie.position.x < plant.position.x + cellwidth * 1 + 20;
 
 					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
 						zombie.health = 0;
