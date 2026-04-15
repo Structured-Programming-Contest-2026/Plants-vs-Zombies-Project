@@ -122,7 +122,7 @@ struct Entity {
 
 	bool isUsingAbility = false; // for ra
 	Clock abilityClock; // for ra
-	float abilityDuration = 1.5f; // for ra
+	float abilityDuration = 5.0f; // for ra
 
 	int storedSunValue = 0; // for ra
 	int maxSunValue = 350; // for ra
@@ -845,7 +845,8 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.health > 0) { // for ra
 
 			// start ability
-			if (!zombie.isUsingAbility && anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
+			if (!zombie.isUsingAbility && zombie.abilityClock.getElapsedTime().asSeconds() >= 3.0f
+				&& anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
 
 				bool hasUnclaimedSun = false;
 				for (int i = 0; i < MAX_SUNS; i++) {
@@ -896,27 +897,26 @@ void DrawZombies(RenderWindow& window) {
 						}
 					}
 				}
-			}
-
-			bool hasLiveSuns = false;
-			for (int i = 0; i < MAX_SUNS; i++) {
-				if (suns[i].ownerIndex == zombie.id && isSunAlive(suns[i]))
-					hasLiveSuns = true;
-			}
-
-			// end ability
-			if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
-
+				bool hasLiveSuns = false;
 				for (int i = 0; i < MAX_SUNS; i++) {
-					if (suns[i].ownerIndex == zombie.id) {
-						suns[i].targeted = false;
-						suns[i].ownerIndex = -1;
-					}
+					if (suns[i].ownerIndex == zombie.id && isSunAlive(suns[i]))
+						hasLiveSuns = true;
 				}
-				zombie.isUsingAbility = false;
-				zombie.x_vel = 0.05f;
-				zombie.setCurrentAnimation(0);
-				zombie.scale = 1.0f;
+				// end ability
+				if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
+
+					for (int i = 0; i < MAX_SUNS; i++) {
+						if (suns[i].ownerIndex == zombie.id) {
+							suns[i].targeted = false;
+							suns[i].ownerIndex = -1;
+						}
+					}
+					zombie.isUsingAbility = false;
+					zombie.x_vel = 0.05f;
+					zombie.setCurrentAnimation(0);
+					zombie.scale = 1.0f;
+					zombie.abilityClock.restart();
+				}
 			}
 		}
 
