@@ -372,7 +372,7 @@ Sprite defineGroundSprite(Texture& tex) {
 Entity defineNormalPlant() {
 
 	Texture tex;
-	tex.loadFromFile("assets/Repeater.png");
+	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
@@ -382,11 +382,12 @@ Entity defineNormalPlant() {
 	planet.health = 100;
 	planet.attack = 1000;
 	planet.price = 25;
+	planet.scale = 0.75;
 
 	// Idle animation
 	planet.num_animations = 1;
 	planet.animations[0].frameTimer = 0.1f;
-	planet.animations[0].frames = 14;
+	planet.animations[0].frames = 13;
 	planet.setCurrentAnimation(0);
 	return planet;
 
