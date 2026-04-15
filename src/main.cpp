@@ -433,36 +433,6 @@ Entity defineSunflower() {
 
 	return plant;
 }
-Entity defineChomperPlant() {
-	Entity Chomper;
-	Chomper.category = ENTITY_CATEGORY::PLANT;
-	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
-	Chomper.health = 200;
-	Chomper.price = 150;
-
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
-
-	Chomper.num_animations = 3;
-	Animation a;
-	a.frames = 13;
-	a.frameTimer = 0.1f;
-	Chomper.animations[0] = a; // IDLE Animation
-	a.frames = 9;
-	a.frameTimer = 0.1f;
-	Chomper.animations[1] = a; // ATTACK Animation
-	a.frames = 6;
-	a.frameTimer = 0.1f;
-	Chomper.animations[2] = a; // DIGEST Animation
-
-	Chomper.setCurrentAnimation(0);
-
-	return Chomper;
-}
 // zombies
 Entity defineNormalZombie() {
 	Texture tex;
@@ -553,6 +523,38 @@ Entity defineWallnut() {
 	wallnut.setCurrentAnimation(0);
 
 	return wallnut;
+}
+
+// Chomper Plant
+Entity defineChomperPlant() {
+	Entity Chomper;
+	Chomper.category = ENTITY_CATEGORY::PLANT;
+	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
+	Chomper.health = 200;
+	Chomper.price = 150;
+
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
+
+	Chomper.num_animations = 3;
+	Animation a;
+	a.frames = 13;
+	a.frameTimer = 0.1f;
+	Chomper.animations[0] = a; // IDLE Animation
+	a.frames = 9;
+	a.frameTimer = 0.1f;
+	Chomper.animations[1] = a; // ATTACK Animation
+	a.frames = 6;
+	a.frameTimer = 0.1f;
+	Chomper.animations[2] = a; // DIGEST Animation
+
+	Chomper.setCurrentAnimation(0);
+
+	return Chomper;
 }
 
 Entity defineTorchlightZombie() {
@@ -726,7 +728,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 						plant.DoAnimation(1, 1);
 						plant.afterAnimation = [](Entity& entity) {
-							entity.DoAnimation(10, 2);
+							entity.DoAnimation(20, 2);
 							entity.afterAnimation = [](Entity& entity) {
 								entity.DoAnimation(-1, 0);
 								};
