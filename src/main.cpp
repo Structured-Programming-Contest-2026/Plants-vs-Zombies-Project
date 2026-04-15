@@ -50,6 +50,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_BIG,
 	ZOMBIE_TORCHLIGHT,
 	ZOMBIE_RA,
+	ZOMBIE_MUMMY,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -78,6 +79,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_BIG,
 	ZOMBIE_TORCHLIGHT,
 	ZOMBIE_RA,
+	ZOMBIE_MUMMY,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -251,6 +253,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_RA:
 		textureType = TEXTURE_TYPE::ZOMBIE_RA;
+		break;
+	case ENTITY_TYPE::ZOMBIE_MUMMY:
+		textureType = TEXTURE_TYPE::ZOMBIE_MUMMY;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -601,6 +606,34 @@ Entity defineRaZombie() {
 
 	return zombie;
 }
+
+Entity defineMummyZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_MUMMY][0].loadFromFile("assets/MummyZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_MUMMY][1].loadFromFile("assets/MummyZombieDeath.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_MUMMY;
+	zombie.health = 100;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05;
+	// Animations
+	zombie.num_animations = 2;
+	Animation anim;
+	// walk
+	anim.frames = 30;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 55;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
+
 //bullets
 Entity defineNormalBullet() {
 	Texture tex;
@@ -1447,6 +1480,7 @@ int main() {
 	Entity zombieBig = defineBigZombie();
 	Entity zombieTorch = defineTorchlightZombie();
 	Entity zombieRa = defineRaZombie();
+	Entity zombieMummy = defineMummyZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -1476,7 +1510,7 @@ int main() {
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
-	levels[2].zombie_types = { zombieTorch, zombieRa };
+	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
 	levels[2].startingSuns = 50;
 
 
