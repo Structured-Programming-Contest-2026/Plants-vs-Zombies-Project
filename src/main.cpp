@@ -34,6 +34,7 @@ windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 
 int nextEntityId = 0; // for ra
+Sprite ground;
 
 enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
@@ -177,6 +178,7 @@ struct Level {
 	string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
 	vector<Entity> selectedPlants;
+	int lvlNum = 0;
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -350,11 +352,17 @@ Entity& getEntity(Vector2i gridPos) {
 // Define Characters - Functions
 
 // ground
-Sprite ground;
 Sprite defineGroundSprite(Texture& tex) {
-	tex.loadFromFile("assets/background.png");
-	if (!tex.loadFromFile("assets/background.png")) {
-		cout << "Error: Could not load assets/background.png" << endl;
+	if (currentLevel != nullptr) {
+		// this doesnt run .. cuz its run only once, beginning of main, before even textures is loaded
+		tex.loadFromFile(currentLevel->bgPath);
+		cout << "trying to load " << currentLevel->bgPath << endl;
+		if (!tex.loadFromFile(currentLevel->bgPath)) {
+			cout << "Error: Could not load assets/background.png" << endl;
+		}
+	}
+	else { 
+		tex.loadFromFile("assets/background.png");
 	}
 
 	/*tex.setRepeated(true);*/
@@ -1331,7 +1339,15 @@ void startLevel(int level) {
 		currentLevel = new Level(levels[level]);	// Note: level is 1 indexed
 		money = currentLevel->startingSuns;
 		isGameOver = false;
-		ground.setTexture(getTexture(TEXTURE_TYPE::LEVEL_BACKGROUND));
+		Texture &groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
+		cout << "txt size " << groundTex.getSize().x << endl;
+		ground.setTexture(groundTex);
+		ground.setTextureRect({ 0, 0, windowWidth, windowHeight });
+		ground.setScale
+		(
+			(float)windowWidth / (float)groundTex.getSize().x,
+			(float)windowHeight / (float)groundTex.getSize().y
+		);
 	}
 }
 void DrawMainMenu(RenderWindow& window) {
@@ -1383,7 +1399,7 @@ void DrawMainMenu(RenderWindow& window) {
 
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
 
-	for (int i = 0; i < 6; i++) {
+	for (int i = 0; i < number_levels; i++) {
 		bool selected = i == selectedLevel;
 		bool hovered = false;
 
@@ -1463,12 +1479,8 @@ int main() {
 	// Characters
 	Texture groundTex;
 	ground = defineGroundSprite(groundTex);
+
 	//New
-	ground.setScale
-	(
-		(float)windowWidth / (float)groundTex.getSize().x,
-		(float)windowHeight / (float)groundTex.getSize().y
-	);
 
 	// Loading Textures + Defining entities
 	// Plants
@@ -1497,11 +1509,6 @@ int main() {
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 
-	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
-	for (int lvl = 1; lvl < levels.size(); lvl++) {
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(levels[lvl].bgPath);
-	}
-
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
@@ -1515,7 +1522,16 @@ int main() {
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
-	levels[2].startingSuns = 50;
+	levels[2].startingSuns = 350;
+	levels[2].bgPath = "assets/egypt.png";
+
+	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
+	for (int lvl = 1; lvl <= number_levels; lvl++) {
+		cout << "loading file txt " << levels[lvl].bgPath << endl;
+		levels[lvl].lvlNum = lvl;
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(levels[lvl].bgPath);
+		cout << "done loaded " << levels[lvl].bgPath << endl;
+	}
 
 
 	//losing state
