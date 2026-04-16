@@ -15,6 +15,7 @@ using namespace sf;
 #define offsetX 470
 #define offsetY 100
 #define edgespace -100
+#define z_eat_p_distance 100
 
 float delta_time = 1.0f;
 Vector2i mousePos;
@@ -32,6 +33,7 @@ cellHeight = cellheight,
 windowWidth = 1920,
 windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
+const int eatDistance = z_eat_p_distance;
 
 int nextEntityId = 0; // for ra
 Sprite ground;
@@ -91,6 +93,67 @@ enum class TEXTURE_TYPE : uint8_t {
 	NormalBullet,
 };
 
+// Textures 1
+map<TEXTURE_TYPE, Texture[10]> textures;
+#define Default_Texture_Index 0
+Texture& getTexture(TEXTURE_TYPE type, int animation_index = Default_Texture_Index) {
+	return textures[type][animation_index];
+}
+TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
+	// To use textures[getTextureType(entity.type)][entity.currentAnimationIndex] on setting texture of sprites
+	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
+	switch (type) {
+		//zmobies 
+	case ENTITY_TYPE::ZOMBIE_NORMAL:
+		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
+		break;
+	case ENTITY_TYPE::ZOMBIE_JAPANESE:
+		textureType = TEXTURE_TYPE::ZOMBIE_JAPANESE;
+		break;
+	case ENTITY_TYPE::ZOMBIE_BIG:
+		textureType = TEXTURE_TYPE::ZOMBIE_BIG;
+		break;
+	case ENTITY_TYPE::ZOMBIE_TORCHLIGHT:
+		textureType = TEXTURE_TYPE::ZOMBIE_TORCHLIGHT;
+		break;
+	case ENTITY_TYPE::ZOMBIE_RA:
+		textureType = TEXTURE_TYPE::ZOMBIE_RA;
+		break;
+	case ENTITY_TYPE::ZOMBIE_MUMMY:
+		textureType = TEXTURE_TYPE::ZOMBIE_MUMMY;
+		break;
+		//plantes
+	case ENTITY_TYPE::PLANT_NORMAL:
+		textureType = TEXTURE_TYPE::PLANT_NORMAL;
+		break;
+	case ENTITY_TYPE::PLANT_SHROOM:
+		textureType = TEXTURE_TYPE::PLANT_SHROOM;
+		break;
+	case ENTITY_TYPE::PLANT_SUNFLOWER:
+		textureType = TEXTURE_TYPE::PLANT_SUNFLOWER;
+		break;
+	case ENTITY_TYPE::PLANT_WALLNUT:
+		textureType = TEXTURE_TYPE::PLANT_WALLNUT;
+		break;
+	case ENTITY_TYPE::PLANT_CHOMPER:
+		textureType = TEXTURE_TYPE::PLANT_CHOMPER;
+		break;
+		//other
+	case ENTITY_TYPE::NormalBullet:
+		textureType = TEXTURE_TYPE::NormalBullet;
+		break;
+	default:
+		textureType = TEXTURE_TYPE::NONE;
+		break;
+	}
+	return textureType;
+}
+Texture& getDefaultEntityTexture(ENTITY_TYPE type) {
+	// Returns default ([0]) texture of the entity type
+	TEXTURE_TYPE textureType = getTextureType(type);
+	return textures[textureType][Default_Texture_Index];
+}
+
 struct Animation {
 	int frames = 1;
 	float frameTimer = 1.0f;
@@ -117,6 +180,8 @@ struct Entity {
 	Clock attackClock;
 	int attackTimer = 1;
 	Vector2f position;
+	int width;
+	int height;
 	float scale = 1.0f;
 	int gridRow = -1;
 	int gridCol = -1;
@@ -132,10 +197,18 @@ struct Entity {
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = nullptr;	// called after animation finish (if animationForCycles != -1)
 
+	void updateDimensions() {
+		Texture tex = getTexture(getTextureType(type), currentAnimationIndex);
+		int w = (tex.getSize().x / currentAnimation.frames) * scale;
+		int h = tex.getSize().y * scale;
+
+		width = w, height=h;
+	}
 	void setCurrentAnimation(int idx) {
 		// You MUST change both
 		currentAnimationIndex = idx;
 		currentAnimation = animations[currentAnimationIndex];
+		updateDimensions();
 	}
 	void setAllAnimations(int num, Animation anim) {
 		// example : all animations are the same size, time, etc .. 
@@ -144,6 +217,7 @@ struct Entity {
 		for (int i = 0; i < num; i++) {
 			animations[i] = anim;
 		}
+		updateDimensions();
 	}
 	void nextFrame() {
 		// next frame + check animation finish
@@ -166,6 +240,7 @@ struct Entity {
 		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
 		setCurrentAnimation(idx);
+		updateDimensions();
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 };
@@ -229,67 +304,7 @@ Clock zombieClock;
 float nextZombieTimer = 3;
 float ZombieMinGapTime = 3;
 
-// Textures
-map<TEXTURE_TYPE, Texture[10]> textures;
-#define Default_Texture_Index 0
-
-Texture& getTexture(TEXTURE_TYPE type) {
-	return textures[type][Default_Texture_Index];
-}
-TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
-	// To use textures[getTextureType(entity.type)][entity.currentAnimationIndex] on setting texture of sprites
-	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
-	switch (type) {
-		//zmobies 
-	case ENTITY_TYPE::ZOMBIE_NORMAL:
-		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
-		break;
-	case ENTITY_TYPE::ZOMBIE_JAPANESE:
-		textureType = TEXTURE_TYPE::ZOMBIE_JAPANESE;
-		break;
-	case ENTITY_TYPE::ZOMBIE_BIG:
-		textureType = TEXTURE_TYPE::ZOMBIE_BIG;
-		break;
-	case ENTITY_TYPE::ZOMBIE_TORCHLIGHT:
-		textureType = TEXTURE_TYPE::ZOMBIE_TORCHLIGHT;
-		break;
-	case ENTITY_TYPE::ZOMBIE_RA:
-		textureType = TEXTURE_TYPE::ZOMBIE_RA;
-		break;
-	case ENTITY_TYPE::ZOMBIE_MUMMY:
-		textureType = TEXTURE_TYPE::ZOMBIE_MUMMY;
-		break;
-		//plantes
-	case ENTITY_TYPE::PLANT_NORMAL:
-		textureType = TEXTURE_TYPE::PLANT_NORMAL;
-		break;
-	case ENTITY_TYPE::PLANT_SHROOM:
-		textureType = TEXTURE_TYPE::PLANT_SHROOM;
-		break;
-	case ENTITY_TYPE::PLANT_SUNFLOWER:
-		textureType = TEXTURE_TYPE::PLANT_SUNFLOWER;
-		break;
-	case ENTITY_TYPE::PLANT_WALLNUT:
-		textureType = TEXTURE_TYPE::PLANT_WALLNUT;
-		break;
-	case ENTITY_TYPE::PLANT_CHOMPER:
-		textureType = TEXTURE_TYPE::PLANT_CHOMPER;
-		break;
-		//other
-	case ENTITY_TYPE::NormalBullet:
-		textureType = TEXTURE_TYPE::NormalBullet;
-		break;
-	default:
-		textureType = TEXTURE_TYPE::NONE;
-		break;
-	}
-	return textureType;
-}
-Texture& getDefaultEntityTexture(ENTITY_TYPE type) {
-	// Returns default ([0]) texture of the entity type
-	TEXTURE_TYPE textureType = getTextureType(type);
-	return textures[textureType][Default_Texture_Index];
-}
+// Textures 2
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
@@ -728,7 +743,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 					bool inFront = zombie.position.x > plant.position.x &&
-						zombie.position.x < plant.position.x + cellwidth * 1 + 20;
+						zombie.position.x < plant.position.x + plant.width * 0.5;	
+					// NOTE: Distance from zombie depends on (Texture) width * scale
 
 					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
 						zombie.health = 0;
@@ -941,15 +957,18 @@ void DrawZombies(RenderWindow& window) {
 			// Eat
 			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) {
-				zombie.x_vel = 0;
-				if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
-					zombie.attackClock.restart();
-					plant.health -= zombie.attack;
-					if (plant.health <= 0) {
-						zombie.x_vel = .05;
-						plant.category = ENTITY_CATEGORY::NONE;
-						plant.isDead = true;
-						cout << "Plant Killed\n";
+				if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
+					// close enough - not just touch
+					zombie.x_vel = 0;
+					if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+						zombie.attackClock.restart();
+						plant.health -= zombie.attack;
+						if (plant.health <= 0) {
+							if(zombie.health>0)zombie.x_vel = .5;
+							plant.category = ENTITY_CATEGORY::NONE;
+							plant.isDead = true;
+							cout << "Plant Killed\n";
+						}
 					}
 				}
 			} else if (zombie.health > 0) {
@@ -1300,15 +1319,11 @@ void UpdateLevel(RenderWindow& window) {
 						plant.gridRow = row;
 						plant.gridCol = col;
 
-						Texture& tex = getDefaultEntityTexture(plant.type);
-						int plantWidth = (tex.getSize().x / plant.currentAnimation.frames) * plant.scale;
-						int plantHeight = tex.getSize().y * plant.scale;
-
 						//centrize
-						int x = offsetX + (col * cellWidth) + ((cellWidth - plantWidth) / 2); //general formula -> start + (containerSize - objectSize) / 2
+						int x = offsetX + (col * cellWidth) + ((cellWidth - plant.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
 
 						//alighn to the bottom
-						int y = offsetY + (row * cellHeight) + (cellHeight - plantHeight);
+						int y = offsetY + (row * cellHeight) + (cellHeight - plant.height);
 
 						plant.position = Vector2f(x, y);
 
