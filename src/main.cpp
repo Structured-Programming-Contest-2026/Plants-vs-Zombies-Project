@@ -258,12 +258,21 @@ struct Level {
 	int lvlNum = 0;
 	int targetZombie = 20,	// total zombies in a level 
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
-		waveTimer = 10,		// between waves
+		waveTimer = 15,		// between waves
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
+
+
+// Zombie Clock - to add new zombie after some time interval
+Clock zombieClock, waveClockX;
+//Sending Zombies
+float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float ZombieMinGapTime = 7,
+ZombieMaxGapTime = ZombieMinGapTime + 3,
+ZombieGap_dt = 0.1;	// Level Pace
 
 //Independet Sprites
 
@@ -303,14 +312,6 @@ bool addSun(Sun sun) {
 	}
 	return false;
 }
-
-// Zombie Clock - to add new zombie after some time interval
-Clock zombieClock, waveClockX;
-//Sending Zombies
-float nextZombieTimer = 5; // it's assigned, current value is only used for FIRST ZOMBIE
-float ZombieMinGapTime = 4, 
-	ZombieMaxGapTime = ZombieMinGapTime + 3, 
-	ZombieGap_dt=0.1;	// Level Pace
 
 // Textures 2
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
@@ -530,8 +531,8 @@ Entity defineWallnut() {
 	Entity wallnut{};
 	wallnut.category = ENTITY_CATEGORY::PLANT;
 	wallnut.type = ENTITY_TYPE::PLANT_WALLNUT;
-	wallnut.health = 40000;
-	//wallnut.health = 400;
+	//wallnut.health = 40000;
+	wallnut.health = 400;
 	wallnut.price = 50;
 	wallnut.scale = 2.0f;
 
@@ -743,7 +744,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 			//change state
 			if (plant.currentAnimationIndex != CurrentState) {
 				plant.setCurrentAnimation(CurrentState);
-				cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
+				//cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
 		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
@@ -1024,7 +1025,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				zombie.health -= bullet.attack;
 				bullet.category = ENTITY_CATEGORY::NONE;
 
-				cout << "Zombie hit! Health left: " << zombie.health << endl; //console just testing
+				//cout << "Zombie hit! Health left: " << zombie.health << endl; //console just testing
 
 
 				if (zombie.isDead) {
