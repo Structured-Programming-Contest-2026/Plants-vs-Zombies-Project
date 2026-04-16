@@ -34,9 +34,11 @@ windowWidth = 1920,
 windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 const int eatDistance = z_eat_p_distance;
-
 int nextEntityId = 0; // for ra
+bool isGameOver, isGameWon;
+RectangleShape gameOverScreen, gameWonScreen;
 Sprite ground;
+int zombieCount = 0, createdZombiesCount = 0;
 
 enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
@@ -254,6 +256,7 @@ struct Level {
 	bool arePlantsSelected = false;
 	vector<Entity> selectedPlants;
 	int lvlNum = 0;
+	int targetZombie = 2;
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -299,10 +302,10 @@ bool addSun(Sun sun) {
 }
 
 // Zombie Clock - to add new zombie after some time interval
-Clock zombieClock;
+Clock zombieClock, waveClock;
 //Sending Zombies
-float nextZombieTimer = 3;
-float ZombieMinGapTime = 3;
+float nextZombieTimer = 5;
+float ZombieMinGapTime = 4, ZombieMaxGapTime = 10, ZombieGap_dt=1;
 
 // Textures 2
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
@@ -522,7 +525,8 @@ Entity defineWallnut() {
 	Entity wallnut{};
 	wallnut.category = ENTITY_CATEGORY::PLANT;
 	wallnut.type = ENTITY_TYPE::PLANT_WALLNUT;
-	wallnut.health = 400;
+	wallnut.health = 40000;
+	//wallnut.health = 400;
 	wallnut.price = 50;
 	wallnut.scale = 2.0f;
 
@@ -850,8 +854,11 @@ void DrawZombies(RenderWindow& window) {
 						zombie.storedSunValue = 0;
 					}
 
-					zombie.isDead = true;	// TODO: maybe make isDead and health<=0 in another way?
+					zombie.isDead = true, zombieCount++;	// TODO: maybe make isDead and health<=0 in another way?
 					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
+					if (zombieCount >= currentLevel->targetZombie) {
+						isGameWon = true;
+					}
 					};
 				zombie.x_vel = 0;
 			}
@@ -964,7 +971,7 @@ void DrawZombies(RenderWindow& window) {
 						zombie.attackClock.restart();
 						plant.health -= zombie.attack;
 						if (plant.health <= 0) {
-							if(zombie.health>0)zombie.x_vel = .5;
+							if(zombie.health>0)zombie.x_vel = .05;
 							plant.category = ENTITY_CATEGORY::NONE;
 							plant.isDead = true;
 							cout << "Plant Killed\n";
@@ -1036,10 +1043,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
 
+	if (createdZombiesCount >= currentLevel->targetZombie) return;
 	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
 		cout << "New Zombie\n";
 		zombieClock.restart();
-		nextZombieTimer = ZombieMinGapTime + rand() % 10;//I will edit it
+		nextZombieTimer = ZombieMinGapTime + rand() % int(ZombieMaxGapTime-ZombieMinGapTime);//I will edit it
+		if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
 
 		// get random zombie type
 		cout << "Current Level Zombies: " << currentLevel->zombie_types.size() << endl;
@@ -1050,6 +1059,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		auto [raw, column] = gridCell(newZombie.position);
 		newZombie.id = nextEntityId++; // for ra
 		entities.push_back(newZombie);
+		createdZombiesCount++;
 	}
 }
 void CheckTimer_AddSun(RenderWindow& window) {
@@ -1152,9 +1162,6 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 
-RectangleShape gameOverScreen;
-bool isGameOver;
-
 void UpdateLevel(RenderWindow& window) {
 
 	CheckTimer_AddZombie(window);
@@ -1167,6 +1174,10 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
+		return;
+	}
+	if (isGameWon == true) {
+		window.draw(gameWonScreen);
 		return;
 	}
 
@@ -1353,7 +1364,7 @@ void startLevel(int level) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
 		currentLevel = new Level(levels[level]);	// Note: level is 1 indexed
 		money = currentLevel->startingSuns;
-		isGameOver = false;
+		isGameOver = false, isGameWon = false;
 		Texture &groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
 		cout << "txt size " << groundTex.getSize().x << endl;
 		ground.setTexture(groundTex);
@@ -1534,11 +1545,16 @@ int main() {
 	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
+	levels[1].targetZombie = 20;
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
 	levels[2].startingSuns = 350;
 	levels[2].bgPath = "assets/egypt.png";
+
+	levels[3].plant_types = { sunflower, repeaterPlant };
+	levels[3].zombie_types = { zombie };
+	levels[3].startingSuns = 100;
 
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
@@ -1551,13 +1567,19 @@ int main() {
 
 	//losing state
 
-	bool isGameOver = false;
 	Texture gameOverTex;
 	gameOverTex.loadFromFile("assets/gameover.png");
 	gameOverScreen.setSize(Vector2f(800.0f, 664.0f));
 	gameOverScreen.setTexture(&gameOverTex);
 	gameOverScreen.setOrigin(250.0f, 350.0f);
 	gameOverScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
+
+	Texture gameWonTex;
+	gameWonTex.loadFromFile("assets/gamewon.png");
+	gameWonScreen.setSize(Vector2f(800.0f, 664.0f));
+	gameWonScreen.setTexture(&gameWonTex);
+	gameWonScreen.setOrigin(250.0f, 350.0f);
+	gameWonScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
 
 	// Game Loop
 
