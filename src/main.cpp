@@ -256,7 +256,10 @@ struct Level {
 	bool arePlantsSelected = false;
 	vector<Entity> selectedPlants;
 	int lvlNum = 0;
-	int targetZombie = 2;
+	int targetZombie = 20,	// total zombies in a level 
+		waveLimit = 10,		// a wave has up to (waveLimit) zombies
+		waveTimer = 10,		// between waves
+		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
 };
 int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -302,10 +305,12 @@ bool addSun(Sun sun) {
 }
 
 // Zombie Clock - to add new zombie after some time interval
-Clock zombieClock, waveClock;
+Clock zombieClock, waveClockX;
 //Sending Zombies
-float nextZombieTimer = 5;
-float ZombieMinGapTime = 4, ZombieMaxGapTime = 10, ZombieGap_dt=1;
+float nextZombieTimer = 5; // it's assigned, current value is only used for FIRST ZOMBIE
+float ZombieMinGapTime = 4, 
+	ZombieMaxGapTime = ZombieMinGapTime + 3, 
+	ZombieGap_dt=0.1;	// Level Pace
 
 // Textures 2
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
@@ -853,8 +858,8 @@ void DrawZombies(RenderWindow& window) {
 
 						zombie.storedSunValue = 0;
 					}
-
-					zombie.isDead = true, zombieCount++;	// TODO: maybe make isDead and health<=0 in another way?
+					// Dead
+					zombie.isDead = true, zombieCount++, ZombieGap_dt += 0.05;	// TODO: maybe make isDead and health<=0 in another way?
 					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
 					if (zombieCount >= currentLevel->targetZombie) {
 						isGameWon = true;
@@ -1040,14 +1045,33 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 		}
 	}
 }
+
+int t=1, dz=0, zmn, zmx;
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
 
 	if (createdZombiesCount >= currentLevel->targetZombie) return;
+
+	// waves
+	if (dz>=currentLevel->waveLimit && t==0) {
+		// in to bet
+		t = 1, waveClockX.restart();
+		ZombieMinGapTime = zmn, ZombieMaxGapTime = zmx, currentLevel->waveLimit += currentLevel->waveLimitChange;
+		cout << "switch to bet----------------------------\n";
+	}
+	else if (t==1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
+		// bet to in
+		t = 0, waveClockX.restart();
+		dz = 0, zmn = ZombieMinGapTime, zmx = ZombieMaxGapTime;
+		ZombieMinGapTime /= 2, ZombieMaxGapTime /= 2;
+		cout << "switch to in a wave---------\n";
+	}
+
+	// single zombie
 	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
 		cout << "New Zombie\n";
 		zombieClock.restart();
-		nextZombieTimer = ZombieMinGapTime + rand() % int(ZombieMaxGapTime-ZombieMinGapTime);//I will edit it
+		nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
 		if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
 
 		// get random zombie type
@@ -1060,7 +1084,9 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		newZombie.id = nextEntityId++; // for ra
 		entities.push_back(newZombie);
 		createdZombiesCount++;
+		dz++;
 	}
+
 }
 void CheckTimer_AddSun(RenderWindow& window) {
 	if (sunSpawnClock.getElapsedTime().asSeconds() >= 7) {
@@ -1546,6 +1572,7 @@ int main() {
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 20;
+	levels[1].waveLimit = 10, levels[1].waveTimer = 15;
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
