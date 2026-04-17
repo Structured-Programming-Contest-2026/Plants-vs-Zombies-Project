@@ -838,7 +838,17 @@ void DrawZombies(RenderWindow& window) {
 
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
-			if (!zombie.isDead && zombie.currentAnimationIndex == 0) { // health done but not started dying animation yet
+			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 || (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
+				
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
+					for (int i = 0; i < MAX_SUNS; i++) {
+						if (suns[i].ownerIndex == zombie.id) {
+							suns[i].targeted = false;
+							suns[i].ownerIndex = -1;
+						}
+					}
+					zombie.isUsingAbility = false;
+				}
 
 				zombie.DoAnimation(1, 1); // play dying animation once
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
@@ -1625,10 +1635,12 @@ int main() {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
-			} else if (event.type == sf::Event::MouseButtonPressed) {
+			}
+			else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
 				else if (event.mouseButton.button == sf::Mouse::Right) mouseJustClicked[1] = true; //edit_bug
-			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				money += 1000;
 			}
@@ -1637,7 +1649,8 @@ int main() {
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
 			UpdateLevel(window);
-		} else {
+		}
+		else {
 			DrawMainMenu(window);
 		}
 
