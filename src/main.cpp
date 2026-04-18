@@ -63,7 +63,6 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
-	//PLANT_FUME,
 
 	NormalBullet,
 };
@@ -94,7 +93,6 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
-	//PLANT_FUME,
 
 	NormalBullet,
 };
@@ -147,9 +145,6 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_CHOMPER:
 		textureType = TEXTURE_TYPE::PLANT_CHOMPER;
 		break;
-	/*case ENTITY_TYPE::PLANT_FUME:
-		textureType = TEXTURE_TYPE::PLANT_FUME;
-		break;*/
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
@@ -475,61 +470,6 @@ Entity defineSunflower() {
 
 	return plant;
 }
-/*Entity defineFumeShroom() {
-	Entity FumeShroom;
-	FumeShroom.category = ENTITY_CATEGORY::PLANT;
-	FumeShroom.type = ENTITY_TYPE::PLANT_FUME;
-	FumeShroom.health = 200;
-	FumeShroom.price = 125;
-	FumeShroom.scale = 0.70;
-
-	// Textures
-	textures[TEXTURE_TYPE::PLANT_FUME][0].loadFromFile("assets/FumeShroom.png");
-	textures[TEXTURE_TYPE::PLANT_FUME][0].setSmooth(false);
-
-	//Animation
-	FumeShroom.num_animations = 2;
-	Animation a;
-	a.frames = 46;
-	a.frameTimer = 0.06f;
-	FumeShroom.animations[0] = a; //IDLE
-
-	FumeShroom.setCurrentAnimation(0);
-
-	return FumeShroom;
-}*/ //No Texture
-Entity defineChomperPlant() {
-	Entity Chomper;
-	Chomper.category = ENTITY_CATEGORY::PLANT;
-	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
-	Chomper.health = 200;
-	Chomper.price = 150;
-	Chomper.scale = 0.85;
-
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
-
-	Chomper.num_animations = 3;
-	Animation a;
-	a.frames = 13;
-	a.frameTimer = 0.1f;
-	Chomper.animations[0] = a; // IDLE Animation
-	a.frames = 9;
-	a.frameTimer = 0.1f;
-	Chomper.animations[1] = a; // ATTACK Animation
-	a.frames = 6;
-	a.frameTimer = 0.1f;
-	Chomper.animations[2] = a; // DIGEST Animation
-
-	Chomper.setCurrentAnimation(0);
-
-	return Chomper;
-}
-
 // zombies
 Entity defineNormalZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][0].loadFromFile("assets/NormalZombie.png");
@@ -652,6 +592,39 @@ Entity defineWallnut() {
 	wallnut.setCurrentAnimation(0);
 
 	return wallnut;
+}
+
+// Chomper Plant
+Entity defineChomperPlant() {
+	Entity Chomper;
+	Chomper.category = ENTITY_CATEGORY::PLANT;
+	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
+	Chomper.health = 200;
+	Chomper.price = 150;
+	Chomper.scale = 0.85;
+
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
+
+	Chomper.num_animations = 3;
+	Animation a;
+	a.frames = 13;
+	a.frameTimer = 0.1f;
+	Chomper.animations[0] = a; // IDLE Animation
+	a.frames = 9;
+	a.frameTimer = 0.1f;
+	Chomper.animations[1] = a; // ATTACK Animation
+	a.frames = 6;
+	a.frameTimer = 0.1f;
+	Chomper.animations[2] = a; // DIGEST Animation
+
+	Chomper.setCurrentAnimation(0);
+
+	return Chomper;
 }
 
 Entity defineTorchlightZombie() {
@@ -1626,7 +1599,6 @@ int main() {
 	Entity sunflower = defineSunflower();
 	Entity wallnut = defineWallnut();
 	Entity chomper = defineChomperPlant();
-	//Entity fumeshroom = defineFumeShroom();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -1654,7 +1626,7 @@ int main() {
 
 
 	// Levels
-	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, chomper};
+	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
 	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
