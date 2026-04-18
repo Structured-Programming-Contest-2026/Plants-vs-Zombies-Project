@@ -37,8 +37,28 @@ const int eatDistance = z_eat_p_distance;
 int nextEntityId = 0; // for ra
 bool isGameOver, isGameWon;
 RectangleShape gameOverScreen, gameWonScreen;
-Sprite ground;
+int leftEdgeForZombies = 0;	// TODO: Adjust with lawnmower and stuff
+
+Sprite ground, lawnmowerSprite;
 int zombieCount = 0, createdZombiesCount = 0;
+
+// lawnmower - cars
+int lawnmower_backoff = 150,	// from beginning edge
+lawnmower_endline = windowWidth - 150; // which x pos to stop at
+struct Lawnmower {
+	bool isUsed = false, isMoving = false;
+	int row = -1;
+	Vector2f position = {-1000, -1000};
+	void setRow(int r) {
+		// a must
+		row = r;
+		position = { float(offsetX - lawnmower_backoff),  float(offsetY + row * cellHeight) };
+	}
+	void move(float v) {
+		position.x += v;
+	}
+};
+Lawnmower lawnmowers[gridRows]{};
 
 enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
@@ -405,6 +425,14 @@ Sprite defineGroundSprite(Texture& tex) {
 
 	return groundSp;
 }
+//lawnmower
+Sprite defineLawnmowerSprite(Texture& tex) {
+	tex.loadFromFile("assets/lawnmower.png");
+	Sprite lawnmower;
+	lawnmower.setTexture(tex);
+	lawnmower.setTextureRect(IntRect(0, 0, (int)tex.getSize().x, (int)tex.getSize().y));
+	return lawnmower;
+}
 // plants
 Entity defineNormalPlant() {
 
@@ -418,7 +446,7 @@ Entity defineNormalPlant() {
 	planet.category = ENTITY_CATEGORY::PLANT;
 	planet.type = ENTITY_TYPE::PLANT_NORMAL;
 	planet.health = 100;
-	planet.attack = 1000;
+	planet.attack = 50;
 	planet.price = 25;
 	planet.scale = 0.75;
 
@@ -508,7 +536,7 @@ Entity defineConeheadZombie() {
 	zombie.x_vel = .05;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
-	zombie.health = 300;
+	zombie.health = 200;
 	zombie.num_animations = 2;
 	Animation anim;
 	// Walk animation
@@ -850,6 +878,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				if (zombieInLane) {
 					plant.attackClock.restart();
 					Entity newBullet = defineNormalBullet();
+					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					newBullets.push_back(newBullet);
 
@@ -889,6 +918,16 @@ void DrawZombies(RenderWindow& window) {
 	for (Entity& zombie : entities) {
 		if (zombie.category != ENTITY_CATEGORY::ZOMBIE) continue;
 
+		// hit by lawnmower (car)
+		auto &mwr = lawnmowers[zombie.gridRow];
+		if (mwr.position.x >= zombie.position.x
+			&& !mwr.isUsed
+			//&& mwr.position.x < windowWidth-offsetX
+			) {
+			zombie.health = 0;
+			mwr.isMoving = true;
+		}
+
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 || (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2) || (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
@@ -906,28 +945,30 @@ void DrawZombies(RenderWindow& window) {
 				zombie.DoAnimation(1, 1); // play dying animation once
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 					zombie.scale = 1.3f;
-				zombie.afterAnimation = [&zombie](Entity& entity) {
+				
+				zombie.afterAnimation = [&zombie](Entity& entity) {	// After Death Animation
+						// (For ra) Ra drops stored suns after death
+						if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
+							int sunsToDrop = zombie.storedSunValue / 25;
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
-						int sunsToDrop = zombie.storedSunValue / 25;
+							for (int i = 0; i < sunsToDrop; i++) {
+								Sun newSun{};
+								newSun.position = zombie.position;
+								newSun.clicked = false;
+								newSun.lifeClock.restart();
 
-						for (int i = 0; i < sunsToDrop; i++) {
-							Sun newSun{};
-							newSun.position = zombie.position;
-							newSun.clicked = false;
-							newSun.lifeClock.restart();
+								addSun(newSun);
+							}
 
-							addSun(newSun);
+							zombie.storedSunValue = 0;
 						}
 
-						zombie.storedSunValue = 0;
-					}
-					// Dead
-					zombie.isDead = true, zombieCount++, ZombieGap_dt += 0.05;	// TODO: maybe make isDead and health<=0 in another way?
-					entity.category = ENTITY_CATEGORY::NONE; // remove after animation
-					if (zombieCount >= currentLevel->targetZombie) {
-						isGameWon = true;
-					}
+						// Zombie Dead
+						zombie.isDead = true, zombieCount++, ZombieGap_dt += 0.05;	// TODO: maybe make isDead and health<=0 in another way?
+						entity.category = ENTITY_CATEGORY::NONE; // remove after animation
+						if (zombieCount >= currentLevel->targetZombie) {
+							isGameWon = true;
+						}
 					};
 				zombie.x_vel = 0;
 			}
@@ -1116,6 +1157,15 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 	}
 }
 
+void UpdateLawnmowers(RenderWindow& window) {
+	for (auto &mwr : lawnmowers) {
+		if (mwr.position.x >= lawnmower_endline) mwr.isUsed = true, mwr.isMoving=false;
+		if (mwr.isMoving) {
+			mwr.move(0.2f);
+		}
+	}
+}
+
 int t=1, dz=0, zmn, zmx;
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
@@ -1152,6 +1202,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		newZombie.position = Vector2f(windowWidth, offsetY + (rand() % gridraws) * cellheight);
 		auto [raw, column] = gridCell(newZombie.position);
 		newZombie.id = nextEntityId++; // for ra
+		newZombie.gridRow = raw, newZombie.gridCol = column;
 		entities.push_back(newZombie);
 		createdZombiesCount++;
 		dz++;
@@ -1264,9 +1315,14 @@ void UpdateLevel(RenderWindow& window) {
 	CheckTimer_AddSun(window);
 
 	// Drawing
-
 	window.clear(Color::Black);
 	window.draw(ground);
+	// draw lawnmowers - cars
+	for (int r = 0; r < gridRows; r++) {
+		if (lawnmowers[r].isUsed) continue;
+		lawnmowerSprite.setPosition(lawnmowers[r].position);
+		window.draw(lawnmowerSprite);
+	}
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
@@ -1386,6 +1442,7 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 
+	UpdateLawnmowers(window);
 	DrawPlantsGrid(window);
 	DrawZombies(window);
 	UpdateAndDrawBullets(window);
@@ -1441,14 +1498,17 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 	}
+	
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
 		{
-			if (zombie.position.x <= 0)//end of the screen
+			if (zombie.position.x <= leftEdgeForZombies)//end of the screen
 			{
-				isGameOver = true;
-				cout << "Zombies ate your brains!\n";
-				break;
+				if (lawnmowers[zombie.gridRow].isUsed) {
+					isGameOver = true;
+					cout << "Zombies ate your brains!\n";
+					break;
+				}
 			}
 		}
 	}
@@ -1599,9 +1659,12 @@ int main() {
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
-	Texture groundTex;
+	Texture groundTex, lawnTex;
 	ground = defineGroundSprite(groundTex);
-
+	lawnmowerSprite = defineLawnmowerSprite(lawnTex);
+	for (int r = 0; r < gridRows; r++) {
+		lawnmowers[r].setRow(r);
+	}
 	//New
 
 	// Loading Textures + Defining entities
