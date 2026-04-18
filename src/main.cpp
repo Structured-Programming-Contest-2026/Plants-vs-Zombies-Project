@@ -707,6 +707,30 @@ Entity defineChomperPlant() {
 
 	return Chomper;
 }
+bool chomper_attackZombie(Entity &zombie, Entity &plant) {
+	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) return false;
+
+	bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+	bool inFront = zombie.position.x > plant.position.x &&
+		zombie.position.x < plant.position.x + plant.width * 0.5;
+	// NOTE: Distance from zombie depends on (Texture) width * scale
+
+	if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
+		zombie.health = 0;
+		zombie.category = ENTITY_CATEGORY::NONE;
+		plant.attackClock.restart().asSeconds();
+
+		plant.DoAnimation(1, 1);
+		plant.afterAnimation = [](Entity& entity) {
+			entity.DoAnimation(20, 2);
+			entity.afterAnimation = [](Entity& entity) {
+				entity.DoAnimation(-1, 0);
+				};
+			};
+		return true;
+	}
+	return false;
+}
 
 Entity defineTorchlightZombie() {
 	Texture tex;
@@ -871,27 +895,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
-					if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) continue;
-
-					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
-					bool inFront = zombie.position.x > plant.position.x &&
-						zombie.position.x < plant.position.x + plant.width * 0.5;	
-					// NOTE: Distance from zombie depends on (Texture) width * scale
-
-					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
-						zombie.health = 0;
-						zombie.category = ENTITY_CATEGORY::NONE;
-						plant.attackClock.restart().asSeconds();
-
-						plant.DoAnimation(1, 1);
-						plant.afterAnimation = [](Entity& entity) {
-							entity.DoAnimation(20, 2);
-							entity.afterAnimation = [](Entity& entity) {
-								entity.DoAnimation(-1, 0);
-								};
-							};
-						break;
-					}
+					if (chomper_attackZombie(zombie, plant)) break;
 				}
 			}
 		}
@@ -1402,6 +1406,7 @@ void UpdateLevel(RenderWindow& window) {
 
 	// Drawing
 	window.clear(Color::Black);
+	// draw ground
 	window.draw(ground);
 	// draw lawnmowers - cars
 	for (int r = 0; r < gridRows; r++) {
@@ -1419,6 +1424,7 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 
+	// Plant Selection Screen
 	if (!currentLevel->arePlantsSelected) {
 		DrawSeeds(window);
 
@@ -1528,6 +1534,7 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 
+	// Level Update
 	UpdateLawnmowers(window);
 	DrawPlantsGrid(window);
 	DrawZombies(window);
@@ -1586,21 +1593,19 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	
 	for (Entity& zombie : entities) {
-		if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
+		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
-			if (zombie.position.x <= leftEdgeForZombies)//end of the screen
+			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && lawnmowers[zombie.gridRow].isUsed)//end of the screen
 			{
-				if (lawnmowers[zombie.gridRow].isUsed) {
-					isGameOver = true;
-					cout << "Zombies ate your brains!\n";
-					break;
-				}
+				isGameOver = true;
+				cout << "Zombies ate your brains!\n";
+				break;
 			}
 		}
 	}
 }
 
-void startLevel(int level) {
+void startLevel(int level, RenderWindow &window) {
 	// Set currentLevel and other global variables based on the selected level
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
@@ -1733,7 +1738,7 @@ void DrawMainMenu(RenderWindow& window) {
 			playButton.setColor(Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
-				startLevel(selectedLevel + 1);
+				startLevel(selectedLevel + 1, window);
 			}
 		}
 
