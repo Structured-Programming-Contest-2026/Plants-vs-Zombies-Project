@@ -202,7 +202,7 @@ struct Entity {
 	int id = -1; // ra test
 
 	bool isDead = false;
-	function<void(Entity& entity)> afterAnimation = nullptr;	// called after animation finish (if animationForCycles != -1)
+	function<void(Entity& entity)> afterAnimation = [](Entity&) {};	// called after animation finish (if animationForCycles != -1)
 
 	void updateDimensions() {
 		Texture tex = getTexture(getTextureType(type), currentAnimationIndex);
@@ -411,6 +411,7 @@ Entity defineNormalPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
 	Entity planet;
@@ -421,10 +422,13 @@ Entity defineNormalPlant() {
 	planet.price = 25;
 	planet.scale = 0.75;
 
+	planet.num_animations = 3;
 	// Idle animation
-	planet.num_animations = 1;
-	planet.animations[0].frameTimer = 0.1f;
-	planet.animations[0].frames = 13;
+	planet.animations[0].frameTimer = 0.05f;
+	planet.animations[0].frames = 31;
+	// Attack animation
+	planet.animations[2].frameTimer = 0.05f;
+	planet.animations[2].frames = 31;
 	planet.setCurrentAnimation(0);
 	return planet;
 
@@ -453,6 +457,7 @@ Entity defineSunflower() {
 	Texture tex;
 	tex.loadFromFile("assets/sunflower.png");
 	textures[TEXTURE_TYPE::PLANT_SUNFLOWER][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_SUNFLOWER][2].loadFromFile("assets/sunflower-produce.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -462,10 +467,13 @@ Entity defineSunflower() {
 	plant.price = 50;
 	plant.scale = 1.2;
 
+	plant.num_animations = 3;
 	// Idle animation
-	plant.num_animations = 1;
 	plant.animations[0].frameTimer = 0.15f;
 	plant.animations[0].frames = 8;
+	// Produce sun animation
+	plant.animations[2].frameTimer = 0.018f;
+	plant.animations[2].frames = 60;
 	plant.setCurrentAnimation(0);
 
 	return plant;
@@ -500,7 +508,7 @@ Entity defineConeheadZombie() {
 	zombie.x_vel = .05;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
-	zombie.health = 370;
+	zombie.health = 300;
 	zombie.num_animations = 2;
 	Animation anim;
 	// Walk animation
@@ -524,7 +532,7 @@ Entity defineJapaneseZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_JAPANESE][Default_Texture_Index] = tex;
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE };
 	zombie.health = 70;
-	zombie.attack = 200;
+	zombie.attack = 50;
 	zombie.x_vel = .05;
 	// Walk animation
 	zombie.num_animations = 1;
@@ -844,12 +852,16 @@ void DrawPlantsGrid(RenderWindow& window) {
 					Entity newBullet = defineNormalBullet();
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					newBullets.push_back(newBullet);
+
+					// plant attack animation
+					plant.DoAnimation(1, 2);
 				}
 			}
 		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
+				plant.DoAnimation(1, 2); // produce sun animation
 
 				Sun newSun{};
 				newSun.position = plant.position;
@@ -1627,7 +1639,8 @@ int main() {
 
 	// Levels
 	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
-	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
+	levels[1].zombie_types = { zombieConehead };
+	//levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 20;
