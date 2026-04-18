@@ -56,6 +56,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_TORCHLIGHT,
 	ZOMBIE_RA,
 	ZOMBIE_MUMMY,
+	ZOMBIE_CONEHEAD,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -85,6 +86,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_TORCHLIGHT,
 	ZOMBIE_RA,
 	ZOMBIE_MUMMY,
+	ZOMBIE_CONEHEAD,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -123,6 +125,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_MUMMY:
 		textureType = TEXTURE_TYPE::ZOMBIE_MUMMY;
+		break;
+	case ENTITY_TYPE::ZOMBIE_CONEHEAD:
+		textureType = TEXTURE_TYPE::ZOMBIE_CONEHEAD;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -467,18 +472,49 @@ Entity defineSunflower() {
 }
 // zombies
 Entity defineNormalZombie() {
-	Texture tex;
-	tex.loadFromFile("assets/zombie4.png");
-	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][0].loadFromFile("assets/NormalZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][1].loadFromFile("assets/NormalZombieDeath.png");
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL };
 	zombie.x_vel = .05;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 100;
+	zombie.num_animations = 2;
+	Animation anim;
 	// Walk animation
-	zombie.num_animations = 1;
-	zombie.animations[0].frames = 20;
-	zombie.animations[0].frameTimer = .1f;
+	anim.frames = 22;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	// Death animation
+	anim.frames = 10;
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
+Entity defineConeheadZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][0].loadFromFile("assets/ConeheadZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][1].loadFromFile("assets/NormalZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][2].loadFromFile("assets/NormalZombie.png");
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_CONEHEAD };
+	zombie.x_vel = .05;
+	zombie.scale = 1.0;
+	zombie.attack = 10;
+	zombie.health = 370;
+	zombie.num_animations = 2;
+	Animation anim;
+	// Walk animation
+	anim.frames = 21;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	// Death animation
+	anim.frames = 10;
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+	// No cone walk animation
+	anim.frames = 22;
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
 	zombie.setCurrentAnimation(0);
 	return zombie;
 }
@@ -647,6 +683,7 @@ Entity defineRaZombie() {
 Entity defineMummyZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_MUMMY][0].loadFromFile("assets/MummyZombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_MUMMY][1].loadFromFile("assets/MummyZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_MUMMY][2].loadFromFile("assets/MummyZombieEating.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -665,6 +702,10 @@ Entity defineMummyZombie() {
 	anim.frames = 55;
 	anim.frameTimer = 0.05f;
 	zombie.animations[1] = anim;
+	// eat
+	anim.frames = 54;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
 
 	zombie.setCurrentAnimation(0);
 
@@ -838,7 +879,7 @@ void DrawZombies(RenderWindow& window) {
 
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
-			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 || (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
+			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 || (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2) || (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
 				
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
 					for (int i = 0; i < MAX_SUNS; i++) {
@@ -971,6 +1012,12 @@ void DrawZombies(RenderWindow& window) {
 			}
 		}
 
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.health > 0) { // for conehead
+			if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
+				zombie.setCurrentAnimation(2);
+			}
+		}
+
 		// move
 		zombie.position.x -= zombie.x_vel;
 		auto [r, c] = gridCell(zombie.position);
@@ -987,7 +1034,7 @@ void DrawZombies(RenderWindow& window) {
 						zombie.attackClock.restart();
 						plant.health -= zombie.attack;
 						if (plant.health <= 0) {
-							if(zombie.health>0)zombie.x_vel = .05;
+							if (zombie.health > 0) zombie.x_vel = .05;
 							plant.category = ENTITY_CATEGORY::NONE;
 							plant.isDead = true;
 							cout << "Plant Killed\n";
@@ -1560,6 +1607,7 @@ int main() {
 	Entity zombieTorch = defineTorchlightZombie();
 	Entity zombieRa = defineRaZombie();
 	Entity zombieMummy = defineMummyZombie();
+	Entity zombieConehead = defineConeheadZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -1579,7 +1627,7 @@ int main() {
 
 	// Levels
 	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
-	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, };
+	levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 20;
@@ -1591,7 +1639,7 @@ int main() {
 	levels[2].bgPath = "assets/egypt.png";
 
 	levels[3].plant_types = { sunflower, repeaterPlant };
-	levels[3].zombie_types = { zombie };
+	levels[3].zombie_types = { zombie, zombieConehead };
 	levels[3].startingSuns = 100;
 
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
