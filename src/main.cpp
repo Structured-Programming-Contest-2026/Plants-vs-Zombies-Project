@@ -48,10 +48,10 @@ int zombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth - 150; // which x pos to stop at
 //Sending Zombies
-//float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-//float ZombieMinGapTime = 7,
-float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-float ZombieMinGapTime = 1,
+float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float ZombieMinGapTime = 7,
+//float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+//float ZombieMinGapTime = 1,
 ZombieMaxGapTime = ZombieMinGapTime + 3,
 ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
@@ -298,6 +298,10 @@ struct Entity {
 };
 vector<Entity> entities;
 // TODO: this will later include stuff like difficulty, grid size, ...
+struct Reward {
+	int suns = 0;
+	// other rewards can be added later
+};
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
@@ -505,6 +509,7 @@ Entity defineNormalPlant() {
 	planet.type = ENTITY_TYPE::PLANT_NORMAL;
 	planet.health = 100;
 	planet.attack = 50;
+	//planet.attack = 5000;
 	planet.price = 25;
 	planet.scale = 0.75;
 
@@ -528,7 +533,8 @@ Entity defineShroomPlant() {
 	shroom.category = ENTITY_CATEGORY::PLANT;
 	shroom.type = ENTITY_TYPE::PLANT_SHROOM;
 	shroom.health = 500;
-	shroom.attack = 0;
+	//shroom.attack = 0;
+	shroom.attack = 10000;
 	shroom.price = 15;
 	shroom.scale = 0.9;
 	// Idle animation
@@ -1862,8 +1868,7 @@ int main() {
 
 	// Levels
 	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, sunshroom};
-	levels[1].zombie_types = { zombieConehead };
-	//levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
+	levels[1].zombie_types = { zombie, zombieConehead };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 2;
