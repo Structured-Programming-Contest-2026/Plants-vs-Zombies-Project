@@ -16,15 +16,12 @@ using namespace sf;
 #define offsetY 100
 #define edgespace -100
 #define z_eat_p_distance 100
+#define MAX_SUNS 16
+#define Default_Texture_Index 0
 
-float delta_time = 1.0f;
-Vector2i mousePos;
 
-// left - right
-
-bool mouseJustClicked[2];
-bool uiInteracted = false;
 // Global Variables
+// consts
 const int
 gridRows = gridraws,
 gridCols = gridcols,
@@ -34,17 +31,38 @@ windowWidth = 1920,
 windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 const int eatDistance = z_eat_p_distance;
-int nextEntityId = 0; // for ra
-bool isGameOver, isGameWon;
+
+// Drawables
 RectangleShape gameOverScreen, gameWonScreen;
-int leftEdgeForZombies = 0;	// TODO: Adjust with lawnmower and stuff
-
 Sprite ground, lawnmowerSprite;
-int zombieCount = 0, createdZombiesCount = 0;
 
-// lawnmower - cars
+float delta_time = 1.0f;
+Vector2i mousePos;
+// left - right
+bool mouseJustClicked[2];
+bool uiInteracted = false;
+int nextEntityId = 0; // for ra
+bool isGameOver = false, isGameWon = false;
+int leftEdgeForZombies = 0;	// TODO: Adjust with lawnmower and stuff
+int zombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth - 150; // which x pos to stop at
+//Sending Zombies
+//float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+//float ZombieMinGapTime = 7,
+float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float ZombieMinGapTime = 1,
+ZombieMaxGapTime = ZombieMinGapTime + 3,
+ZombieGap_dt = 0.1;	// Level Pace
+int selectedPlant = 0;
+int money = 3000;
+bool nextLevelTimerRun = false;
+// Clocks
+Clock zombieClock, waveClockX;
+Clock sunSpawnClock;
+Clock nextLevelClock;
+
+// lawnmower - cars
 struct Lawnmower {
 	bool isUsed = false, isMoving = false;
 	int row = -1;
@@ -66,8 +84,6 @@ enum class ENTITY_CATEGORY : uint8_t {
 	PLANT,
 	Bullet,
 };
-
-
 enum class ENTITY_TYPE : uint8_t {
 	NONE = 0,
 	ZOMBIE_NORMAL,
@@ -88,7 +104,6 @@ enum class ENTITY_TYPE : uint8_t {
 
 	NormalBullet,
 };
-
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
 	LOGO,
@@ -123,7 +138,6 @@ enum class TEXTURE_TYPE : uint8_t {
 
 // Textures 1
 map<TEXTURE_TYPE, Texture[10]> textures;
-#define Default_Texture_Index 0
 Texture& getTexture(TEXTURE_TYPE type, int animation_index = Default_Texture_Index) {
 	return textures[type][animation_index];
 }
@@ -287,7 +301,7 @@ struct Entity {
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 };
-
+vector<Entity> entities;
 // TODO: this will later include stuff like difficulty, grid size, ...
 struct Level {
 	vector<Entity> zombie_types;
@@ -302,18 +316,12 @@ struct Level {
 		waveTimer = 15,		// between waves
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
 };
-int number_levels = 6;
+const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 
 
 // Zombie Clock - to add new zombie after some time interval
-Clock zombieClock, waveClockX;
-//Sending Zombies
-float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-float ZombieMinGapTime = 7,
-ZombieMaxGapTime = ZombieMinGapTime + 3,
-ZombieGap_dt = 0.1;	// Level Pace
 
 //Independet Sprites
 
@@ -324,13 +332,8 @@ Sprite uiSprite;
 
 // TODO: remove vectors and maps and replace them with arrays :)
 
-vector<Entity> entities;
-int selectedPlant = 0;
 
 // Suns
-#define MAX_SUNS 16
-Clock sunSpawnClock;
-int money = 3000;
 struct Sun {
 	Vector2f position;
 	Clock lifeClock;
@@ -342,6 +345,7 @@ struct Sun {
 	int ownerIndex = -1; // for ra
 };
 Sun suns[MAX_SUNS];
+
 bool isSunAlive(const Sun& sun) {
 	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
 }
@@ -413,6 +417,48 @@ Entity& getEntity(Vector2i gridPos) {
 		}
 	}
 	return emptyEntity;
+}
+
+// Reset Level
+void resetLevel() {
+
+	delta_time = 1.0f;
+	uiInteracted = false;
+	nextEntityId = 0; // for ra
+	isGameOver = false, isGameWon = false;
+	nextLevelTimerRun = false;
+	zombieCount = 0, createdZombiesCount = 0;
+	//Sending Zombies
+	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+	ZombieMinGapTime = 7,
+		ZombieMaxGapTime = ZombieMinGapTime + 3,
+		ZombieGap_dt = 0.1;	// Level Pace
+	selectedPlant = 0;
+
+	money = currentLevel->startingSuns;
+	
+	for (int i = 0; i < gridRows; i++) {
+		lawnmowers[i].setRow(i);
+	}
+
+	entities.clear();
+	zombieClock.restart();
+	waveClockX.restart();
+	sunSpawnClock.restart();
+	nextLevelClock.restart();
+}
+void nextLevel() {
+	if (currentLevel == nullptr) {
+		currentLevel = &levels[1];
+	}
+	else if (currentLevel->lvlNum < number_levels) {
+		currentLevel = &levels[currentLevel->lvlNum + 1];
+	}
+	else {
+		cout << "No more levels!" << endl;
+		return;
+	}
+	resetLevel();
 }
 
 // Define Characters - Functions
@@ -712,6 +758,30 @@ Entity defineChomperPlant() {
 
 	return Chomper;
 }
+bool chomper_attackZombie(Entity &zombie, Entity &plant) {
+	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) return false;
+
+	bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+	bool inFront = zombie.position.x > plant.position.x &&
+		zombie.position.x < plant.position.x + plant.width * 0.5;
+	// NOTE: Distance from zombie depends on (Texture) width * scale
+
+	if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
+		zombie.health = 0;
+		zombie.category = ENTITY_CATEGORY::NONE;
+		plant.attackClock.restart().asSeconds();
+
+		plant.DoAnimation(1, 1);
+		plant.afterAnimation = [](Entity& entity) {
+			entity.DoAnimation(20, 2);
+			entity.afterAnimation = [](Entity& entity) {
+				entity.DoAnimation(-1, 0);
+				};
+			};
+		return true;
+	}
+	return false;
+}
 
 Entity defineTorchlightZombie() {
 	Texture tex;
@@ -909,27 +979,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
-					if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) continue;
-
-					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
-					bool inFront = zombie.position.x > plant.position.x &&
-						zombie.position.x < plant.position.x + plant.width * 0.5;	
-					// NOTE: Distance from zombie depends on (Texture) width * scale
-
-					if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
-						zombie.health = 0;
-						zombie.category = ENTITY_CATEGORY::NONE;
-						plant.attackClock.restart().asSeconds();
-
-						plant.DoAnimation(1, 1);
-						plant.afterAnimation = [](Entity& entity) {
-							entity.DoAnimation(20, 2);
-							entity.afterAnimation = [](Entity& entity) {
-								entity.DoAnimation(-1, 0);
-								};
-							};
-						break;
-					}
+					if (chomper_attackZombie(zombie, plant)) break;
 				}
 			}
 		}
@@ -1447,6 +1497,7 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 
+
 void UpdateLevel(RenderWindow& window) {
 
 	CheckTimer_AddZombie(window);
@@ -1454,6 +1505,7 @@ void UpdateLevel(RenderWindow& window) {
 
 	// Drawing
 	window.clear(Color::Black);
+	// draw ground
 	window.draw(ground);
 	// draw lawnmowers - cars
 	for (int r = 0; r < gridRows; r++) {
@@ -1467,10 +1519,32 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 	if (isGameWon == true) {
-		window.draw(gameWonScreen);
+		if (!nextLevelTimerRun) {
+			nextLevelClock.restart();
+			nextLevelTimerRun = true;
+		}else if(nextLevelClock.getElapsedTime().asSeconds() >= 3.0f){
+			nextLevelTimerRun = false;
+			nextLevel();
+		}
+		else {
+			window.draw(gameWonScreen);
+			Text text;
+			text.setFont(*font);
+			text.setString("Next Level in " + to_string(3 - (int)nextLevelClock.getElapsedTime().asSeconds()));
+			text.setFillColor(Color(0, 0, 0));
+			text.setPosition(Vector2f(150, 130.0f));
+			text.setScale(Vector2f(1.5f, 1.5f));
+			text.setOutlineColor(Color(255, 0, 255));
+			RectangleShape outline(Vector2f(400, 80));
+			outline.setPosition(text.getPosition() - Vector2f(10, 10));
+			outline.setFillColor(Color::White);
+			window.draw(outline);
+			window.draw(text);
+		}
 		return;
 	}
 
+	// Plant Selection Screen
 	if (!currentLevel->arePlantsSelected) {
 		DrawSeeds(window);
 
@@ -1580,6 +1654,7 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 
+	// Level Update
 	UpdateLawnmowers(window);
 	DrawPlantsGrid(window);
 	DrawZombies(window);
@@ -1638,21 +1713,19 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	
 	for (Entity& zombie : entities) {
-		if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)//zombie and not dead
+		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
-			if (zombie.position.x <= leftEdgeForZombies)//end of the screen
+			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && lawnmowers[zombie.gridRow].isUsed)//end of the screen
 			{
-				if (lawnmowers[zombie.gridRow].isUsed) {
-					isGameOver = true;
-					cout << "Zombies ate your brains!\n";
-					break;
-				}
+				isGameOver = true;
+				cout << "Zombies ate your brains!\n";
+				break;
 			}
 		}
 	}
 }
 
-void startLevel(int level) {
+void startLevel(int level, RenderWindow &window) {
 	// Set currentLevel and other global variables based on the selected level
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
@@ -1785,7 +1858,7 @@ void DrawMainMenu(RenderWindow& window) {
 			playButton.setColor(Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
-				startLevel(selectedLevel + 1);
+				startLevel(selectedLevel + 1, window);
 			}
 		}
 
@@ -1846,7 +1919,8 @@ int main() {
 	//levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
 	levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
-	levels[1].targetZombie = 20;
+	levels[1].targetZombie = 2;
+	//levels[1].targetZombie = 20;
 	levels[1].waveLimit = 10, levels[1].waveTimer = 15;
 
 	levels[2].plant_types = { sunflower, shroom, chomper };
