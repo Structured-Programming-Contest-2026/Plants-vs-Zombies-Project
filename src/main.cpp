@@ -411,6 +411,7 @@ Entity defineNormalPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
 	Entity planet;
@@ -421,10 +422,13 @@ Entity defineNormalPlant() {
 	planet.price = 25;
 	planet.scale = 0.75;
 
+	planet.num_animations = 3;
 	// Idle animation
-	planet.num_animations = 1;
-	planet.animations[0].frameTimer = 0.1f;
-	planet.animations[0].frames = 13;
+	planet.animations[0].frameTimer = 0.05f;
+	planet.animations[0].frames = 31;
+	// Attack animation
+	planet.animations[2].frameTimer = 0.05f;
+	planet.animations[2].frames = 31;
 	planet.setCurrentAnimation(0);
 	return planet;
 
@@ -848,6 +852,9 @@ void DrawPlantsGrid(RenderWindow& window) {
 					Entity newBullet = defineNormalBullet();
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					newBullets.push_back(newBullet);
+
+					// plant attack animation
+					plant.DoAnimation(1, 2);
 				}
 			}
 		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
