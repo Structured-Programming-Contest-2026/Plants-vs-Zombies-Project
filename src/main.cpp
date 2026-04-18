@@ -63,6 +63,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
+	PLANT_SUNSHROOM,
 
 	NormalBullet,
 };
@@ -93,6 +94,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
+	PLANT_SUNSHROOM,
 
 	NormalBullet,
 };
@@ -145,6 +147,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_CHOMPER:
 		textureType = TEXTURE_TYPE::PLANT_CHOMPER;
 		break;
+	case ENTITY_TYPE::PLANT_SUNSHROOM:
+		textureType = TEXTURE_TYPE::PLANT_SUNSHROOM;
+		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
@@ -192,6 +197,12 @@ struct Entity {
 	float scale = 1.0f;
 	int gridRow = -1;
 	int gridCol = -1;
+
+	float growthTimer = 0.0f;       // For SunShroom
+	bool isFullyGrown = false;      // For SunShroom
+	int sunValueSmall = 15;         // For SunShroom
+	int sunValueLarge = 25;         // For SunShroom
+	float growthDuration = 20.0f;	// For SunShroom
 
 	bool isUsingAbility = false; // for ra
 	Clock abilityClock; // for ra
@@ -300,6 +311,7 @@ struct Sun {
 	Clock lifeClock;
 	float distance = 500.0f;
 	bool clicked = true;
+	int sunValue = 25;
 
 	bool targeted = false; // for ra
 	int ownerIndex = -1; // for ra
@@ -477,6 +489,39 @@ Entity defineSunflower() {
 	plant.setCurrentAnimation(0);
 
 	return plant;
+}
+Entity defineSunShroom() {
+	Entity SunShroom;
+	SunShroom.category = ENTITY_CATEGORY::PLANT;
+	SunShroom.type = ENTITY_TYPE::PLANT_SUNSHROOM;
+	SunShroom.health = 100;
+	SunShroom.attack = 0;
+	SunShroom.price = 25;
+
+	SunShroom.sunValueSmall = 15;
+	SunShroom.sunValueLarge = 25;
+	SunShroom.growthDuration = 20.0f;
+
+
+	textures[TEXTURE_TYPE::PLANT_SUNSHROOM][0].loadFromFile("assets/SunShroomIdleS.png"); // IDLE SMALL
+	textures[TEXTURE_TYPE::PLANT_SUNSHROOM][1].loadFromFile("assets/SunShroomIdleB.png"); // IDLE BIG
+	textures[TEXTURE_TYPE::PLANT_SUNSHROOM][2].loadFromFile("assets/SunShroomProduceS.png"); // SUN PRODUCE SMALL
+	textures[TEXTURE_TYPE::PLANT_SUNSHROOM][3].loadFromFile("assets/SunShroomProduceB.png");
+
+	SunShroom.num_animations = 4;
+	Animation a;
+	a.frames = 30;
+	a.frameTimer = 0.08f;
+	SunShroom.animations[0] = a; // IDLE SMALL
+	SunShroom.animations[1] = a; // IDLE BIG
+	a.frames = 60;
+	a.frameTimer = 0.04;
+	SunShroom.animations[2] = a; // PRODUCE SMALL
+	SunShroom.animations[3] = a; // PRODUCE BIG
+
+	SunShroom.setCurrentAnimation(0);
+
+	return SunShroom;
 }
 // zombies
 Entity defineNormalZombie() {
@@ -830,7 +875,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 		// plant attacking system
 		if ((plant.type != ENTITY_TYPE::PLANT_SUNFLOWER)
 			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)
-			&& (plant.type != ENTITY_TYPE::PLANT_CHOMPER)) {
+			&& (plant.type != ENTITY_TYPE::PLANT_CHOMPER)
+			&& (plant.type != ENTITY_TYPE::PLANT_SUNSHROOM)) {
 
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
@@ -857,7 +903,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 					plant.DoAnimation(1, 2);
 				}
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -871,6 +918,45 @@ void DrawPlantsGrid(RenderWindow& window) {
 
 				addSun(newSun);
 				cout << "Sunflower produced a sun!" << endl;
+			}
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+			plant.growthTimer += delta_time;
+
+			if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
+				plant.isFullyGrown = true;
+				plant.setCurrentAnimation(1);
+				cout << "SunShroom has grown!" << endl;
+			}
+
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
+
+				plant.attackClock.restart();
+
+				/*if (plant.isFullyGrown) {
+					plant.DoAnimation(1, 3); 
+					plant.afterAnimation = [&plant](Entity& entity) {
+						entity.setCurrentAnimation(1);  
+						};
+				}
+				else {
+					plant.DoAnimation(1, 2); 
+					plant.afterAnimation = [&plant](Entity& entity) {
+						entity.setCurrentAnimation(0); 
+						};
+				}*/ // STILL WOKRING ON ANIMATION
+
+				int sunValue = (plant.isFullyGrown) ? plant.sunValueLarge : plant.sunValueSmall;
+
+				Sun newSun{};
+				newSun.position = plant.position;
+				newSun.distance = plant.position.y + 50;
+				newSun.clicked = false;
+				newSun.sunValue = sunValue;
+				newSun.lifeClock.restart();
+
+				addSun(newSun);
+				cout << "Sunflower produced" << sunValue << " sun!" << endl;
 			}
 		}
 
@@ -1400,7 +1486,7 @@ void UpdateLevel(RenderWindow& window) {
 			if (!isSunAlive(sun)) continue;
 
 			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-				money += 25;
+				money += suns[i].sunValue;
 
 				cout << "You now have " << money << endl;
 
@@ -1611,6 +1697,7 @@ int main() {
 	Entity sunflower = defineSunflower();
 	Entity wallnut = defineWallnut();
 	Entity chomper = defineChomperPlant();
+	Entity sunshroom = defineSunShroom();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -1638,7 +1725,7 @@ int main() {
 
 
 	// Levels
-	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, };
+	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, sunshroom};
 	levels[1].zombie_types = { zombieConehead };
 	//levels[1].zombie_types = { zombie, zombieJapanese, zombieBig, zombieConehead };
 	levels[1].startingSuns = 300;
@@ -1715,7 +1802,7 @@ int main() {
 			DrawMainMenu(window);
 		}
 
-		window.display();
+		window.display();	
 	}
 
 	delete font;
