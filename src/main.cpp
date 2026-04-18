@@ -93,6 +93,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_RA,
 	ZOMBIE_MUMMY,
 	ZOMBIE_CONEHEAD,
+	ZOMBIE_NEWSPAPER,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -123,6 +124,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_RA,
 	ZOMBIE_MUMMY,
 	ZOMBIE_CONEHEAD,
+	ZOMBIE_NEWSPAPER,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -164,6 +166,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_CONEHEAD:
 		textureType = TEXTURE_TYPE::ZOMBIE_CONEHEAD;
+		break;
+	case ENTITY_TYPE::ZOMBIE_NEWSPAPER:
+		textureType = TEXTURE_TYPE::ZOMBIE_NEWSPAPER;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -634,7 +639,7 @@ Entity defineConeheadZombie() {
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 200;
-	zombie.num_animations = 2;
+	zombie.num_animations = 3;
 	Animation anim;
 	// Walk animation
 	anim.frames = 21;
@@ -869,6 +874,39 @@ Entity defineMummyZombie() {
 	return zombie;
 }
 
+Entity defineNewspaperZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_NEWSPAPER][0].loadFromFile("assets/NewspaperZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_NEWSPAPER][1].loadFromFile("assets/NewspaperZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_NEWSPAPER][2].loadFromFile("assets/NewspaperZombieAngry.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_NEWSPAPER;
+	zombie.health = 250;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05;
+	zombie.scale = 1.2f;
+	// Animations
+	zombie.num_animations = 3;
+	Animation anim;
+	// walk
+	anim.frames = 19;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 11;
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+	// angry
+	anim.frames = 14;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
+
 //bullets
 Entity defineNormalBullet() {
 	Texture tex;
@@ -1072,7 +1110,10 @@ void DrawZombies(RenderWindow& window) {
 
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
-			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 || (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2) || (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
+			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
 				
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
 					for (int i = 0; i < MAX_SUNS; i++) {
@@ -1213,6 +1254,14 @@ void DrawZombies(RenderWindow& window) {
 			}
 		}
 
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.health > 0) { // for newspaper
+			if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
+				zombie.setCurrentAnimation(2);
+				zombie.x_vel = 0.12f;
+				zombie.attackTimer = 0.4f;
+			}
+		}
+
 		// move
 		zombie.position.x -= zombie.x_vel;
 		auto [r, c] = gridCell(zombie.position);
@@ -1238,7 +1287,10 @@ void DrawZombies(RenderWindow& window) {
 				}
 			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					zombie.x_vel = .05; // no plant - has health - move normally edit_bug
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) // for newspaper
+						zombie.x_vel = 0.12f;
+					else 
+						zombie.x_vel = .05; // no plant - has health - move normally edit_bug
 				}
 			}
 		}
@@ -1849,6 +1901,7 @@ int main() {
 	Entity zombieRa = defineRaZombie();
 	Entity zombieMummy = defineMummyZombie();
 	Entity zombieConehead = defineConeheadZombie();
+	Entity zombieNewspaper = defineNewspaperZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -1881,7 +1934,7 @@ int main() {
 	levels[2].bgPath = "assets/egypt.png";
 
 	levels[3].plant_types = { sunflower, repeaterPlant };
-	levels[3].zombie_types = { zombie, zombieConehead };
+	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper };
 	levels[3].startingSuns = 100;
 
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
