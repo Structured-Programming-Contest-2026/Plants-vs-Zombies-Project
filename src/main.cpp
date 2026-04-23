@@ -103,8 +103,10 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
+	PLANT_ICE_PEASHOOTER,
 
 	NormalBullet,
+	IceBullet,
 
 
 
@@ -138,8 +140,10 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
+	PLANT_ICE_PEASHOOTER,
 
 	NormalBullet,
+	IceBullet,
 };
 
 map<ENTITY_TYPE, bool> isEntityUnlocked;
@@ -197,9 +201,15 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_SUNSHROOM:
 		textureType = TEXTURE_TYPE::PLANT_SUNSHROOM;
 		break;
+	case ENTITY_TYPE::PLANT_ICE_PEASHOOTER:
+		textureType = TEXTURE_TYPE::PLANT_ICE_PEASHOOTER;
+		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
+		break;
+	case ENTITY_TYPE::IceBullet:
+		textureType = TEXTURE_TYPE::IceBullet;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -234,6 +244,8 @@ struct Entity {
 	Animation currentAnimation;
 
 	int AnimationForCycles = -1;
+
+	float freezeTimer = 0.0f;
 
 	float x_vel = 0.05f;
 	Clock attackClock;
@@ -707,6 +719,30 @@ Entity defineSunShroom() {
 
 	return SunShroom;
 }
+Entity defineIcePeaShooter() {
+	Texture tex;
+	tex.loadFromFile("assets/IcePeashooter.png");
+	textures[TEXTURE_TYPE::PLANT_ICE_PEASHOOTER][Default_Texture_Index] = tex;
+
+	Entity icePea;
+	icePea.category = ENTITY_CATEGORY::PLANT;
+	icePea.type = ENTITY_TYPE::PLANT_ICE_PEASHOOTER;
+	icePea.health = 100;
+	icePea.attack = 40;
+	icePea.price = 75;
+	icePea.scale = 0.75;
+
+	icePea.num_animations = 1;
+
+	Animation a;
+	a.frames = 24;
+	a.frameTimer = 0.08f;
+	icePea.animations[0] = a;
+
+	icePea.setCurrentAnimation(0);
+
+	return icePea;
+}
 // zombies
 Entity defineNormalZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][0].loadFromFile("assets/NormalZombie.png");
@@ -1021,6 +1057,19 @@ Entity defineNormalBullet() {
 
 	return bullet;
 }
+Entity defineIceBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/bullet.png");
+	textures[TEXTURE_TYPE::IceBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::IceBullet;
+	bullet.attack = 10;
+	bullet.x_vel = -0.4f;
+
+	return bullet;
+}
 // Drawing - Functions 
 
 void UpdateSuns(RenderWindow& window) {
@@ -1097,7 +1146,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 		if ((plant.type != ENTITY_TYPE::PLANT_SUNFLOWER)
 			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)
 			&& (plant.type != ENTITY_TYPE::PLANT_CHOMPER)
-			&& (plant.type != ENTITY_TYPE::PLANT_SUNSHROOM)) {
+			&& (plant.type != ENTITY_TYPE::PLANT_SUNSHROOM)
+			&& (plant.type != ENTITY_TYPE::PLANT_ICE_PEASHOOTER)) {
 
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
@@ -1181,6 +1231,30 @@ void DrawPlantsGrid(RenderWindow& window) {
 				cout << "Sunflower produced" << sunValue << " sun!" << endl;
 			}
 		}
+		else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
+
+				bool zombieInLane = false;
+				for (Entity& zombie : entities) {
+					if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
+						if (abs(zombie.position.y - plant.position.y) < 100.0f &&
+							zombie.position.x > plant.position.x &&
+							zombie.position.x < windowWidth - 50.0f) {
+							zombieInLane = true;
+							break;
+						}
+					}
+				}
+
+				if (zombieInLane) {
+					plant.attackClock.restart();
+					Entity newBullet = defineIceBullet();
+					newBullet.attack = plant.attack;
+					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+					newBullets.push_back(newBullet);
+				}
+			}
+		}
 
 		plantSprite.setPosition(plant.position);
 		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
@@ -1196,6 +1270,10 @@ void DrawPlantsGrid(RenderWindow& window) {
 void DrawZombies(RenderWindow& window) {
 	for (Entity& zombie : entities) {
 		if (zombie.category != ENTITY_CATEGORY::ZOMBIE) continue;
+
+		if (zombie.freezeTimer > 0) {
+			zombie.freezeTimer -= delta_time;
+		}
 
 		// hit by lawnmower (car)
 		auto &mwr = lawnmowers[zombie.gridRow];
@@ -1392,12 +1470,18 @@ void DrawZombies(RenderWindow& window) {
 						}
 					}
 				}
-			} else if (zombie.health > 0) {
+			}
+			else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) // for newspaper
+					if (zombie.freezeTimer > 0) { 
+						zombie.x_vel = 0.02f;
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
-					else 
-						zombie.x_vel = .05; // no plant - has health - move normally edit_bug
+					}
+					else {
+						zombie.x_vel = .05; // no plant - has health - move normally
+					}
 				}
 			}
 		}
@@ -1434,6 +1518,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				bullet.position.x <= zombie.position.x + 100.0f) // almost touched
 			{
 				attackZombie(zombie, bullet.attack, true);
+
+				if (bullet.type == ENTITY_TYPE::IceBullet) {
+					zombie.freezeTimer = 3.0f; 
+					cout << "Zombie Slowed!" << endl;
+				}
+
 				bullet.category = ENTITY_CATEGORY::NONE;
 
 				//cout << "Zombie hit! Health left: " << zombie.health << endl; //console just testing
@@ -2062,6 +2152,7 @@ int main() {
 	Entity wallnut = defineWallnut();
 	Entity chomper = defineChomperPlant();
 	Entity sunshroom = defineSunShroom();
+	Entity icePeashooter = defineIcePeaShooter();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -2089,10 +2180,11 @@ int main() {
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter};//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
 	isEntityUnlocked[sunflower.type] =
+	isEntityUnlocked[icePeashooter.type] =
 	//isEntityUnlocked[chomper.type] =
 	true;
 
