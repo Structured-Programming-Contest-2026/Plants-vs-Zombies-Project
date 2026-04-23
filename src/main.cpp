@@ -2217,7 +2217,7 @@ void saveStorage() {
 }
 
 int select_levels_background_music(Music &music){
-	if (!music.openFromFile("audio/select-levels-music.flac"))
+	if (!music.openFromFile("audio/select-levels-music.ogg"))
 	{
 		std::cout << "Error loading file!" << std::endl;
 		return -1;
@@ -2228,7 +2228,7 @@ int select_levels_background_music(Music &music){
 }
 
 int main() {
-	Music music;
+	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
