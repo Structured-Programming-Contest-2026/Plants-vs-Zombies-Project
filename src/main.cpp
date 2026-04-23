@@ -21,28 +21,6 @@ using namespace sf;
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
 
-int background_music()
-{
-	//Sound s;
-	SoundBuffer s;
-
-	if (!s.loadFromFile("audio/10. Main Music 04.flac"))
-	{
-		std::cout << "Error loading file!" << std::endl;
-		return -1;
-	}
-
-	Sound mysound;
-	mysound.setBuffer(s);
-
-	mysound.setLoop(true);
-	mysound.play();
-
-	std::cin.get();
-
-	return 0;
-}
-
 // Global Variables
 // consts
 const int
@@ -604,6 +582,7 @@ void nextLevel() {
 	resetLevel();
 	startLevel(currentLevel->lvlNum);
 }
+
 
 // Define Characters - Functions
 
@@ -2237,8 +2216,19 @@ void saveStorage() {
 	file.close();
 }
 
+int select_levels_background_music(Music &music){
+	if (!music.openFromFile("audio/select-levels-music.flac"))
+	{
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
 int main() {
-	
+	Music music;
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2376,10 +2366,11 @@ int main() {
 
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
+			if (music.getStatus() == Music::Playing) music.stop();
 			UpdateLevel(window);
 		} else {
+			if(music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
-			background_music();
 		}
 
 		window.display();
