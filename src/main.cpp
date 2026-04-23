@@ -15,7 +15,7 @@ using namespace sf;
 #define cellheight 170
 #define offsetX 470
 #define offsetY 100
-#define edgespace -100
+#define edgespace 250
 #define z_eat_p_distance 100
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
@@ -44,7 +44,7 @@ bool mouseJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
 bool isGameOver = false, isGameWon = false;
-int leftEdgeForZombies = 0;	// TODO: Adjust with lawnmower and stuff
+int leftEdgeForZombies = 250;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth - 150; // which x pos to stop at
@@ -257,6 +257,8 @@ struct Entity {
 	int gridRow = -1;
 	int gridCol = -1;
 
+	bool enteredHome = false;
+
 	float growthTimer = 0.0f;       // For SunShroom
 	bool isFullyGrown = false;      // For SunShroom
 	int sunValueSmall = 15;         // For SunShroom
@@ -360,6 +362,7 @@ struct Level {
 
 	Clock clock;
 	Time plantsSelectedTime;
+	Time gameOverTime;
 
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
@@ -446,7 +449,7 @@ IntRect getFrameRect(Entity& entity) {
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
-	entity.nextFrame();
+	if (!isGameOver || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -539,6 +542,10 @@ void resetLevel() {
 	waveClockX.restart();
 	sunSpawnClock.restart();
 	nextLevelClock.restart();
+
+	currentLevel->plantsSelectedTime = Time::Zero;
+	currentLevel->arePlantsSelected = false;
+	currentLevel->selectedPlants.clear();
 }
 
 void startLevel(int level) {
@@ -1138,7 +1145,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 
 		// Animation
-		plant.nextFrame(); // next frame
+		if (!isGameOver) plant.nextFrame(); // next frame
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop texture
 
 		// plant attacking system
@@ -1347,7 +1354,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// Animation
-		zombie.nextFrame(); // next frame
+		if (!isGameOver || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
 
@@ -1444,11 +1451,22 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// move
-		zombie.position.x -= zombie.x_vel;
+		if (!isGameOver) zombie.position.x -= zombie.x_vel * 15;
+
+		if (zombie.enteredHome) {
+			if (zombie.position.y < 525) {
+				zombie.position.y += 0.075;
+				if (zombie.position.y > 525) zombie.position.y = 525;
+			} else if (zombie.position.y > 525) {
+				zombie.position.y -= 0.075;
+				if (zombie.position.y < 525) zombie.position.y = 525;
+			} else {
+				zombie.position.x -= zombie.x_vel;
+			}
+		}
+
 		auto [r, c] = gridCell(zombie.position);
-		if (zombie.position.x <= 0 + edgeSpace) {
-			zombie.category = ENTITY_CATEGORY::NONE;
-		} else {		// plant
+		if (zombie.position.x > 0 + edgeSpace) {
 			// Eat
 			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) {
@@ -1722,8 +1740,56 @@ void UpdateLevel(RenderWindow& window) {
 		if (progress > 1) progress = 1;
 		ground.setTextureRect(IntRect(376 - 376 * progress, 0, 1024, 600));
 	}
+
+	zombieSprite.setColor(Color::White);
+	plantSprite.setColor(Color::White);
+
+	if (isGameOver) {
+		gameOverScreen.setFillColor(Color(255, 255, 255, 0));
+		gameOverScreen.setScale({ 0, 0 });
+
+		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 1) {
+			float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 1) / 2.0f;
+			if (progress < 0) progress = 0;
+			if (progress > 1) progress = 1;
+
+			int c = 255 - (int)(128 * progress);
+			ground.setColor(Color(c, c, c, 255));
+			zombieSprite.setColor(Color(c, c, c, 255));
+			plantSprite.setColor(Color(c, c, c, 255));
+		}
+		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 2.5) {
+			float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 2.5) / 0.75f;
+			if (progress < 0) progress = 0;
+			if (progress > 1) progress = 1;
+
+			gameOverScreen.setFillColor(Color(255, 255, 255, (int)(255 * progress)));
+			gameOverScreen.setScale({ progress, progress });
+		}
+
+		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 7.5f) {
+			float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 7.5) / 1.0f;
+			if (progress < 0) progress = 0;
+			if (progress > 1) progress = 1;
+
+			int c = 255 - (int)(255 * progress);
+			gameOverScreen.setFillColor(Color(c, c, c, 255));
+
+			c = 128 - (int)(128 * progress);
+			ground.setColor(Color(c, c, c, 255));
+			zombieSprite.setColor(Color(c, c, c, 255));
+			plantSprite.setColor(Color(c, c, c, 255));
+		}
+		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 8.5f) {
+			resetLevel();
+			currentLevel = nullptr;
+			return;
+		}
+	}
+
 	window.draw(ground);
 	DrawZombies(window);
+	DrawPlantsGrid(window);
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
@@ -1891,7 +1957,6 @@ void UpdateLevel(RenderWindow& window) {
 	CheckTimer_AddSun(window);
 
 	UpdateLawnmowers(window);
-	DrawPlantsGrid(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	DrawSeeds(window);
@@ -1951,12 +2016,19 @@ void UpdateLevel(RenderWindow& window) {
 		{
 			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && lawnmowers[zombie.gridRow].isUsed)//end of the screen
 			{
+				currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
 				isGameOver = true;
+				zombie.enteredHome = true;
 				cout << "Zombies ate your brains!\n";
 				break;
 			}
 		}
 	}
+
+	/*if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() > 7) {
+		currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
+		isGameOver = true;
+	}*/
 }
 
 void DrawMainMenu(RenderWindow& window) {
@@ -2246,7 +2318,7 @@ int main() {
 	gameOverTex.loadFromFile("assets/gameover.png");
 	gameOverScreen.setSize(Vector2f(800.0f, 664.0f));
 	gameOverScreen.setTexture(&gameOverTex);
-	gameOverScreen.setOrigin(250.0f, 350.0f);
+	gameOverScreen.setOrigin(400.0f, 332.0f);
 	gameOverScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
 
 	Texture gameWonTex;
