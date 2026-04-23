@@ -1451,7 +1451,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// move
-		if (!isGameOver) zombie.position.x -= zombie.x_vel * 15;
+		if (!isGameOver) zombie.position.x -= zombie.x_vel;
 
 		if (zombie.enteredHome) {
 			if (zombie.position.y < 525) {
@@ -2024,11 +2024,6 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 	}
-
-	/*if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() > 7) {
-		currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
-		isGameOver = true;
-	}*/
 }
 
 void DrawMainMenu(RenderWindow& window) {
