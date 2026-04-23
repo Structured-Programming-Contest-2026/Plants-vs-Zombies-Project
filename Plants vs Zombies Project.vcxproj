@@ -98,8 +98,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>deps\lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>deps/lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -132,8 +132,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>deps\lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>deps/lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -158,6 +158,7 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\SFML-2.6.1\bin\openal32.dll" />
     <None Include="doc\DEVELOPMENT_GUIDE.md" />
     <None Include="doc\EXAMPLES.md" />
     <None Include="doc\FLOW_DIAGRAMS.md" />

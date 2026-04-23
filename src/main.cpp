@@ -2,6 +2,7 @@
 #include <vector>
 #define SFML_STATIC
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <functional>
 #include <cmath>
 #include <fstream>
@@ -20,6 +21,27 @@ using namespace sf;
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
 
+int background_music()
+{
+	//Sound s;
+	SoundBuffer s;
+
+	if (!s.loadFromFile("audio/10. Main Music 04.flac"))
+	{
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+
+	Sound mysound;
+	mysound.setBuffer(s);
+
+	mysound.setLoop(true);
+	mysound.play();
+
+	std::cin.get();
+
+	return 0;
+}
 
 // Global Variables
 // consts
@@ -2216,7 +2238,7 @@ void saveStorage() {
 }
 
 int main() {
-
+	
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2357,6 +2379,7 @@ int main() {
 			UpdateLevel(window);
 		} else {
 			DrawMainMenu(window);
+			background_music();
 		}
 
 		window.display();
