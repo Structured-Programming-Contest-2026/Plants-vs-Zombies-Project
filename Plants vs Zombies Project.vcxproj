@@ -167,9 +167,6 @@
     <None Include="doc\README.md" />
     <None Include="doc\TROUBLESHOOTING.md" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="storage.txt" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -29,7 +29,4 @@
     <None Include="doc\INDEX.md" />
     <None Include="doc\GETTING_STARTED.md" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="storage.txt" />
-  </ItemGroup>
 </Project>
