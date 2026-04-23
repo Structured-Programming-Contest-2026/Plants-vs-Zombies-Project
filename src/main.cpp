@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <functional>
 #include <cmath>
+#include <fstream>
 
 using namespace std;
 using namespace sf;
@@ -56,7 +57,7 @@ ZombieMaxGapTime = ZombieMinGapTime + 3,
 ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
 int sunsMoney = 3000;
-int coinsMoney = 500;
+int coinsMoney = 0;
 bool nextLevelTimerRun = false;
 // Clocks
 Clock zombieClock, waveClockX;
@@ -104,6 +105,10 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SUNSHROOM,
 
 	NormalBullet,
+
+
+
+	ENTITY_TYPE_COUNT	// keep it last
 };
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
@@ -310,7 +315,7 @@ struct Reward {
 		None = 0, Plant, Coins
 	} type = None;
 	int coins = 0;
-	ENTITY_TYPE plantType;
+	ENTITY_TYPE plantType = ENTITY_TYPE::NONE;
 	bool isClaimed = false;
 	Reward() = default;
 	Reward(int coins) : type(Coins), coins(coins) {}
@@ -332,6 +337,7 @@ struct Level {
 	int startingSuns = 25;
 	string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
+	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
 	int lvlNum = 0;
 	int targetZombie = 20,	// total zombies in a level 
@@ -356,10 +362,20 @@ struct Level {
 		}
 	}
 	void claimRewards() {
-		coinsMoney += coinReward.coins;
-		isEntityUnlocked[plantReward.plantType] = true;
-		cout << "plant " << int(plantReward.plantType) << " unlocked!" << endl;
-		cout << "coins " << int(coinReward.coins) << " added! now its " << coinsMoney << endl;
+		if (!coinReward.isClaimed) {
+			coinsMoney += coinReward.coins, coinReward.isClaimed = true;
+			cout << "coins " << int(coinReward.coins) << " added! now its " << coinsMoney << endl;
+		} else if(coinReward.isClaimed) {
+			cout << "coins reward already claimed!" << endl;
+		}
+
+		if (!plantReward.isClaimed) {
+			isEntityUnlocked[plantReward.plantType] = true, plantReward.isClaimed = true;
+			cout << "plant " << int(plantReward.plantType) << " unlocked!" << endl;
+		}
+		else if (plantReward.isClaimed) {
+			cout << "plant reward already claimed!" << endl;
+		}
 	}
 };
 const int number_levels = 6;
@@ -1619,6 +1635,9 @@ void UpdateLevel(RenderWindow& window) {
 			// rewards (debug)
 			cout << "Claim your rewards:\n";
 			currentLevel->claimRewards();
+			if(currentLevel->lvlNum < number_levels-1)
+				levels[currentLevel->lvlNum+1].isUnlocked = true; // unlock next level
+
 			//for (auto& r : currentLevel->rewards) {
 			//	if (r.type == Reward::None) continue;
 			//	r.isClaimed = true;	// maybe when click the claim button
@@ -1883,6 +1902,8 @@ void DrawMainMenu(RenderWindow& window) {
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
 
 	for (int i = 0; i < number_levels; i++) {
+		if (!levels[i+1].isUnlocked) continue;	// skip locked levels
+
 		bool selected = i == selectedLevel;
 		bool hovered = false;
 
@@ -1956,7 +1977,72 @@ void DrawMainMenu(RenderWindow& window) {
 	}
 }
 
+// File
+// unlocked plants, coins
+void loadStorage() {
+	// load from file
+	ifstream file("storage.txt");
+	if (!file.is_open()) {
+		cout << "No storage file found, starting fresh.\n";
+		return;
+	}
+	string line;
+	while (getline(file, line)) {
+		string msg = "Unlocked:";
+		if (line.find(msg) == 0) {
+			int typeInt = stoi(line.substr(msg.size()));
+			isEntityUnlocked[ENTITY_TYPE(typeInt)] = true;
+		}
+		msg = "Level:";
+		if (line.find(msg) == 0) {
+			int lvlNum = stoi(line.substr(msg.size()));
+			getline(file, line);
+			bool isUnlocked = line.substr(line.find(":") + 1) == "1";
+			getline(file, line);
+			bool isPlantRewardClaimed = line.substr(line.find(":") + 1) == "1";
+			getline(file, line);
+			bool isCoinRewardClaimed = line.substr(line.find(":") + 1) == "1";
+			
+			levels[lvlNum].isUnlocked = isUnlocked;
+			levels[lvlNum].plantReward.isClaimed = isPlantRewardClaimed;
+			levels[lvlNum].coinReward.isClaimed = isCoinRewardClaimed;
+		}
+		msg = "Current Coins:";
+		if (line.find("Current Coins:") == 0) {
+			coinsMoney = stoi(line.substr(msg.size()));
+		}
+	}
+	file.close();
+}
+void saveStorage() {
+	// save to file
+	ofstream file("storage.txt");
+	if (!file.is_open()) {
+		cout << "Failed to open storage file for writing.\n";
+		return;
+	}
+	file << "Unlocked Plants:\n";
+	for (int i = 0; i < int(ENTITY_TYPE::ENTITY_TYPE_COUNT); i++) {
+		ENTITY_TYPE type = ENTITY_TYPE(i);
+		if (isEntityUnlocked[type]) {
+			file << "Unlocked:" << i << "\n";
+		}
+	}
+	file << "\n";
+	file << "Current Coins:" << coinsMoney << "\n";
+	file << "\n";
+	for (int lvl = 1; lvl <= number_levels; lvl++) {
+		file << "Level:" << lvl << "\n";
+		file << "Unlocked:" << (levels[lvl].isUnlocked ? "1" : "0") << "\n";
+		file << "PlantRewardClaimed:" << (levels[lvl].plantReward.isClaimed ? "1" : "0") << "\n";
+		file << "CoinRewardClaimed:" << (levels[lvl].coinReward.isClaimed ? "1" : "0") << "\n";
+		file << "\n";
+	}
+	file.close();
+}
+
 int main() {
+	loadStorage();
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2020,6 +2106,7 @@ int main() {
 	levels[1].waveLimit = 10, levels[1].waveTimer = 15;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
+	levels[1].isUnlocked = true;
 
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
@@ -2100,6 +2187,7 @@ int main() {
 
 	delete font;
 	textures.clear();
+	saveStorage();
 
 	return 0;
 }
