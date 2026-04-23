@@ -2042,7 +2042,7 @@ void saveStorage() {
 }
 
 int main() {
-	loadStorage();
+	
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2146,6 +2146,10 @@ int main() {
 	gameWonScreen.setTexture(&gameWonTex);
 	gameWonScreen.setOrigin(250.0f, 350.0f);
 	gameWonScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
+
+	// Load storage
+	loadStorage();
+
 
 	// Game Loop
 
