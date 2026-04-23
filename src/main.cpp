@@ -68,7 +68,7 @@ Clock nextLevelClock;
 struct Lawnmower {
 	bool isUsed = false, isMoving = false;
 	int row = -1;
-	Vector2f position = {-1000, -1000};
+	Vector2f position = { -1000, -1000 };
 	void setRow(int r) {
 		// a must
 		row = r;
@@ -279,7 +279,7 @@ struct Entity {
 		int w = (tex.getSize().x / currentAnimation.frames) * scale;
 		int h = tex.getSize().y * scale;
 
-		width = w, height=h;
+		width = w, height = h;
 	}
 	void setCurrentAnimation(int idx) {
 		// You MUST change both
@@ -336,8 +336,7 @@ struct Reward {
 		if (entity.category == ENTITY_CATEGORY::PLANT) {
 			type = Plant;
 			plantType = entity.type;
-		}
-		else {
+		} else {
 			type = None;
 		}
 	}
@@ -358,7 +357,10 @@ struct Level {
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
-	
+
+	Clock clock;
+	Time plantsSelectedTime;
+
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
 			if(reward.type == Reward::None) {
@@ -368,8 +370,7 @@ struct Level {
 		}*/
 		if (r.type == Reward::Coins) {
 			coinReward = r;
-		}
-		else if (r.type == Reward::Plant) {
+		} else if (r.type == Reward::Plant) {
 			plantReward = r;
 		}
 	}
@@ -377,15 +378,14 @@ struct Level {
 		if (!coinReward.isClaimed) {
 			coinsMoney += coinReward.coins, coinReward.isClaimed = true;
 			cout << "coins " << int(coinReward.coins) << " added! now its " << coinsMoney << endl;
-		} else if(coinReward.isClaimed) {
+		} else if (coinReward.isClaimed) {
 			cout << "coins reward already claimed!" << endl;
 		}
 
 		if (!plantReward.isClaimed) {
 			isEntityUnlocked[plantReward.plantType] = true, plantReward.isClaimed = true;
 			cout << "plant " << int(plantReward.plantType) << " unlocked!" << endl;
-		}
-		else if (plantReward.isClaimed) {
+		} else if (plantReward.isClaimed) {
 			cout << "plant reward already claimed!" << endl;
 		}
 	}
@@ -494,7 +494,7 @@ Entity& getEntity(Vector2i gridPos) {
 }
 
 // Adjust health, isDead and deadZombieCount
-bool attackZombie(Entity& zombie, int attack= 1000000, bool withDyingAnimation=true) {
+bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation = true) {
 	if (zombie.type == ENTITY_TYPE::NONE || zombie.isDead) return false; // already dead
 
 	zombie.health -= attack;
@@ -505,10 +505,10 @@ bool attackZombie(Entity& zombie, int attack= 1000000, bool withDyingAnimation=t
 		if (deadZombieCount >= currentLevel->targetZombie) {
 			isGameWon = true;
 		}
-		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = "<<zombie.isDead<<endl;
+		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = " << zombie.isDead << endl;
 		return true;
 	}
-	
+
 	return true;
 }
 
@@ -529,7 +529,7 @@ void resetLevel() {
 	selectedPlant = 0;
 
 	sunsMoney = currentLevel->startingSuns;
-	
+
 	for (int i = 0; i < gridRows; i++) {
 		lawnmowers[i].setRow(i);
 	}
@@ -557,18 +557,18 @@ void startLevel(int level) {
 		(
 			(float)windowWidth / (float)groundTex.getSize().x,
 			(float)windowHeight / (float)groundTex.getSize().y
-		);		
+		);
+
+		currentLevel->clock.restart();
 	}
 }
 
 void nextLevel() {
 	if (currentLevel == nullptr) {
 		currentLevel = &levels[1];
-	}
-	else if (currentLevel->lvlNum < number_levels) {
+	} else if (currentLevel->lvlNum < number_levels) {
 		currentLevel = &levels[currentLevel->lvlNum + 1];
-	}
-	else {
+	} else {
 		cout << "No more levels!" << endl;
 		return;
 	}
@@ -587,8 +587,7 @@ Sprite defineGroundSprite(Texture& tex) {
 		if (!tex.loadFromFile(currentLevel->bgPath)) {
 			cout << "Error: Could not load assets/background.png" << endl;
 		}
-	}
-	else { 
+	} else {
 		tex.loadFromFile("assets/background.png");
 	}
 
@@ -900,7 +899,7 @@ Entity defineChomperPlant() {
 
 	return Chomper;
 }
-bool chomper_attackZombie(Entity &zombie, Entity &plant) {
+bool chomper_attackZombie(Entity& zombie, Entity& plant) {
 	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) return false;
 
 	bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
@@ -1175,8 +1174,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					plant.DoAnimation(1, 2);
 				}
 			}
-		} 
-		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -1191,8 +1189,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced a sun!" << endl;
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
 			plant.growthTimer += delta_time;
 
 			if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
@@ -1206,15 +1203,15 @@ void DrawPlantsGrid(RenderWindow& window) {
 				plant.attackClock.restart();
 
 				/*if (plant.isFullyGrown) {
-					plant.DoAnimation(1, 3); 
+					plant.DoAnimation(1, 3);
 					plant.afterAnimation = [&plant](Entity& entity) {
-						entity.setCurrentAnimation(1);  
+						entity.setCurrentAnimation(1);
 						};
 				}
 				else {
-					plant.DoAnimation(1, 2); 
+					plant.DoAnimation(1, 2);
 					plant.afterAnimation = [&plant](Entity& entity) {
-						entity.setCurrentAnimation(0); 
+						entity.setCurrentAnimation(0);
 						};
 				}*/ // STILL WOKRING ON ANIMATION
 
@@ -1230,8 +1227,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced" << sunValue << " sun!" << endl;
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 				bool zombieInLane = false;
@@ -1276,7 +1272,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// hit by lawnmower (car)
-		auto &mwr = lawnmowers[zombie.gridRow];
+		auto& mwr = lawnmowers[zombie.gridRow];
 		if (mwr.position.x >= zombie.position.x
 			&& !mwr.isUsed
 			//&& mwr.position.x < windowWidth-offsetX
@@ -1288,12 +1284,12 @@ void DrawZombies(RenderWindow& window) {
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			//cout << "zombie health is " << zombie.health << endl;
-			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 
+			if (!zombie.isDead && (zombie.currentAnimationIndex == 0
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
-				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { 
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
 				// health done but not started dying animation yet
-				
+
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
 					for (int i = 0; i < MAX_SUNS; i++) {
 						if (suns[i].ownerIndex == zombie.id) {
@@ -1307,39 +1303,39 @@ void DrawZombies(RenderWindow& window) {
 				zombie.DoAnimation(1, 1); // play dying animation once
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 					zombie.scale = 1.3f;
-				
+
 				zombie.afterAnimation = [&zombie](Entity& entity) {	// After Death Animation
-						// (For ra) Ra drops stored suns after death
-						if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
-							int sunsToDrop = zombie.storedSunValue / 25;
+					// (For ra) Ra drops stored suns after death
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
+						int sunsToDrop = zombie.storedSunValue / 25;
 
-							for (int i = 0; i < sunsToDrop; i++) {
-								Sun newSun{};
-								newSun.position = zombie.position;
-								newSun.clicked = false;
-								newSun.lifeClock.restart();
+						for (int i = 0; i < sunsToDrop; i++) {
+							Sun newSun{};
+							newSun.position = zombie.position;
+							newSun.clicked = false;
+							newSun.lifeClock.restart();
 
-								addSun(newSun);
-							}
-
-							zombie.storedSunValue = 0;
+							addSun(newSun);
 						}
-						// Zombie Dead 
-						attackZombie(zombie, 10000, false); // kill without animation (already played)
-						
 
-						// Old Code [Replaced]
-						// Zombie Dead [ This code is written in attackZombie function ]
-						//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
-						//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
-						//if (deadZombieCount >= currentLevel->targetZombie) {
-						//	isGameWon = true;
-						//}
+						zombie.storedSunValue = 0;
+					}
+					// Zombie Dead 
+					attackZombie(zombie, 10000, false); // kill without animation (already played)
+
+
+					// Old Code [Replaced]
+					// Zombie Dead [ This code is written in attackZombie function ]
+					//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
+					//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
+					//if (deadZombieCount >= currentLevel->targetZombie) {
+					//	isGameWon = true;
+					//}
 
 					};
 				zombie.x_vel = 0;
 			}
-			
+
 			else if (zombie.isDead) {
 				// health done and animation finished, so we remove the zombie
 				zombie.category = ENTITY_CATEGORY::NONE;
@@ -1470,16 +1466,13 @@ void DrawZombies(RenderWindow& window) {
 						}
 					}
 				}
-			}
-			else if (zombie.health > 0) {
+			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					if (zombie.freezeTimer > 0) { 
+					if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 0.02f;
-					}
-					else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
-					}
-					else {
+					} else {
 						zombie.x_vel = .05; // no plant - has health - move normally
 					}
 				}
@@ -1520,7 +1513,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				attackZombie(zombie, bullet.attack, true);
 
 				if (bullet.type == ENTITY_TYPE::IceBullet) {
-					zombie.freezeTimer = 3.0f; 
+					zombie.freezeTimer = 3.0f;
 					cout << "Zombie Slowed!" << endl;
 				}
 
@@ -1548,28 +1541,34 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 }
 
 void UpdateLawnmowers(RenderWindow& window) {
-	for (auto &mwr : lawnmowers) {
-		if (mwr.position.x >= lawnmower_endline) mwr.isUsed = true, mwr.isMoving=false;
+	// draw lawnmowers - cars
+	for (int r = 0; r < gridRows; r++) {
+		if (lawnmowers[r].isUsed) continue;
+		lawnmowerSprite.setPosition(lawnmowers[r].position);
+		window.draw(lawnmowerSprite);
+	}
+
+	for (auto& mwr : lawnmowers) {
+		if (mwr.position.x >= lawnmower_endline) mwr.isUsed = true, mwr.isMoving = false;
 		if (mwr.isMoving) {
 			mwr.move(0.2f);
 		}
 	}
 }
 
-int t=1, dz=0, zmn, zmx;
+int t = 1, dz = 0, zmn, zmx;
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
 
 	if (createdZombiesCount >= currentLevel->targetZombie) return;
 
 	// waves
-	if (dz>=currentLevel->waveLimit && t==0) {
+	if (dz >= currentLevel->waveLimit && t == 0) {
 		// in to bet
 		t = 1, waveClockX.restart();
 		ZombieMinGapTime = zmn, ZombieMaxGapTime = zmx, currentLevel->waveLimit += currentLevel->waveLimitChange;
 		cout << "switch to bet----------------------------\n";
-	}
-	else if (t==1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
+	} else if (t == 1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
 		// bet to in
 		t = 0, waveClockX.restart();
 		dz = 0, zmn = ZombieMinGapTime, zmx = ZombieMaxGapTime;
@@ -1702,19 +1701,29 @@ void DrawSeeds(RenderWindow& window) {
 
 void UpdateLevel(RenderWindow& window) {
 
-	CheckTimer_AddZombie(window);
-	CheckTimer_AddSun(window);
-
 	// Drawing
 	window.clear(Color::Black);
 	// draw ground
-	window.draw(ground);
-	// draw lawnmowers - cars
-	for (int r = 0; r < gridRows; r++) {
-		if (lawnmowers[r].isUsed) continue;
-		lawnmowerSprite.setPosition(lawnmowers[r].position);
-		window.draw(lawnmowerSprite);
+	ground.setScale({ 1920.0 / 1024.0, 1080.0 / 600.0 });
+	ground.setTextureRect(IntRect(0, 0, 1024, 600));
+	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
+		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+		float progress = 0.0f;
+		progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
+		if (progress < 0) progress = 0;
+		if (progress > 1) progress = 1;
+		ground.setTextureRect(IntRect(376 * progress, 0, 1024, 600));
+	} else if (!currentLevel->arePlantsSelected) {
+		ground.setTextureRect(IntRect(376, 0, 1024, 600));
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 2.0f;
+		if (progress < 0) progress = 0;
+		if (progress > 1) progress = 1;
+		ground.setTextureRect(IntRect(376 - 376 * progress, 0, 1024, 600));
 	}
+	window.draw(ground);
+	DrawZombies(window);
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
@@ -1725,8 +1734,8 @@ void UpdateLevel(RenderWindow& window) {
 			// rewards (debug)
 			cout << "Claim your rewards:\n";
 			currentLevel->claimRewards();
-			if(currentLevel->lvlNum < number_levels-1)
-				levels[currentLevel->lvlNum+1].isUnlocked = true; // unlock next level
+			if (currentLevel->lvlNum < number_levels - 1)
+				levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
 
 			//for (auto& r : currentLevel->rewards) {
 			//	if (r.type == Reward::None) continue;
@@ -1737,11 +1746,10 @@ void UpdateLevel(RenderWindow& window) {
 
 			nextLevelClock.restart();
 			nextLevelTimerRun = true;
-		}else if(nextLevelClock.getElapsedTime().asSeconds() >= 3.0f){
+		} else if (nextLevelClock.getElapsedTime().asSeconds() >= 3.0f) {
 			nextLevelTimerRun = false;
 			nextLevel();
-		}
-		else {
+		} else {
 			window.draw(gameWonScreen);
 			Text text;
 			text.setFont(*font);
@@ -1761,6 +1769,10 @@ void UpdateLevel(RenderWindow& window) {
 
 	// Plant Selection Screen
 	if (!currentLevel->arePlantsSelected) {
+		if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+			return;
+		}
+
 		DrawSeeds(window);
 
 		Sprite bgSprite;
@@ -1856,6 +1868,7 @@ void UpdateLevel(RenderWindow& window) {
 			startButton.setColor(Color(128, 128, 128, 255));
 			if (mouseJustClicked[0]) {
 				currentLevel->arePlantsSelected = true;
+				currentLevel->plantsSelectedTime = currentLevel->clock.getElapsedTime();
 			}
 		}
 
@@ -1869,12 +1882,16 @@ void UpdateLevel(RenderWindow& window) {
 		window.draw(text);
 
 		return;
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+		return;
 	}
 
 	// Level Update
+	CheckTimer_AddZombie(window);
+	CheckTimer_AddSun(window);
+
 	UpdateLawnmowers(window);
 	DrawPlantsGrid(window);
-	DrawZombies(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	DrawSeeds(window);
@@ -1928,7 +1945,7 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 	}
-	
+
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
@@ -1992,7 +2009,7 @@ void DrawMainMenu(RenderWindow& window) {
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
 
 	for (int i = 0; i < number_levels; i++) {
-		if (!levels[i+1].isUnlocked) continue;	// skip locked levels
+		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
 
 		bool selected = i == selectedLevel;
 		bool hovered = false;
@@ -2092,7 +2109,7 @@ void loadStorage() {
 			bool isPlantRewardClaimed = line.substr(line.find(":") + 1) == "1";
 			getline(file, line);
 			bool isCoinRewardClaimed = line.substr(line.find(":") + 1) == "1";
-			
+
 			levels[lvlNum].isUnlocked = isUnlocked;
 			levels[lvlNum].plantReward.isClaimed = isPlantRewardClaimed;
 			levels[lvlNum].coinReward.isClaimed = isCoinRewardClaimed;
@@ -2132,7 +2149,7 @@ void saveStorage() {
 }
 
 int main() {
-	
+
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2180,13 +2197,13 @@ int main() {
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter};//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter };//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
-	isEntityUnlocked[sunflower.type] =
-	isEntityUnlocked[icePeashooter.type] =
-	//isEntityUnlocked[chomper.type] =
-	true;
+		isEntityUnlocked[sunflower.type] =
+		isEntityUnlocked[icePeashooter.type] =
+		//isEntityUnlocked[chomper.type] =
+		true;
 
 	// Levels
 	levels[1].plant_types = mainPlantTypes;
@@ -2212,7 +2229,7 @@ int main() {
 	levels[3].plant_types = mainPlantTypes;
 	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper };
 	levels[3].startingSuns = 100;
-	
+
 	// setting levels background textures
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
@@ -2259,12 +2276,10 @@ int main() {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
-			}
-			else if (event.type == sf::Event::MouseButtonPressed) {
+			} else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
 				else if (event.mouseButton.button == sf::Mouse::Right) mouseJustClicked[1] = true; //edit_bug
-			}
-			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				sunsMoney += 1000;
 			}
@@ -2273,12 +2288,11 @@ int main() {
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
 			UpdateLevel(window);
-		}
-		else {
+		} else {
 			DrawMainMenu(window);
 		}
 
-		window.display();	
+		window.display();
 	}
 
 	delete font;
