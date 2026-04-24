@@ -343,7 +343,10 @@ struct Reward {
 		}
 	}
 };
-
+struct Challenge {
+	string description;
+	function<bool(Level&)> check = nullptr;
+};
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
@@ -359,11 +362,12 @@ struct Level {
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
-
+	Challenge challenges[10];
+	// Timers
 	Clock clock;
 	Time plantsSelectedTime;
 	Time gameOverTime;
-
+	// Functions
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
 			if(reward.type == Reward::None) {
@@ -392,11 +396,28 @@ struct Level {
 			cout << "plant reward already claimed!" << endl;
 		}
 	}
+	bool checkChallenges() {
+		for (const Challenge& challenge : challenges) {
+			if (challenge.check == nullptr) continue;
+			if (!challenge.check(*this)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	void addChallenge(string desc, function<bool(Level&)> check) {
+		for (Challenge& challenge : challenges) {
+			if (challenge.check == nullptr) {
+				challenge.description = desc;
+				challenge.check = check;
+				return;
+			}
+		}
+	}
 };
 const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
-
 
 // Zombie Clock - to add new zombie after some time interval
 
@@ -1719,6 +1740,10 @@ void DrawSeeds(RenderWindow& window) {
 
 
 void UpdateLevel(RenderWindow& window) {
+	// Check level challenges
+	if(currentLevel->checkChallenges()) {
+		isGameWon = true;
+	}
 
 	// Drawing
 	window.clear(Color::Black);
@@ -2295,6 +2320,14 @@ int main() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
+	levels[1].addChallenge(
+		"Don't use Sunflowers",
+		[&](Level& level) {
+			for (auto& plant : entities) {
+				if (plant.type == sunflower.type) return false;
+			}
+			return true;
+		});
 
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
