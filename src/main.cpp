@@ -2189,9 +2189,21 @@ void DrawMainMenu(RenderWindow& window) {
 			sprite.setColor(Color::White);
 		}
 
-		sprite.setScale(scale);
-		sprite.setPosition(pos);
+		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][i + 1]);
+		sprite.setTextureRect({ 0, 200, 370, 320 });
+		sprite.setScale(scale / 1.5f);
+		sprite.setPosition(pos + Vector2f(0, -32));
+		if (i + 1 == 2) {
+			sprite.setTextureRect({ 200, 500, 400, 375 });
+			sprite.setScale(scale / 1.75f);
+			sprite.setPosition(pos + Vector2f(-8, -46));
+		}
+		window.draw(sprite);
 
+		sprite.setTextureRect({ 0, 0, (int)levelTexSize.x, (int)levelTexSize.y });
+		sprite.setTexture(levelTex);
+		sprite.setPosition(pos);
+		sprite.setScale(scale);
 		window.draw(sprite);
 
 		text.setFont(*font);
