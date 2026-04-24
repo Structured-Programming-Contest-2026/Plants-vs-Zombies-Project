@@ -44,7 +44,7 @@ bool uiInteracted = false;
 int nextEntityId = 0; // for ra
 bool isGameOver = false, isGameWon = false;
 int leftEdgeForZombies = 0;	// TODO: Adjust with lawnmower and stuff
-int zombieCount = 0, createdZombiesCount = 0;
+int deadZombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth - 150; // which x pos to stop at
 //Sending Zombies
@@ -55,7 +55,8 @@ float ZombieMinGapTime = 7,
 ZombieMaxGapTime = ZombieMinGapTime + 3,
 ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
-int money = 3000;
+int sunsMoney = 3000;
+int coinsMoney = 500;
 bool nextLevelTimerRun = false;
 // Clocks
 Clock zombieClock, waveClockX;
@@ -142,6 +143,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	NormalBullet,
 };
 
+map<ENTITY_TYPE, bool> isEntityUnlocked;
+
 // Textures 1
 map<TEXTURE_TYPE, Texture[10]> textures;
 Texture& getTexture(TEXTURE_TYPE type, int animation_index = Default_Texture_Index) {
@@ -199,7 +202,6 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::NormalBullet:
 		textureType = TEXTURE_TYPE::NormalBullet;
 		break;
-	case ENTITY_TYPE::PLANT_POTATO_MINE:
 		textureType = TEXTURE_TYPE::PLANT_POTATO_MINE;
 		break;
 	case ENTITY_TYPE::PLANT_DOOM_MINE:
@@ -323,15 +325,31 @@ struct Entity {
 	}
 };
 vector<Entity> entities;
-// TODO: this will later include stuff like difficulty, grid size, ...
 struct Reward {
-	int suns = 0;
-	// other rewards can be added later
+	enum {
+		None = 0, Plant, Coins
+	} type = None;
+	int coins = 0;
+	ENTITY_TYPE plantType;
+	bool isClaimed = false;
+	Reward() = default;
+	Reward(int coins) : type(Coins), coins(coins) {}
+	Reward(ENTITY_TYPE plantType) : type(Plant), plantType(plantType) {}
+	Reward(Entity entity) {
+		if (entity.category == ENTITY_CATEGORY::PLANT) {
+			type = Plant;
+			plantType = entity.type;
+		}
+		else {
+			type = None;
+		}
+	}
 };
+
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
-	int startingSuns = 300;
+	int startingSuns = 25;
 	string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
 	vector<Entity> selectedPlants;
@@ -340,6 +358,29 @@ struct Level {
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
 		waveTimer = 15,		// between waves
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
+	//Reward rewards[10];
+	Reward coinReward, plantReward;
+	
+	void addReward(Reward r) {
+		/*for(auto &reward : rewards) {
+			if(reward.type == Reward::None) {
+				reward = r;
+				return;
+			}
+		}*/
+		if (r.type == Reward::Coins) {
+			coinReward = r;
+		}
+		else if (r.type == Reward::Plant) {
+			plantReward = r;
+		}
+	}
+	void claimRewards() {
+		coinsMoney += coinReward.coins;
+		isEntityUnlocked[plantReward.plantType] = true;
+		cout << "plant " << int(plantReward.plantType) << " unlocked!" << endl;
+		cout << "coins " << int(coinReward.coins) << " added! now its " << coinsMoney << endl;
+	}
 };
 const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -444,6 +485,25 @@ Entity& getEntity(Vector2i gridPos) {
 	return emptyEntity;
 }
 
+// Adjust health, isDead and deadZombieCount
+bool attackZombie(Entity& zombie, int attack= 1000000, bool withDyingAnimation=true) {
+	if (zombie.type == ENTITY_TYPE::NONE || zombie.isDead) return false; // already dead
+
+	zombie.health -= attack;
+	cout << "from `attackzombie` Zombie attacked! health now: " << zombie.health << endl;
+	if (zombie.health <= 0 && !withDyingAnimation) {
+		zombie.category = ENTITY_CATEGORY::NONE;
+		zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
+		if (deadZombieCount >= currentLevel->targetZombie) {
+			isGameWon = true;
+		}
+		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = "<<zombie.isDead<<endl;
+		return true;
+	}
+	
+	return true;
+}
+
 // Reset Level
 void resetLevel() {
 
@@ -452,7 +512,7 @@ void resetLevel() {
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
 	nextLevelTimerRun = false;
-	zombieCount = 0, createdZombiesCount = 0;
+	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 	ZombieMinGapTime = 7,
@@ -460,7 +520,7 @@ void resetLevel() {
 		ZombieGap_dt = 0.1;	// Level Pace
 	selectedPlant = 0;
 
-	money = currentLevel->startingSuns;
+	sunsMoney = currentLevel->startingSuns;
 	
 	for (int i = 0; i < gridRows; i++) {
 		lawnmowers[i].setRow(i);
@@ -472,6 +532,27 @@ void resetLevel() {
 	sunSpawnClock.restart();
 	nextLevelClock.restart();
 }
+
+void startLevel(int level) {
+	// Set currentLevel and other global variables based on the selected level
+	if (level < levels.size()) {
+		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
+		currentLevel = &levels[level];	// Note: level is 1 indexed
+		sunsMoney = currentLevel->startingSuns;
+		isGameOver = false, isGameWon = false;
+		Texture& groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
+		//cout << "txt size " << groundTex.getSize().x << endl;
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][(currentLevel ? currentLevel->lvlNum : 0)]);
+		//ground.setTextureRect({ 0, 0, windowWidth, windowHeight });	// PROBLEM - Doesnt take the whole texture size, but only the part of it that corresponds to the window size, so if texture is smaller than window, it will be repeated, if it's bigger, it will be cropped
+		ground.setTextureRect({ 0, 0, (int)groundTex.getSize().x, (int)groundTex.getSize().y });
+		ground.setScale
+		(
+			(float)windowWidth / (float)groundTex.getSize().x,
+			(float)windowHeight / (float)groundTex.getSize().y
+		);		
+	}
+}
+
 void nextLevel() {
 	if (currentLevel == nullptr) {
 		currentLevel = &levels[1];
@@ -484,6 +565,7 @@ void nextLevel() {
 		return;
 	}
 	resetLevel();
+	startLevel(currentLevel->lvlNum);
 }
 
 // Define Characters - Functions
@@ -615,7 +697,7 @@ Entity defineShroomPlant() {
 	shroom.type = ENTITY_TYPE::PLANT_SHROOM;
 	shroom.health = 500;
 	//shroom.attack = 0;
-	shroom.attack = 10000;
+	shroom.attack = 20;
 	shroom.price = 15;
 	shroom.scale = 0.9;
 	// Idle animation
@@ -816,6 +898,7 @@ Entity defineChomperPlant() {
 	Chomper.health = 200;
 	Chomper.price = 150;
 	Chomper.scale = 0.85;
+	Chomper.attack = 10000; // one attack kill
 
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
@@ -841,7 +924,7 @@ Entity defineChomperPlant() {
 	return Chomper;
 }
 bool chomper_attackZombie(Entity &zombie, Entity &plant) {
-	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.health <= 0) return false;
+	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) return false;
 
 	bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 	bool inFront = zombie.position.x > plant.position.x &&
@@ -849,8 +932,7 @@ bool chomper_attackZombie(Entity &zombie, Entity &plant) {
 	// NOTE: Distance from zombie depends on (Texture) width * scale
 
 	if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
-		zombie.health = 0;
-		zombie.category = ENTITY_CATEGORY::NONE;
+		attackZombie(zombie, plant.attack, false); // adjust health, isDead and deadZombieCount
 		plant.attackClock.restart().asSeconds();
 
 		plant.DoAnimation(1, 1);
@@ -1270,16 +1352,18 @@ void DrawZombies(RenderWindow& window) {
 			&& !mwr.isUsed
 			//&& mwr.position.x < windowWidth-offsetX
 			) {
-			zombie.health = 0;
+			attackZombie(zombie, 100000, true);
 			mwr.isMoving = true;
 		}
 
 		// dead		// NOTE: Currently not showing where [isDead==true] not [health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
+			//cout << "zombie health is " << zombie.health << endl;
 			if (!zombie.isDead && (zombie.currentAnimationIndex == 0 
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
-				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { // health done but not started dying animation yet
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) { 
+				// health done but not started dying animation yet
 				
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
 					for (int i = 0; i < MAX_SUNS; i++) {
@@ -1311,24 +1395,30 @@ void DrawZombies(RenderWindow& window) {
 
 							zombie.storedSunValue = 0;
 						}
+						// Zombie Dead 
+						attackZombie(zombie, 10000, false); // kill without animation (already played)
+						
 
-						// Zombie Dead
-						zombie.isDead = true, zombieCount++, ZombieGap_dt += 0.05;	// TODO: maybe make isDead and health<=0 in another way?
-						entity.category = ENTITY_CATEGORY::NONE; // remove after animation
-						if (zombieCount >= currentLevel->targetZombie) {
-							isGameWon = true;
-						}
+						// Old Code [Replaced]
+						// Zombie Dead [ This code is written in attackZombie function ]
+						//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
+						//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
+						//if (deadZombieCount >= currentLevel->targetZombie) {
+						//	isGameWon = true;
+						//}
+
 					};
 				zombie.x_vel = 0;
 			}
-			//else if(!zombie.isDead){
-			//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
-			//}
+			
 			else if (zombie.isDead) {
 				// health done and animation finished, so we remove the zombie
 				zombie.category = ENTITY_CATEGORY::NONE;
 				continue;
 			}
+			//else if(!zombie.isDead){
+			//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
+			//}
 		}
 
 		// Animation
@@ -1493,14 +1583,13 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				bullet.position.x >= zombie.position.x &&
 				bullet.position.x <= zombie.position.x + 100.0f) // almost touched
 			{
-				zombie.health -= bullet.attack;
+				attackZombie(zombie, bullet.attack, true);
 				bullet.category = ENTITY_CATEGORY::NONE;
 
 				//cout << "Zombie hit! Health left: " << zombie.health << endl; //console just testing
 
 
 				if (zombie.isDead) {
-					zombie.category = ENTITY_CATEGORY::NONE;
 					cout << "Zombie Killed!" << endl;
 				}
 
@@ -1603,7 +1692,7 @@ void DrawSeeds(RenderWindow& window) {
 
 	Text text;
 	text.setFont(*font);
-	text.setString(std::to_string(money));
+	text.setString(std::to_string(sunsMoney));
 	text.setFillColor(Color());
 	text.setPosition(pos + Vector2f(32, 82));
 
@@ -1693,6 +1782,16 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	if (isGameWon == true) {
 		if (!nextLevelTimerRun) {
+			// rewards (debug)
+			cout << "Claim your rewards:\n";
+			currentLevel->claimRewards();
+			//for (auto& r : currentLevel->rewards) {
+			//	if (r.type == Reward::None) continue;
+			//	r.isClaimed = true;	// maybe when click the claim button
+			//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
+			//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
+			//}
+
 			nextLevelClock.restart();
 			nextLevelTimerRun = true;
 		}else if(nextLevelClock.getElapsedTime().asSeconds() >= 3.0f){
@@ -1747,6 +1846,8 @@ void UpdateLevel(RenderWindow& window) {
 
 		int i = -1;
 		for (auto& plant : currentLevel->plant_types) {
+			if (!isEntityUnlocked[plant.type]) continue;
+
 			i++;
 			Vector2f spritePos = Vector2f(50.0f, 190.0f) + Vector2f((i % 7) * (seedPacket.getSize().x - 10.0f), 10.0f + (i / 7) * 130.0f);
 			seedBg.setPosition(spritePos);
@@ -1843,9 +1944,9 @@ void UpdateLevel(RenderWindow& window) {
 			if (!isSunAlive(sun)) continue;
 
 			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
-				money += suns[i].sunValue;
+				sunsMoney += suns[i].sunValue;
 
-				cout << "You now have " << money << endl;
+				cout << "You now have " << sunsMoney << endl;
 
 				suns[i].clicked = true;
 				suns[i].targeted = false; // for ra
@@ -1862,7 +1963,7 @@ void UpdateLevel(RenderWindow& window) {
 				if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
 					Entity plant;
 
-					if (money >= currentLevel->selectedPlants[selectedPlant].price) {
+					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price) {
 						cout << "Placing Plant at " << row << " " << col << endl;
 						plant = currentLevel->selectedPlants[selectedPlant];
 
@@ -1882,6 +1983,7 @@ void UpdateLevel(RenderWindow& window) {
 							entities.back().attackClock.restart();
 						}
 						money -= plant.price;
+						sunsMoney -= plant.price;
 					}
 				}
 			}
@@ -1901,24 +2003,6 @@ void UpdateLevel(RenderWindow& window) {
 	}
 }
 
-void startLevel(int level, RenderWindow &window) {
-	// Set currentLevel and other global variables based on the selected level
-	if (level < levels.size()) {
-		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
-		currentLevel = new Level(levels[level]);	// Note: level is 1 indexed
-		money = currentLevel->startingSuns;
-		isGameOver = false, isGameWon = false;
-		Texture &groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
-		cout << "txt size " << groundTex.getSize().x << endl;
-		ground.setTexture(groundTex);
-		ground.setTextureRect({ 0, 0, windowWidth, windowHeight });
-		ground.setScale
-		(
-			(float)windowWidth / (float)groundTex.getSize().x,
-			(float)windowHeight / (float)groundTex.getSize().y
-		);
-	}
-}
 void DrawMainMenu(RenderWindow& window) {
 	Vector2f windowSize = { windowWidth, windowHeight };
 
@@ -2034,7 +2118,7 @@ void DrawMainMenu(RenderWindow& window) {
 			playButton.setColor(Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
-				startLevel(selectedLevel + 1, window);
+				startLevel(selectedLevel + 1);
 			}
 		}
 
@@ -2089,25 +2173,41 @@ int main() {
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
 
+	// General Plants to any level
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper };//, shroom, sunshroom };
+	// Unlock starting plants
+	isEntityUnlocked[repeaterPlant.type] =
+	isEntityUnlocked[sunflower.type] =
+	//isEntityUnlocked[chomper.type] =
+	true;
 
 	// Levels
 	levels[1].plant_types = { sunflower, repeaterPlant, wallnut, sunshroom,POTATO_MINE,doomShroom};
+	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
-	levels[1].startingSuns = 300;
+	//levels[1].startingSuns = 300;
 	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 2;
 	//levels[1].targetZombie = 20;
 	levels[1].waveLimit = 10, levels[1].waveTimer = 15;
+	levels[1].plantReward = chomper;
+	levels[1].coinReward = 100;
 
-	levels[2].plant_types = { sunflower, shroom, chomper };
+	levels[2].plant_types = mainPlantTypes;
+	levels[2].plant_types.push_back(shroom);
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
 	levels[2].startingSuns = 350; 
+	//levels[2].startingSuns = 350;
+	levels[2].targetZombie = 2;
 	levels[2].bgPath = "assets/egypt.png";
+	levels[2].addReward(500);
+	levels[2].addReward(wallnut);
 
-	levels[3].plant_types = { sunflower, repeaterPlant };
+	levels[3].plant_types = mainPlantTypes;
 	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper };
 	levels[3].startingSuns = 100;
-
+	
+	// setting levels background textures
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
 		cout << "loading file txt " << levels[lvl].bgPath << endl;
@@ -2156,7 +2256,7 @@ int main() {
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
-				money += 1000;
+				sunsMoney += 1000;
 			}
 		}
 
