@@ -98,6 +98,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_MUMMY,
 	ZOMBIE_CONEHEAD,
 	ZOMBIE_NEWSPAPER,
+	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -137,6 +138,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_MUMMY,
 	ZOMBIE_CONEHEAD,
 	ZOMBIE_NEWSPAPER,
+	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
@@ -187,6 +189,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_NEWSPAPER:
 		textureType = TEXTURE_TYPE::ZOMBIE_NEWSPAPER;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ALLSTAR:
+		textureType = TEXTURE_TYPE::ZOMBIE_ALLSTAR;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -277,10 +282,12 @@ struct Entity {
 	bool isUsingAbility = false; // for ra
 	Clock abilityClock; // for ra
 	float abilityDuration = 5.0f; // for ra
-
 	int storedSunValue = 0; // for ra
 	int maxSunValue = 350; // for ra
-	int id = -1; // ra test
+	int id = -1; // for ra
+
+	bool hasTackled = false; // for allstar
+	bool isTackling = false; // for allstar
 
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = [](Entity&) {};	// called after animation finish (if animationForCycles != -1)
@@ -1095,6 +1102,43 @@ Entity defineNewspaperZombie() {
 	return zombie;
 }
 
+Entity defineAllStarZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_ALLSTAR][0].loadFromFile("assets/AllStarZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ALLSTAR][1].loadFromFile("assets/AllStarZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ALLSTAR][2].loadFromFile("assets/AllStarZombieRunning.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ALLSTAR][3].loadFromFile("assets/AllStarZombieTackle.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ALLSTAR;
+	zombie.health = 300;
+	zombie.attack = 10;
+	zombie.x_vel = 0.18f;
+	// Animations
+	zombie.num_animations = 4;
+	Animation anim;
+	// walk
+	anim.frames = 37;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 55;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+	// running
+	anim.frames = 20;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
+	// tackle
+	anim.frames = 39;
+	anim.frameTimer = 0.07f;
+	zombie.animations[3] = anim;
+
+	zombie.setCurrentAnimation(2);
+
+	return zombie;
+}
+
 //bullets
 Entity defineNormalBullet() {
 	Texture tex;
@@ -1343,6 +1387,8 @@ void DrawZombies(RenderWindow& window) {
 			if (!zombie.isDead && (zombie.currentAnimationIndex == 0
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
 				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
 				// health done but not started dying animation yet
 
@@ -1499,6 +1545,51 @@ void DrawZombies(RenderWindow& window) {
 			}
 		}
 
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.health > 0) { // for allstar
+			if (!zombie.hasTackled && !zombie.isTackling) {
+				bool plantAhead = false;
+				for (int i = 0; i < entities.size(); i++) {
+					if (entities[i].category != ENTITY_CATEGORY::PLANT)
+						continue;
+					if (entities[i].isDead)
+						continue;
+					if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
+						zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+						plantAhead = true;
+						break;
+					}
+				}
+
+				if (plantAhead) {
+					zombie.isTackling = true;
+					zombie.x_vel = 0;
+					zombie.DoAnimation(1, 3);
+					zombie.afterAnimation = [](Entity& entity) {
+						entity.isTackling = false;
+						entity.hasTackled = true;
+						entity.x_vel = 0.05f;
+						entity.setCurrentAnimation(0);
+					};
+				}
+			}
+
+			if (zombie.isTackling) {
+				for (int i = 0; i < entities.size(); i++) {
+					if (entities[i].category != ENTITY_CATEGORY::PLANT)
+						continue;
+					if (entities[i].isDead)
+						continue;
+					if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
+						zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+						entities[i].health = 0;
+						entities[i].category = ENTITY_CATEGORY::NONE;
+						entities[i].isDead = true;
+						break;
+					}
+				}
+			}
+		}
+
 		// move
 		if (!isGameOver) zombie.position.x -= zombie.x_vel;
 
@@ -1537,8 +1628,12 @@ void DrawZombies(RenderWindow& window) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
 					if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 0.02f;
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
+						zombie.x_vel = 0.18f;
 					} else {
 						zombie.x_vel = .05; // no plant - has health - move normally
 					}
@@ -2351,6 +2446,7 @@ int main() {
 	Entity zombieMummy = defineMummyZombie();
 	Entity zombieConehead = defineConeheadZombie();
 	Entity zombieNewspaper = defineNewspaperZombie();
+	Entity zombieAllStar = defineAllStarZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -2413,7 +2509,7 @@ int main() {
 	//------------------------------------------
 	// Level 3: Night
 	levels[3].plant_types = mainPlantTypes;
-	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper };
+	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
 	levels[3].startingSuns = 100;
 	levels[3].bgPath = "assets/night.png";
 	levels[3].offsetX = 450;
