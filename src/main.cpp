@@ -49,16 +49,21 @@ float nextZombieTimer = 5; // First zombie timer - it's assigned, current value 
 float ZombieMinGapTime = 7,
 //float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 //float ZombieMinGapTime = 1,
+
 ZombieMaxGapTime = ZombieMinGapTime + 3,
 ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
 bool nextLevelTimerRun = false;
+
 // Clocks
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 Clock nextLevelClock;
+
+//shovel
+bool isShovelActive = false;
 
 // lawnmower - cars
 struct Lawnmower {
@@ -122,6 +127,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
+	
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -143,6 +149,7 @@ enum class TEXTURE_TYPE : uint8_t {
 
 	NormalBullet,
 	IceBullet,
+	SHOVEL,
 };
 
 map<ENTITY_TYPE, bool> isEntityUnlocked;
@@ -1900,6 +1907,7 @@ void UpdateLevel(RenderWindow& window) {
 
 		DrawSeeds(window);
 
+
 		Sprite bgSprite;
 		bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
 		bgSprite.setPosition(Vector2f(10, 123.0f));
@@ -2020,6 +2028,24 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateSuns(window);
 	DrawSeeds(window);
 	DrawDebugGrid(window);
+	//here
+	Texture& shovelTex = getTexture(TEXTURE_TYPE::SHOVEL);
+	uiSprite.setTexture(shovelTex);
+	resizeSpriteToTex(uiSprite, shovelTex);
+	uiSprite.setScale(Vector2f(0.8f, 0.8f));
+	uiSprite.setPosition(700.0f, 20.0f); 
+
+	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
+	else uiSprite.setColor(Color::White);
+
+	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (mouseJustClicked[0]) {
+			isShovelActive = !isShovelActive;
+			uiInteracted = true; 
+		}
+	}
+	window.draw(uiSprite);
+	uiSprite.setColor(Color::White);
 
 	if (!uiInteracted && mouseJustClicked[0]) {
 		for (int i = 0; i < MAX_SUNS; i++) {
@@ -2044,23 +2070,28 @@ void UpdateLevel(RenderWindow& window) {
 
 			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
 
-				if (getEntity({ row , col }).category == ENTITY_CATEGORY::NONE) {
-					Entity plant;
+				Entity& clickedEntity = getEntity({ row , col });
+				//if clicked
+				if (isShovelActive && mouseJustClicked[0]) {
+					if (clickedEntity.category == ENTITY_CATEGORY::PLANT) {
+						clickedEntity.category = ENTITY_CATEGORY::NONE;
+						clickedEntity.isDead = true;
+						isShovelActive = false;
+					}
+				}
 
+				else if (!isShovelActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) {
+					Entity plant;
 					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price) {
-						cout << "Placing Plant at " << row << " " << col << endl;
 						plant = currentLevel->selectedPlants[selectedPlant];
 
 						plant.gridRow = row;
 						plant.gridCol = col;
 
-						//centrize
 						int x = currentLevel->offsetX + (col * currentLevel->cellWidth) + ((currentLevel->cellWidth - plant.width) / 2);
-						//alighn to the bottom
 						int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - plant.height);
 
 						plant.position = Vector2f(x, y);
-
 						entities.push_back(plant);
 						sunsMoney -= plant.price;
 					}
@@ -2068,7 +2099,6 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 	}
-
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
@@ -2329,6 +2359,7 @@ int main() {
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
+	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 
 	// Font
 	font = new Font();
