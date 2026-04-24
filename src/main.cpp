@@ -59,6 +59,7 @@ int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
 bool nextLevelTimerRun = false;
+bool drawLevelstartingplants = false;
 // Clocks
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
@@ -343,6 +344,8 @@ struct Reward {
 		}
 	}
 };
+struct Level; // Forward declaration for Challenge
+Vector2f gridCellPosition(int row, int col, Entity ent); // Forward declaration for Level
 struct Challenge {
 	string description;
 	function<bool(Level&)> check = nullptr;
@@ -413,6 +416,12 @@ struct Level {
 				return;
 			}
 		}
+	}
+
+	vector<Entity> onGridPlants;
+	void addonGridPlant(Entity plant, int row, int col) {
+		plant.position = gridCellPosition(row, col, plant);
+		onGridPlants.push_back(plant);
 	}
 };
 const int number_levels = 6;
@@ -500,6 +509,16 @@ Vector2i gridCell_imp(Vector2f pos) {
 
 Vector2i gridCell(Vector2i pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 Vector2i gridCell(Vector2f pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
+Vector2f gridCellPosition(int row, int col, Entity ent) {
+	if (row >= gridraws || col >= gridcols) return { 0,0 };
+	//centrize
+	float x = offsetX + (col * cellWidth) + ((cellWidth - ent.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
+
+	//alighn to the bottom
+	float y = offsetY + (row * cellHeight) + (cellHeight - ent.height);
+
+	return { x, y };
+}
 
 Entity& getEntity(Vector2i gridPos) {
 
@@ -544,6 +563,7 @@ void resetLevel() {
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
 	nextLevelTimerRun = false;
+	drawLevelstartingplants = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -1218,7 +1238,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced a sun!" << endl;
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
 			plant.growthTimer += delta_time;
 
 			if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
@@ -1256,7 +1277,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced" << sunValue << " sun!" << endl;
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 				bool zombieInLane = false;
@@ -1596,6 +1618,16 @@ void UpdateLawnmowers(RenderWindow& window) {
 	}
 }
 
+// Puts level on-grid starting plants into entities
+void PushLevelStartingPlants() {
+	if (drawLevelstartingplants) return;
+	
+	for (auto& p : currentLevel->onGridPlants) {
+		entities.push_back(p);
+	}
+	drawLevelstartingplants = true;
+}
+
 int t = 1, dz = 0, zmn, zmx;
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
@@ -1741,9 +1773,9 @@ void DrawSeeds(RenderWindow& window) {
 
 void UpdateLevel(RenderWindow& window) {
 	// Check level challenges
-	if(currentLevel->checkChallenges()) {
+	/*if(currentLevel->checkChallenges()) {
 		isGameWon = true;
-	}
+	}*/
 
 	// Drawing
 	window.clear(Color::Black);
@@ -1981,6 +2013,8 @@ void UpdateLevel(RenderWindow& window) {
 	// Level Update
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
+	
+	PushLevelStartingPlants();
 
 	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
@@ -2021,13 +2055,13 @@ void UpdateLevel(RenderWindow& window) {
 						plant.gridRow = row;
 						plant.gridCol = col;
 
-						//centrize
-						int x = offsetX + (col * cellWidth) + ((cellWidth - plant.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
+						////centrize
+						//int x = offsetX + (col * cellWidth) + ((cellWidth - plant.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
 
-						//alighn to the bottom
-						int y = offsetY + (row * cellHeight) + (cellHeight - plant.height);
+						////alighn to the bottom
+						//int y = offsetY + (row * cellHeight) + (cellHeight - plant.height);
 
-						plant.position = Vector2f(x, y);
+						plant.position = gridCellPosition(row, col, plant);
 
 						entities.push_back(plant);
 						sunsMoney -= plant.price;
@@ -2320,14 +2354,17 @@ int main() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
-	levels[1].addChallenge(
+	levels[1].addonGridPlant(sunflower, 0, 1);
+	levels[1].addonGridPlant(sunflower, 0, 2);
+	levels[1].addonGridPlant(wallnut, 0, 3);
+	/*levels[1].addChallenge(
 		"Don't use Sunflowers",
 		[&](Level& level) {
 			for (auto& plant : entities) {
 				if (plant.type == sunflower.type) return false;
 			}
 			return true;
-		});
+		});*/
 
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
