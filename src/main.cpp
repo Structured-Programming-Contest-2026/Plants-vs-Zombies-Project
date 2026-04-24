@@ -11,10 +11,8 @@ using namespace sf;
 
 #define gridraws 5
 #define gridcols 9
-#define cellwidth 150
-#define cellheight 170
-#define offsetX 470
-#define offsetY 100
+//#define cellWidth 150
+//#define cellHeight 170
 #define edgespace 250
 #define z_eat_p_distance 100
 #define MAX_SUNS 16
@@ -26,8 +24,6 @@ using namespace sf;
 const int
 gridRows = gridraws,
 gridCols = gridcols,
-cellWidth = cellwidth,
-cellHeight = cellheight,
 windowWidth = 1920,
 windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
@@ -68,12 +64,13 @@ Clock nextLevelClock;
 struct Lawnmower {
 	bool isUsed = false, isMoving = false;
 	int row = -1;
-	Vector2f position = { -1000, -1000 };
-	void setRow(int r) {
-		// a must
+	Vector2f position = { -1000, -700 };
+
+	void setRow(int r, int currentOffsetX, int currentOffsetY, int currentCellHeight) {
 		row = r;
-		position = { float(offsetX - lawnmower_backoff),  float(offsetY + row * cellHeight) };
+		position = { float(currentOffsetX - lawnmower_backoff),  float(currentOffsetY + row * currentCellHeight) };
 	}
+
 	void move(float v) {
 		position.x += v;
 	}
@@ -309,7 +306,7 @@ struct Entity {
 				if (cycles >= AnimationForCycles && AnimationForCycles != -1) {
 					setCurrentAnimation(0); // reset to default
 					AnimationForCycles = -1;
-					afterAnimation(*this); //Not Understood
+					afterAnimation(*this);
 				}
 			}
 			frame %= currentAnimation.frames;
@@ -347,7 +344,7 @@ struct Reward {
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
-	int startingSuns = 25;
+	int startingSuns = 3000;
 	string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
@@ -357,6 +354,14 @@ struct Level {
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
 		waveTimer = 15,		// between waves
 		waveLimitChange = 5;	// each wave has more zombies than previous by (waveLimitChange)
+	float offsetX = 470;
+	float offsetY = 100;
+	float cellWidth = 150;
+	float cellHeight = 170;
+	float bgScaleX = 1920.0f / 1024.0f;
+	float bgScaleY = 1080.0f / 600.0f;
+	int bgRectWidth = 1024;
+	int bgRectHeight = 600;
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
 
@@ -472,8 +477,13 @@ bool anySunAlive() { // for ra
 }
 
 Vector2i gridCell_imp(Vector2f pos) {
-	int column = (pos.x - offsetX) / cellWidth;
-	int raw = (pos.y - offsetY) / cellHeight;
+	if (currentLevel == nullptr) return { -1, -1 };
+	if (pos.x < currentLevel->offsetX || pos.y < currentLevel->offsetY) return { -1, -1 };
+
+	int column = (pos.x - currentLevel->offsetX) / currentLevel->cellWidth;
+	int raw = (pos.y - currentLevel->offsetY) / currentLevel->cellHeight;
+
+	if (column >= gridCols || raw >= gridRows) return { -1, -1 };
 	return { raw, column };
 }
 
@@ -516,7 +526,8 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 }
 
 // Reset Level
-void resetLevel() {
+void resetLevel() 
+{
 
 	delta_time = 1.0f;
 	uiInteracted = false;
@@ -533,10 +544,10 @@ void resetLevel() {
 
 	sunsMoney = currentLevel->startingSuns;
 
-	for (int i = 0; i < gridRows; i++) {
-		lawnmowers[i].setRow(i);
+	for (int i = 0; i < gridRows; i++)
+	{
+		lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
 	}
-
 	entities.clear();
 	zombieClock.restart();
 	waveClockX.restart();
@@ -548,7 +559,8 @@ void resetLevel() {
 	currentLevel->selectedPlants.clear();
 }
 
-void startLevel(int level) {
+	void startLevel(int level)
+{
 	// Set currentLevel and other global variables based on the selected level
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
@@ -610,11 +622,13 @@ Sprite defineGroundSprite(Texture& tex) {
 	return groundSp;
 }
 //lawnmower
-Sprite defineLawnmowerSprite(Texture& tex) {
+Sprite defineLawnmowerSprite(Texture& tex)
+{
 	tex.loadFromFile("assets/lawnmower.png");
 	Sprite lawnmower;
 	lawnmower.setTexture(tex);
 	lawnmower.setTextureRect(IntRect(0, 0, (int)tex.getSize().x, (int)tex.getSize().y));
+	/*lawnmower.setScale(1.0f, 1.0);*/
 	return lawnmower;
 }
 // plants
@@ -841,7 +855,7 @@ Entity defineBigZombie() {
 	return zombie;
 }
 
-// ÏÇáÉ áÊÚÑíÝ ÇáÜ Wall-nut
+//wall-nut
 Entity defineWallnut() {
 	Entity wallnut{};
 	wallnut.category = ENTITY_CATEGORY::PLANT;
@@ -1105,14 +1119,14 @@ void UpdateSuns(RenderWindow& window) {
 
 //we will remove it later
 void DrawDebugGrid(RenderWindow& window) {
-	RectangleShape rect(Vector2f(cellWidth, cellHeight));
+	RectangleShape rect(Vector2f(currentLevel->cellWidth, currentLevel->cellHeight));
 	rect.setFillColor(Color::Transparent);
 	rect.setOutlineThickness(1.0f);
 	rect.setOutlineColor(Color(255, 255, 255, 100));
 
 	for (int r = 0; r < gridRows; r++) {
 		for (int c = 0; c < gridCols; c++) {
-			rect.setPosition(Vector2f(offsetX + (c * cellWidth), offsetY + (r * cellHeight)));
+			rect.setPosition(Vector2f(currentLevel->offsetX + (c * currentLevel->cellWidth), currentLevel->offsetY + (r * currentLevel->cellHeight)));
 			window.draw(rect);
 		}
 	}
@@ -1500,7 +1514,7 @@ void DrawZombies(RenderWindow& window) {
 		int frameHeight = frameRect.getSize().y;
 		float actualHeight = frameHeight * zombie.scale;
 		Vector2f adjustedPosition = zombie.position;
-		adjustedPosition.y -= (actualHeight - cellHeight);
+		adjustedPosition.y -= (actualHeight - currentLevel->cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
@@ -1563,6 +1577,8 @@ void UpdateLawnmowers(RenderWindow& window) {
 	for (int r = 0; r < gridRows; r++) {
 		if (lawnmowers[r].isUsed) continue;
 		lawnmowerSprite.setPosition(lawnmowers[r].position);
+		lawnmowerSprite.setScale(2.0f, 2.0f);
+		
 		window.draw(lawnmowerSprite);
 	}
 
@@ -1606,7 +1622,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		int zombie_type_index = rand() % currentLevel->zombie_types.size();
 		Entity newZombie = currentLevel->zombie_types[zombie_type_index];
 
-		newZombie.position = Vector2f(windowWidth, offsetY + (rand() % gridraws) * cellheight);
+		newZombie.position = Vector2f(windowWidth, currentLevel->offsetY + (rand() % gridraws) * currentLevel->cellHeight);
 		auto [raw, column] = gridCell(newZombie.position);
 		newZombie.id = nextEntityId++; // for ra
 		newZombie.gridRow = raw, newZombie.gridCol = column;
@@ -1721,24 +1737,34 @@ void UpdateLevel(RenderWindow& window) {
 
 	// Drawing
 	window.clear(Color::Black);
-	// draw ground
-	ground.setScale({ 1920.0 / 1024.0, 1080.0 / 600.0 });
-	ground.setTextureRect(IntRect(0, 0, 1024, 600));
+	int actualTexWidth = ground.getTexture()->getSize().x;
+	int actualTexHeight = ground.getTexture()->getSize().y;
+	//zoom_scale
+	float scaleY = (float)windowHeight / actualTexHeight;
+	float scaleX = scaleY;
+	ground.setScale({ scaleX, scaleY });
+	int visibleWidth = windowWidth / scaleX;
+	int maxPan = std::max(0, actualTexWidth - visibleWidth);
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
+		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
 		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
-		float progress = 0.0f;
-		progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
+	}
+	else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
-		ground.setTextureRect(IntRect(376 * progress, 0, 1024, 600));
-	} else if (!currentLevel->arePlantsSelected) {
-		ground.setTextureRect(IntRect(376, 0, 1024, 600));
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+
+		ground.setTextureRect(IntRect(maxPan * progress, 0, visibleWidth, actualTexHeight));
+	}
+	else if (!currentLevel->arePlantsSelected) {
+		ground.setTextureRect(IntRect(maxPan, 0, visibleWidth, actualTexHeight));
+	}
+	else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
-		ground.setTextureRect(IntRect(376 - 376 * progress, 0, 1024, 600));
+
+		ground.setTextureRect(IntRect(maxPan - (maxPan * progress), 0, visibleWidth, actualTexHeight));
 	}
 
 	zombieSprite.setColor(Color::White);
@@ -1960,7 +1986,7 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	DrawSeeds(window);
-	/*DrawDebugGrid(window);*/
+	DrawDebugGrid(window);
 
 	if (!uiInteracted && mouseJustClicked[0]) {
 		for (int i = 0; i < MAX_SUNS; i++) {
@@ -1996,10 +2022,9 @@ void UpdateLevel(RenderWindow& window) {
 						plant.gridCol = col;
 
 						//centrize
-						int x = offsetX + (col * cellWidth) + ((cellWidth - plant.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
-
+						int x = currentLevel->offsetX + (col * currentLevel->cellWidth) + ((currentLevel->cellWidth - plant.width) / 2);
 						//alighn to the bottom
-						int y = offsetY + (row * cellHeight) + (cellHeight - plant.height);
+						int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - plant.height);
 
 						plant.position = Vector2f(x, y);
 
@@ -2224,11 +2249,12 @@ int main() {
 	ground = defineGroundSprite(groundTex);
 	lawnmowerSprite = defineLawnmowerSprite(lawnTex);
 	for (int r = 0; r < gridRows; r++) {
-		lawnmowers[r].setRow(r);
+		lawnmowers[r].setRow(r, 440, 170, 170);
 	}
 	//New
 
 	// Loading Textures + Defining entities
+	
 	// Plants
 	Entity repeaterPlant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
@@ -2273,29 +2299,50 @@ int main() {
 		true;
 
 	// Levels
+//---------------------------------------
+// Level 1: Day
 	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
-	//levels[1].startingSuns = 300;
-	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
+	levels[1].bgPath = "assets/background.png";
 	levels[1].targetZombie = 2;
-	//levels[1].targetZombie = 20;
-	levels[1].waveLimit = 10, levels[1].waveTimer = 15;
+	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
 
+	levels[1].offsetX = 450;  
+	levels[1].offsetY = 135; 
+	levels[1].cellWidth = 150; 
+	levels[1].cellHeight = 170; 
+	//---------------------------------------
+	// Level 2: Egypt
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
-	//levels[2].startingSuns = 350;
 	levels[2].targetZombie = 2;
-	levels[2].bgPath = "assets/egypt.png";
+	levels[2].bgPath = "assets/pharoas.png";
 	levels[2].addReward(500);
 	levels[2].addReward(wallnut);
 
+	levels[2].offsetX = 450;
+	levels[2].offsetY = 135;
+	levels[2].cellWidth = 150;
+	levels[2].cellHeight = 170;
+
+
+
+	//------------------------------------------
+	// Level 3: Night
 	levels[3].plant_types = mainPlantTypes;
 	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper };
 	levels[3].startingSuns = 100;
+	levels[3].bgPath = "assets/night.png";
+	levels[3].offsetX = 450;
+	levels[3].offsetY = 135;
+	levels[3].cellWidth = 150;
+	levels[3].cellHeight = 170;
+
+
 
 	// setting levels background textures
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
