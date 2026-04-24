@@ -365,3 +365,4 @@ FodyWeavers.xsd
 # Custom
 bin/
 intermediates/
+storage.txt
