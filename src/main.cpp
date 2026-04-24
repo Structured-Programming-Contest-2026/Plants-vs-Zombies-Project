@@ -127,7 +127,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
-	
+
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -538,8 +538,7 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 }
 
 // Reset Level
-void resetLevel() 
-{
+void resetLevel() {
 
 	delta_time = 1.0f;
 	uiInteracted = false;
@@ -556,8 +555,7 @@ void resetLevel()
 
 	sunsMoney = currentLevel->startingSuns;
 
-	for (int i = 0; i < gridRows; i++)
-	{
+	for (int i = 0; i < gridRows; i++) {
 		lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
 	}
 	entities.clear();
@@ -571,8 +569,7 @@ void resetLevel()
 	currentLevel->selectedPlants.clear();
 }
 
-	void startLevel(int level)
-{
+void startLevel(int level) {
 	// Set currentLevel and other global variables based on the selected level
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
@@ -635,8 +632,7 @@ Sprite defineGroundSprite(Texture& tex) {
 	return groundSp;
 }
 //lawnmower
-Sprite defineLawnmowerSprite(Texture& tex)
-{
+Sprite defineLawnmowerSprite(Texture& tex) {
 	tex.loadFromFile("assets/lawnmower.png");
 	Sprite lawnmower;
 	lawnmower.setTexture(tex);
@@ -1304,8 +1300,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullets.push_back(newBullet);
 				}
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
 			for (Entity& zombie : entities) {
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 				bool inFront = zombie.position.x > plant.position.x &&
@@ -1618,7 +1613,7 @@ void UpdateLawnmowers(RenderWindow& window) {
 		if (lawnmowers[r].isUsed) continue;
 		lawnmowerSprite.setPosition(lawnmowers[r].position);
 		lawnmowerSprite.setScale(2.0f, 2.0f);
-		
+
 		window.draw(lawnmowerSprite);
 	}
 
@@ -1788,18 +1783,15 @@ void UpdateLevel(RenderWindow& window) {
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
 		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
 		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
-	}
-	else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
 
 		ground.setTextureRect(IntRect(maxPan * progress, 0, visibleWidth, actualTexHeight));
-	}
-	else if (!currentLevel->arePlantsSelected) {
+	} else if (!currentLevel->arePlantsSelected) {
 		ground.setTextureRect(IntRect(maxPan, 0, visibleWidth, actualTexHeight));
-	}
-	else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
@@ -2033,7 +2025,7 @@ void UpdateLevel(RenderWindow& window) {
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(700.0f, 20.0f); 
+	uiSprite.setPosition(700.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -2041,7 +2033,7 @@ void UpdateLevel(RenderWindow& window) {
 	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 		if (mouseJustClicked[0]) {
 			isShovelActive = !isShovelActive;
-			uiInteracted = true; 
+			uiInteracted = true;
 		}
 	}
 	window.draw(uiSprite);
@@ -2303,9 +2295,8 @@ void saveStorage() {
 	file.close();
 }
 
-int select_levels_background_music(Music &music){
-	if (!music.openFromFile("audio/select-levels-music.ogg"))
-	{
+int select_levels_background_music(Music& music) {
+	if (!music.openFromFile("assets/audio/select-levels-music.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
 		return -1;
 	}
@@ -2328,7 +2319,7 @@ int main() {
 	//New
 
 	// Loading Textures + Defining entities
-	
+
 	// Plants
 	Entity repeaterPlant = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
@@ -2386,10 +2377,10 @@ int main() {
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
 
-	levels[1].offsetX = 450;  
-	levels[1].offsetY = 135; 
-	levels[1].cellWidth = 150; 
-	levels[1].cellHeight = 170; 
+	levels[1].offsetX = 450;
+	levels[1].offsetY = 135;
+	levels[1].cellWidth = 150;
+	levels[1].cellHeight = 170;
 	//---------------------------------------
 	// Level 2: Egypt
 	levels[2].plant_types = mainPlantTypes;
@@ -2480,7 +2471,7 @@ int main() {
 			if (music.getStatus() == Music::Playing) music.stop();
 			UpdateLevel(window);
 		} else {
-			if(music.getStatus() != Music::Playing) select_levels_background_music(music);
+			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
 		}
 
