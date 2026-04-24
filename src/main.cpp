@@ -2,6 +2,7 @@
 #include <vector>
 #define SFML_STATIC
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <functional>
 #include <cmath>
 #include <fstream>
@@ -17,7 +18,6 @@ using namespace sf;
 #define z_eat_p_distance 100
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
-
 
 // Global Variables
 // consts
@@ -594,6 +594,7 @@ void nextLevel() {
 	resetLevel();
 	startLevel(currentLevel->lvlNum);
 }
+
 
 // Define Characters - Functions
 
@@ -2240,8 +2241,19 @@ void saveStorage() {
 	file.close();
 }
 
-int main() {
+int select_levels_background_music(Music &music){
+	if (!music.openFromFile("audio/select-levels-music.ogg"))
+	{
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
 
+int main() {
+	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
 	// Characters
@@ -2401,8 +2413,10 @@ int main() {
 
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
+			if (music.getStatus() == Music::Playing) music.stop();
 			UpdateLevel(window);
 		} else {
+			if(music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
 		}
 
