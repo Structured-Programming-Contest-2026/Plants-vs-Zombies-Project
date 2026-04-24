@@ -2343,6 +2343,13 @@ int main() {
 		//isEntityUnlocked[chomper.type] =
 		true;
 
+	// Main Challenges
+	Challenge challenge_allZombieKilled;
+	challenge_allZombieKilled.description = "Kill all zombies";
+	challenge_allZombieKilled.check = [&](Level& lvl)->bool {
+		if (deadZombieCount >= lvl.targetZombie) return true;
+		};
+
 	// Levels
 	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
