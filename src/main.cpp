@@ -99,6 +99,7 @@ enum class ENTITY_TYPE : uint8_t {
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
+	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
@@ -136,6 +137,7 @@ enum class TEXTURE_TYPE : uint8_t {
 
 	PLANT_NORMAL,
 	PLANT_SHROOM,
+	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
 	PLANT_WALLNUT,
 	PLANT_CHOMPER,
@@ -188,6 +190,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::PLANT_SHROOM:
 		textureType = TEXTURE_TYPE::PLANT_SHROOM;
+		break;
+	case ENTITY_TYPE::PLANT_MINISHROOM:
+		textureType = TEXTURE_TYPE::PLANT_MINISHROOM;
 		break;
 	case ENTITY_TYPE::PLANT_SUNFLOWER:
 		textureType = TEXTURE_TYPE::PLANT_SUNFLOWER;
@@ -498,7 +503,7 @@ bool attackZombie(Entity& zombie, int attack= 1000000, bool withDyingAnimation=t
 	if (zombie.type == ENTITY_TYPE::NONE || zombie.isDead) return false; // already dead
 
 	zombie.health -= attack;
-	cout << "from `attackzombie` Zombie attacked! health now: " << zombie.health << endl;
+	//cout << "from `attackzombie` Zombie attacked! health now: " << zombie.health << endl;
 	if (zombie.health <= 0 && !withDyingAnimation) {
 		zombie.category = ENTITY_CATEGORY::NONE;
 		zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
@@ -742,6 +747,30 @@ Entity defineIcePeaShooter() {
 	icePea.setCurrentAnimation(0);
 
 	return icePea;
+}
+Entity defineMiniShroom() {
+	Texture tex;
+	tex.loadFromFile("assets/Minishroom.png");
+	textures[TEXTURE_TYPE::PLANT_MINISHROOM][Default_Texture_Index] = tex;
+
+	Entity miniShroom;
+	miniShroom.category = ENTITY_CATEGORY::PLANT;
+	miniShroom.type = ENTITY_TYPE::PLANT_MINISHROOM;
+	miniShroom.health = 50;
+	miniShroom.attack = 30;
+	miniShroom.price = 25;
+	miniShroom.scale = 0.4f;
+
+	miniShroom.num_animations = 1;
+
+	Animation a;
+	a.frames = 30;
+	a.frameTimer = 0.05f;
+	miniShroom.animations[0] = a;
+
+	miniShroom.setCurrentAnimation(0);
+
+	return miniShroom;
 }
 // zombies
 Entity defineNormalZombie() {
@@ -1143,11 +1172,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop texture
 
 		// plant attacking system
-		if ((plant.type != ENTITY_TYPE::PLANT_SUNFLOWER)
-			&& (plant.type != ENTITY_TYPE::PLANT_WALLNUT)
-			&& (plant.type != ENTITY_TYPE::PLANT_CHOMPER)
-			&& (plant.type != ENTITY_TYPE::PLANT_SUNSHROOM)
-			&& (plant.type != ENTITY_TYPE::PLANT_ICE_PEASHOOTER)) {
+		if (plant.type == ENTITY_TYPE::PLANT_NORMAL) {
 
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
@@ -1253,6 +1278,13 @@ void DrawPlantsGrid(RenderWindow& window) {
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					newBullets.push_back(newBullet);
 				}
+			}
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
+			for (Entity& zombie : entities) {
+				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+				bool inFront = zombie.position.x > plant.position.x &&
+					zombie.position.x < plant.position.x + plant.width * 2;
 			}
 		}
 
@@ -2153,6 +2185,7 @@ int main() {
 	Entity chomper = defineChomperPlant();
 	Entity sunshroom = defineSunShroom();
 	Entity icePeashooter = defineIcePeaShooter();
+	Entity miniShroom = defineMiniShroom();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -2180,12 +2213,13 @@ int main() {
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter};//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter, miniShroom};//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
 	isEntityUnlocked[sunflower.type] =
 	isEntityUnlocked[icePeashooter.type] =
-	//isEntityUnlocked[chomper.type] =
+	isEntityUnlocked[miniShroom.type] =
+	isEntityUnlocked[chomper.type] =
 	true;
 
 	// Levels
