@@ -1111,7 +1111,7 @@ Entity defineAllStarZombie() {
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBIE_ALLSTAR;
-	zombie.health = 300;
+	zombie.health = 400;
 	zombie.attack = 10;
 	zombie.x_vel = 0.18f;
 	// Animations
