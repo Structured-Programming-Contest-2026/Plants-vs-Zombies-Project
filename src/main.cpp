@@ -65,6 +65,11 @@ Clock nextLevelClock;
 //shovel
 bool isShovelActive = false;
 
+//relocate
+bool isRelocateActive = false;
+bool isRelocating = false;  
+int selectedPlantIndex = -1; 
+
 // lawnmower - cars
 struct Lawnmower {
 	bool isUsed = false, isMoving = false;
@@ -152,6 +157,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	NormalBullet,
 	IceBullet,
 	SHOVEL,
+	MAGIC_SHOVEL,
 };
 
 map<ENTITY_TYPE, bool> isEntityUnlocked;
@@ -1362,7 +1368,20 @@ void DrawPlantsGrid(RenderWindow& window) {
 		plantSprite.setPosition(plant.position);
 		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
 		plantSprite.setScale(Vector2f(plant.scale, plant.scale));
+		//hover for the plants
+		if (isRelocating && selectedPlantIndex != -1 &&
+			plant.gridRow == entities[selectedPlantIndex].gridRow &&
+			plant.gridCol == entities[selectedPlantIndex].gridCol && !plant.isDead) {
+			plantSprite.setColor(Color(200, 200, 200, 180));
+		}
+		else 
+		{
+			plantSprite.setColor(Color::White);
+		}
+		// ----------------------------------------
+
 		window.draw(plantSprite);
+		plantSprite.setColor(Color::White);//normal highlight
 		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
 	}
 
@@ -2124,7 +2143,9 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateSuns(window);
 	DrawSeeds(window);
 	DrawDebugGrid(window);
-	//here
+
+	
+	//Normal_Shovel
 	Texture& shovelTex = getTexture(TEXTURE_TYPE::SHOVEL);
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
@@ -2142,6 +2163,32 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	window.draw(uiSprite);
 	uiSprite.setColor(Color::White);
+
+	// Magic_Shovel
+	Texture& relocateTex = getTexture(TEXTURE_TYPE::MAGIC_SHOVEL);
+	uiSprite.setTexture(relocateTex);
+	resizeSpriteToTex(uiSprite, relocateTex);
+	uiSprite.setScale(Vector2f(0.09f, 0.09f));
+	uiSprite.setPosition(780.0f, 20.0f); 
+
+	if (isRelocateActive) uiSprite.setColor(Color(150, 150, 150)); 
+	else uiSprite.setColor(Color::White);
+
+	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (mouseJustClicked[0]) {
+			isRelocateActive = !isRelocateActive;
+			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
+
+			if (!isRelocateActive) {
+				isRelocating = false;
+				selectedPlantIndex = -1;
+			}
+			uiInteracted = true;
+		}
+	}
+	window.draw(uiSprite);
+	uiSprite.setColor(Color::White);
+
 
 	if (!uiInteracted && mouseJustClicked[0]) {
 		for (int i = 0; i < MAX_SUNS; i++) {
@@ -2167,7 +2214,8 @@ void UpdateLevel(RenderWindow& window) {
 			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
 
 				Entity& clickedEntity = getEntity({ row , col });
-				//if clicked
+
+				//nomral_shovel
 				if (isShovelActive && mouseJustClicked[0]) {
 					if (clickedEntity.category == ENTITY_CATEGORY::PLANT) {
 						clickedEntity.category = ENTITY_CATEGORY::NONE;
@@ -2176,7 +2224,50 @@ void UpdateLevel(RenderWindow& window) {
 					}
 				}
 
-				else if (!isShovelActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) {
+				// Magic Shovel
+				else if (isRelocateActive && mouseJustClicked[0]) {
+				
+					if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT)
+					{
+						for (int i = 0; i < entities.size(); i++) 
+						{
+							if (entities[i].category == ENTITY_CATEGORY::PLANT &&
+								entities[i].gridRow == row && entities[i].gridCol == col && !entities[i].isDead)
+							{
+								selectedPlantIndex = i;
+								isRelocating = true;
+								break;
+							}
+						}
+					}
+					
+					else if (isRelocating) {
+						if (clickedEntity.category == ENTITY_CATEGORY::NONE) 
+						{
+							// if it is possible
+							entities[selectedPlantIndex].gridRow = row;
+							entities[selectedPlantIndex].gridCol = col;
+
+							int x = currentLevel->offsetX + (col * currentLevel->cellWidth) + ((currentLevel->cellWidth - entities[selectedPlantIndex].width) / 2);
+							int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - entities[selectedPlantIndex].height);
+							entities[selectedPlantIndex].position = Vector2f(x, y);
+
+						
+							isRelocating = false;
+							selectedPlantIndex = -1;
+							isRelocateActive = false;
+						}
+						else
+						{
+							isRelocating = false;
+							selectedPlantIndex = -1;
+						}
+					}
+				}
+
+			//normal mode
+				else if (!isShovelActive && !isRelocateActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) 
+				{
 					Entity plant;
 					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price) {
 						plant = currentLevel->selectedPlants[selectedPlant];
@@ -2468,6 +2559,7 @@ int main() {
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
+	textures[TEXTURE_TYPE::MAGIC_SHOVEL][Default_Texture_Index].loadFromFile("assets/relocate.png");
 
 	// Font
 	font = new Font();
