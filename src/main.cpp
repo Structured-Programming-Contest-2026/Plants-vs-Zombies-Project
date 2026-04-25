@@ -1348,7 +1348,14 @@ void DrawPlantsGrid(RenderWindow& window) {
 			for (Entity& zombie : entities) {
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 				bool inFront = zombie.position.x > plant.position.x &&
-					zombie.position.x < plant.position.x + plant.width * 2;
+					zombie.position.x < plant.position.x + plant.width * 5;
+				if ((sameRow && inFront) && plant.attackClock.getElapsedTime().asSeconds() >= 2) {
+					plant.attackClock.restart();
+					Entity newBullet = defineNormalBullet();
+					newBullet.attack = plant.attack;
+					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y);
+					newBullets.push_back(newBullet);
+				}
 			}
 		}
 
@@ -2467,12 +2474,13 @@ int main() {
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter, miniShroom };//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
 		isEntityUnlocked[sunflower.type] =
 		isEntityUnlocked[icePeashooter.type] =
 		//isEntityUnlocked[chomper.type] =
+		isEntityUnlocked[miniShroom.type] =
 		true;
 
 	// Levels
