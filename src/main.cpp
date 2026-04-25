@@ -1700,19 +1700,17 @@ void DrawZombies(RenderWindow& window) {
 			}
 
 			if (zombie.isTackling) {
-				if (zombie.currentAnimation.currentFrame >= 8) {
-					for (int i = 0; i < entities.size(); i++) {
-						if (entities[i].category != ENTITY_CATEGORY::PLANT)
-							continue;
-						if (entities[i].isDead)
-							continue;
-						if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-							zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
-							entities[i].health = 0;
-							entities[i].category = ENTITY_CATEGORY::NONE;
-							entities[i].isDead = true;
-							break;
-						}
+				for (int i = 0; i < entities.size(); i++) {
+					if (entities[i].category != ENTITY_CATEGORY::PLANT)
+						continue;
+					if (entities[i].isDead)
+						continue;
+					if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
+						zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+						entities[i].health = 0;
+						entities[i].category = ENTITY_CATEGORY::NONE;
+						entities[i].isDead = true;
+						break;
 					}
 				}
 			}
