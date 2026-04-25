@@ -660,7 +660,7 @@ Entity defineNormalPlant() {
 	planet.category = ENTITY_CATEGORY::PLANT;
 	planet.type = ENTITY_TYPE::PLANT_NORMAL;
 	planet.health = 100;
-	planet.attack = 50;
+	planet.attack = 30;
 	//planet.attack = 5000;
 	planet.price = 25;
 	planet.scale = 0.75;
@@ -2481,7 +2481,8 @@ int main() {
 	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
 	levels[1].bgPath = "assets/background.png";
-	levels[1].targetZombie = 2;
+	levels[1].targetZombie = 20;
+	//levels[1].targetZombie = 2;
 	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
@@ -2496,7 +2497,8 @@ int main() {
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
-	levels[2].targetZombie = 2;
+	levels[2].targetZombie = 25;
+	//levels[2].targetZombie = 2;
 	levels[2].bgPath = "assets/pharoas.png";
 	levels[2].addReward(500);
 	levels[2].addReward(wallnut);
