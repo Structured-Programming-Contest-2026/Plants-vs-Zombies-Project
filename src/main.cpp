@@ -55,12 +55,10 @@ ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
-bool nextLevelTimerRun = false;
 
 // Clocks
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
-Clock nextLevelClock;
 
 //shovel
 bool isShovelActive = false;
@@ -123,6 +121,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
 	LEVEL_PLAY_BUTTON,
+	LUSTER,
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
 	SUN,
@@ -339,6 +338,9 @@ struct Entity {
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 };
+
+map<ENTITY_TYPE, Entity> plants;
+
 vector<Entity> entities;
 struct Reward {
 	enum {
@@ -387,6 +389,7 @@ struct Level {
 	Clock clock;
 	Time plantsSelectedTime;
 	Time gameOverTime;
+	Time winTime;
 
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
@@ -473,7 +476,7 @@ IntRect getFrameRect(Entity& entity) {
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
-	if (!isGameOver || entity.enteredHome) entity.nextFrame();
+	if ((!isGameOver && !isGameWon) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -551,7 +554,6 @@ void resetLevel() {
 	uiInteracted = false;
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
-	nextLevelTimerRun = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -569,7 +571,6 @@ void resetLevel() {
 	zombieClock.restart();
 	waveClockX.restart();
 	sunSpawnClock.restart();
-	nextLevelClock.restart();
 
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
@@ -673,6 +674,8 @@ Entity defineNormalPlant() {
 	planet.animations[2].frameTimer = 0.05f;
 	planet.animations[2].frames = 31;
 	planet.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_NORMAL] = planet;
 	return planet;
 
 }
@@ -694,6 +697,8 @@ Entity defineShroomPlant() {
 	shroom.animations[0].frameTimer = 0.1f;
 	shroom.animations[0].frames = 30;
 	shroom.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_SHROOM] = shroom;
 
 	return shroom;
 }
@@ -719,6 +724,8 @@ Entity defineSunflower() {
 	plant.animations[2].frameTimer = 0.018f;
 	plant.animations[2].frames = 60;
 	plant.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_SUNFLOWER] = plant;
 
 	return plant;
 }
@@ -753,6 +760,8 @@ Entity defineSunShroom() {
 
 	SunShroom.setCurrentAnimation(0);
 
+	plants[ENTITY_TYPE::PLANT_SUNSHROOM] = SunShroom;
+
 	return SunShroom;
 }
 Entity defineIcePeaShooter() {
@@ -777,6 +786,8 @@ Entity defineIcePeaShooter() {
 
 	icePea.setCurrentAnimation(0);
 
+	plants[ENTITY_TYPE::PLANT_ICE_PEASHOOTER] = icePea;
+
 	return icePea;
 }
 Entity defineMiniShroom() {
@@ -800,6 +811,8 @@ Entity defineMiniShroom() {
 	miniShroom.animations[0] = a;
 
 	miniShroom.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_MINISHROOM] = miniShroom;
 
 	return miniShroom;
 }
@@ -924,6 +937,8 @@ Entity defineWallnut() {
 
 	wallnut.setCurrentAnimation(0);
 
+
+	plants[ENTITY_TYPE::PLANT_WALLNUT] = wallnut;
 	return wallnut;
 }
 
@@ -958,6 +973,8 @@ Entity defineChomperPlant() {
 
 	Chomper.setCurrentAnimation(0);
 
+
+	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 	return Chomper;
 }
 bool chomper_attackZombie(Entity& zombie, Entity& plant) {
@@ -1236,7 +1253,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 
 		// Animation
-		if (!isGameOver) plant.nextFrame(); // next frame
+		if (!isGameOver && !isGameWon) plant.nextFrame(); // next frame
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop texture
 
 		// plant attacking system
@@ -1456,7 +1473,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// Animation
-		if (!isGameOver || zombie.enteredHome) zombie.nextFrame(); // next frame
+		if ((!isGameOver && !isGameWon) || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
 
@@ -1576,7 +1593,7 @@ void DrawZombies(RenderWindow& window) {
 						entity.hasTackled = true;
 						entity.x_vel = 0.05f;
 						entity.setCurrentAnimation(0);
-					};
+						};
 				}
 			}
 
@@ -1600,7 +1617,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// move
-		if (!isGameOver) zombie.position.x -= zombie.x_vel;
+		if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel;
 
 		if (zombie.enteredHome) {
 			if (zombie.position.y < 525) {
@@ -1637,11 +1654,9 @@ void DrawZombies(RenderWindow& window) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
 					if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 0.02f;
-					}
-					else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
-					}
-					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
 						zombie.x_vel = 0.18f;
 					} else {
 						zombie.x_vel = .05; // no plant - has health - move normally
@@ -1789,6 +1804,50 @@ void CheckTimer_AddSun(RenderWindow& window) {
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
 
+Sprite& DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float scale = 1.0f, Color color = Color::White) {
+	Sprite sprite;
+	sprite.setPosition(pos);
+
+	Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
+
+	Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * scale);
+	sprite.setTexture(seedPacket);
+	resizeSpriteToTex(sprite, seedPacket);
+	sprite.setScale({ scale, scale });
+
+	Text text;
+	text.setFont(*font);
+	text.setString(std::to_string(sunsMoney));
+	text.setFillColor(Color());
+	text.setPosition(pos + Vector2f(43, 110) * scale);
+
+	sprite.setColor(color);
+	plantSprite.setColor(color);
+
+	//Smart Crop [ Each Seed Packets ? ]
+	Texture& tex = getDefaultEntityTexture(plant.type);
+	int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
+	int frameHeight = tex.getSize().y;
+
+	plantSprite.setTexture(tex);
+	plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
+
+	plantSprite.setPosition(pos + Vector2f(13, 27) * scale);
+
+	float scaleFactor = 74.0f / frameHeight;
+	plantSprite.setScale(Vector2f(scaleFactor, scaleFactor) * scale);
+
+	window.draw(sprite);
+	window.draw(plantSprite);
+
+	text.setString(std::to_string(plant.price));
+	text.setPosition(pos + Vector2f(13, 103) * scale);
+	text.setCharacterSize(32 * scale);
+	window.draw(text);
+
+	return sprite;
+}
+
 void DrawSeeds(RenderWindow& window) {
 	const Vector2f pos = Vector2f(10.0f, 0);
 
@@ -1810,25 +1869,19 @@ void DrawSeeds(RenderWindow& window) {
 
 	window.draw(text);
 
-	Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
-	uiSprite.setTexture(seedPacket);
-	resizeSpriteToTex(uiSprite, seedPacket);
-	uiSprite.setScale(Vector2f(0.75f, 0.75f));
+	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
 	int removePlant = -1;
 
 	int i = -1;
 	for (auto& plant : currentLevel->selectedPlants) {
 		i++;
-		Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacket.getSize().x - 10.0f), 10.0f);
-		uiSprite.setPosition(spritePos);
+		Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacketSize.x - 10.0f), 10.0f);
 
-		Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
+		Sprite& sprite = DrawSeedPacket(window, plant, spritePos, 0.75f);
 
-		uiSprite.setColor(Color(255, 255, 255, 255));
-		plantSprite.setColor(Color(255, 255, 255, 255));
 
-		if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiSprite.setColor(Color(128, 128, 128, 255));
 			plantSprite.setColor(Color(128, 128, 128, 255));
 
@@ -1841,27 +1894,6 @@ void DrawSeeds(RenderWindow& window) {
 				}
 			}
 		}
-
-		//Smart Crop [ Each Seed Packets ? ]
-		Texture& tex = getDefaultEntityTexture(plant.type);
-		int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
-		int frameHeight = tex.getSize().y;
-
-		plantSprite.setTexture(tex);
-		plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
-
-		plantSprite.setPosition(spritePos + Vector2f(10, 20));
-
-		float scaleFactor = 55.0f / frameHeight;
-		plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
-
-		window.draw(uiSprite);
-		window.draw(plantSprite);
-
-		text.setString(std::to_string(plant.price));
-		text.setPosition(spritePos + Vector2f(10, 77));
-		text.setCharacterSize(24);
-		window.draw(text);
 	}
 	uiSprite.setColor(Color(255, 255, 255, 255));
 	plantSprite.setColor(Color(255, 255, 255, 255));
@@ -1871,6 +1903,162 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 
+void DrawSelectPlants(RenderWindow& window) {
+	if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+		return;
+	}
+
+	DrawSeeds(window);
+
+
+	Sprite bgSprite;
+	bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
+	bgSprite.setPosition(Vector2f(10, 123.0f));
+	bgSprite.setScale(Vector2f(1.5f, 1.5f));
+
+	window.draw(bgSprite);
+
+	Text text;
+	text.setFont(*font);
+	text.setString("Choose your plants");
+	text.setFillColor(Color(255, 255, 255, 128));
+	text.setPosition(Vector2f(240, 130.0f));
+
+	window.draw(text);
+
+	text.setFillColor(Color());
+
+	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
+
+	int i = -1;
+	for (auto& plant : currentLevel->plant_types) {
+		if (!isEntityUnlocked[plant.type]) continue;
+
+		i++;
+		Vector2f spritePos = Vector2f(50.0f, 190.0f) + Vector2f((i % 7) * (seedPacketSize.x - 10.0f), 10.0f + (i / 7) * 130.0f);
+
+		Vector2u size = Vector2u(Vector2f(seedPacketSize) * 0.75f);
+
+		bool disabled = false;
+
+		for (auto& selectedPlant : currentLevel->selectedPlants) {
+			if (selectedPlant.type == plant.type) {
+				disabled = true;
+				break;
+			}
+		}
+
+		Color color = Color::White;
+		if (disabled) {
+			color = Color(64, 64, 64, 255);
+		}
+
+		Sprite& sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
+
+		if (!disabled && mouseJustClicked[0] && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+			uiInteracted = true;
+			currentLevel->selectedPlants.push_back(plant);
+		}
+	}
+
+	Sprite startButton;
+
+	startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
+	startButton.setScale(Vector2f(1.5f, 1.5f));
+	startButton.setPosition(Vector2f(250.0f, 780.0f));
+
+	if (currentLevel->selectedPlants.size() == 0) {
+		startButton.setColor(Color(64, 64, 64, 255));
+	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+		startButton.setColor(Color(128, 128, 128, 255));
+		if (mouseJustClicked[0]) {
+			currentLevel->arePlantsSelected = true;
+			currentLevel->plantsSelectedTime = currentLevel->clock.getElapsedTime();
+		}
+	}
+
+	window.draw(startButton);
+
+	text.setString("Start Game");
+	text.setPosition(startButton.getPosition() + Vector2f(40, 8.0f));
+	text.setScale(Vector2f(1.5f, 1.5f));
+	text.setFillColor(Color(255, 255, 255, 128));
+	text.setCharacterSize(24);
+
+	window.draw(text);
+}
+
+void DrawRewardsScreen(RenderWindow& window) {
+	Text text;
+	text.setFont(*font);
+	text.setString("You unlocked a new plant!");
+	text.setFillColor(Color(255, 255, 255, 255));
+	text.setPosition(Vector2f(960, 130.0f));
+	text.setCharacterSize(64);
+	text.setOrigin(text.getLocalBounds().getSize() / 2.0f);
+
+	window.draw(text);
+
+	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
+
+	float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->winTime.asSeconds();
+	float progress = (diff - 1) / 0.5f;
+	if (progress > 1) progress = 1;
+	float scale = 2.0f * progress;
+
+	Sprite packetBg;
+	Texture& packetBgTex = getTexture(TEXTURE_TYPE::LUSTER);
+	packetBg.setTexture(packetBgTex);
+	packetBg.setPosition(Vector2f(960, 540));
+	packetBg.setScale(Vector2f(scale, scale));
+	packetBg.setOrigin(Vector2f(packetBgTex.getSize()) / 2.0f);
+	Vector2f texSize = Vector2f(packetBgTex.getSize());
+	Vector2f size = Vector2f(512, 512) * progress + Vector2f(32, 32) * sin(diff * 1.57f);
+	packetBg.setScale(Vector2f(size.x / texSize.x, size.y / texSize.y));
+
+	packetBg.setRotation(diff * 3.14f);
+
+	window.draw(packetBg);
+
+	DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, scale);
+
+	Sprite startButton;
+
+	startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
+	startButton.setScale(Vector2f(1.5f, 1.5f));
+	startButton.setPosition(Vector2f(843, 900));
+
+	if (currentLevel->selectedPlants.size() == 0) {
+		startButton.setColor(Color(64, 64, 64, 255));
+	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+		startButton.setColor(Color(128, 128, 128, 255));
+		if (mouseJustClicked[0]) {
+			currentLevel->claimRewards();
+			if (currentLevel->lvlNum < number_levels - 1)
+				levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
+
+			//for (auto& r : currentLevel->rewards) {
+			//	if (r.type == Reward::None) continue;
+			//	r.isClaimed = true;	// maybe when click the claim button
+			//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
+			//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
+			//}
+
+			nextLevel();
+		}
+	}
+
+	window.draw(startButton);
+
+	text.setString("Next Level");
+	text.setPosition(startButton.getPosition() + Vector2f(40, 8.0f));
+	text.setScale(Vector2f(1.5f, 1.5f));
+	text.setFillColor(Color(255, 255, 255, 128));
+	text.setCharacterSize(24);
+	text.setOrigin({ 0, 0 });
+
+	window.draw(text);
+}
 
 void UpdateLevel(RenderWindow& window) {
 
@@ -1958,163 +2146,39 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 	if (isGameWon == true) {
-		if (!nextLevelTimerRun) {
-			// rewards (debug)
-			cout << "Claim your rewards:\n";
-			currentLevel->claimRewards();
-			if (currentLevel->lvlNum < number_levels - 1)
-				levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
+		// rewards (debug)
 
-			//for (auto& r : currentLevel->rewards) {
-			//	if (r.type == Reward::None) continue;
-			//	r.isClaimed = true;	// maybe when click the claim button
-			//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
-			//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
-			//}
-
-			nextLevelClock.restart();
-			nextLevelTimerRun = true;
-		} else if (nextLevelClock.getElapsedTime().asSeconds() >= 3.0f) {
-			nextLevelTimerRun = false;
-			nextLevel();
-		} else {
-			window.draw(gameWonScreen);
-			Text text;
-			text.setFont(*font);
-			text.setString("Next Level in " + to_string(3 - (int)nextLevelClock.getElapsedTime().asSeconds()));
-			text.setFillColor(Color(0, 0, 0));
-			text.setPosition(Vector2f(150, 130.0f));
-			text.setScale(Vector2f(1.5f, 1.5f));
-			text.setOutlineColor(Color(255, 0, 255));
-			RectangleShape outline(Vector2f(400, 80));
-			outline.setPosition(text.getPosition() - Vector2f(10, 10));
-			outline.setFillColor(Color::White);
-			window.draw(outline);
-			window.draw(text);
+		if (currentLevel->winTime == Time::Zero) {
+			currentLevel->winTime = currentLevel->clock.getElapsedTime();
 		}
+
+		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->winTime.asSeconds();
+		if (diff < 1) {
+			float progress = diff / 1.0f;
+			if (progress < 0) progress = 0;
+			if (progress > 1) progress = 1;
+
+			int c = 255 - (int)(128 * progress);
+			ground.setColor(Color(c, c, c, 255));
+			zombieSprite.setColor(Color(c, c, c, 255));
+			plantSprite.setColor(Color(c, c, c, 255));
+		} else {
+			DrawRewardsScreen(window);
+		}
+
 		return;
 	}
 
 	// Plant Selection Screen
 	if (!currentLevel->arePlantsSelected) {
-		if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
-			return;
-		}
-
-		DrawSeeds(window);
-
-
-		Sprite bgSprite;
-		bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
-		bgSprite.setPosition(Vector2f(10, 123.0f));
-		bgSprite.setScale(Vector2f(1.5f, 1.5f));
-
-		window.draw(bgSprite);
-
-		Text text;
-		text.setFont(*font);
-		text.setString("Choose your plants");
-		text.setFillColor(Color(255, 255, 255, 128));
-		text.setPosition(Vector2f(240, 130.0f));
-
-		window.draw(text);
-
-		text.setFillColor(Color());
-
-		Texture& seedPacket = getTexture(TEXTURE_TYPE::SEEDPACKET);
-
-		Sprite seedBg;
-		seedBg.setTexture(seedPacket);
-		resizeSpriteToTex(seedBg, seedPacket);
-		seedBg.setScale(Vector2f(0.75f, 0.75f));
-
-		int i = -1;
-		for (auto& plant : currentLevel->plant_types) {
-			if (!isEntityUnlocked[plant.type]) continue;
-
-			i++;
-			Vector2f spritePos = Vector2f(50.0f, 190.0f) + Vector2f((i % 7) * (seedPacket.getSize().x - 10.0f), 10.0f + (i / 7) * 130.0f);
-			seedBg.setPosition(spritePos);
-
-			Vector2u size = Vector2u(Vector2f(seedPacket.getSize()) * 0.75f);
-
-			seedBg.setColor(Color(255, 255, 255, 255));
-			plantSprite.setColor(Color(255, 255, 255, 255));
-
-			bool disabled = false;
-
-			for (auto& selectedPlant : currentLevel->selectedPlants) {
-				if (selectedPlant.type == plant.type) {
-					disabled = true;
-					break;
-				}
-			}
-
-			if (disabled) {
-				seedBg.setColor(Color(64, 64, 64, 255));
-				plantSprite.setColor(Color(64, 64, 64, 255));
-			} else if (seedBg.getGlobalBounds().contains(Vector2f(mousePos))) {
-				seedBg.setColor(Color(128, 128, 128, 255));
-				plantSprite.setColor(Color(128, 128, 128, 255));
-				if (mouseJustClicked[0]) {
-					uiInteracted = true;
-					currentLevel->selectedPlants.push_back(plant);
-				}
-			}
-
-			window.draw(seedBg);
-
-			//Smart Crop [ Each Seed Packets ? ]
-			Texture& tex = getDefaultEntityTexture(plant.type);
-			int frameWidth = tex.getSize().x / plant.currentAnimation.frames;
-			int frameHeight = tex.getSize().y;
-
-			plantSprite.setTexture(tex);
-			plantSprite.setTextureRect(IntRect{ 0, 0, frameWidth, frameHeight });
-
-			plantSprite.setPosition(spritePos + Vector2f(10, 20));
-
-			float scaleFactor = 55.0f / frameHeight;
-			plantSprite.setScale(Vector2f(scaleFactor, scaleFactor));
-
-			window.draw(plantSprite);
-
-			text.setString(std::to_string(plant.price));
-			text.setPosition(spritePos + Vector2f(10, 77));
-			text.setCharacterSize(24);
-			window.draw(text);
-		}
-
-		Sprite startButton;
-
-		startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
-		startButton.setScale(Vector2f(1.5f, 1.5f));
-		startButton.setPosition(Vector2f(250.0f, 780.0f));
-
-		if (currentLevel->selectedPlants.size() == 0) {
-			startButton.setColor(Color(64, 64, 64, 255));
-		} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
-			startButton.setColor(Color(128, 128, 128, 255));
-			if (mouseJustClicked[0]) {
-				currentLevel->arePlantsSelected = true;
-				currentLevel->plantsSelectedTime = currentLevel->clock.getElapsedTime();
-			}
-		}
-
-		window.draw(startButton);
-
-		text.setString("Start Game");
-		text.setPosition(startButton.getPosition() + Vector2f(40, 8.0f));
-		text.setScale(Vector2f(1.5f, 1.5f));
-		text.setFillColor(Color(255, 255, 255, 128));
-
-		window.draw(text);
+		DrawSelectPlants(window);
 
 		return;
 	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
 		return;
 	}
 
+	isGameWon = true;
 	// Level Update
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
@@ -2462,6 +2526,7 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
+	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
