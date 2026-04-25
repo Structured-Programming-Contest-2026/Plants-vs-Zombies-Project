@@ -54,9 +54,10 @@ ZombieMaxGapTime = ZombieMinGapTime + 3,
 ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
 int sunsMoney = 3000;
+int spentSuns = 0;
 int coinsMoney = 0;
 bool nextLevelTimerRun = false;
-
+bool drawLevelstartingplants = false;
 // Clocks
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
@@ -107,6 +108,10 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
 	PLANT_ICE_PEASHOOTER,
+	PLANT_POTATO_MINE,
+	Explosion,
+	PLANT_DOOM_MINE,
+
 
 	NormalBullet,
 	IceBullet,
@@ -122,12 +127,13 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
 	LEVEL_PLAY_BUTTON,
+	CELL_BACKGROUND,
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
-	
+
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -146,6 +152,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
 	PLANT_ICE_PEASHOOTER,
+	PLANT_POTATO_MINE,
+	Explosion,
+	PLANT_DOOM_MINE,
 
 	NormalBullet,
 	IceBullet,
@@ -219,6 +228,12 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
+		break;
+	case ENTITY_TYPE::PLANT_POTATO_MINE:
+		textureType = TEXTURE_TYPE::PLANT_POTATO_MINE;
+		break;
+	case ENTITY_TYPE::PLANT_DOOM_MINE:
+		textureType = TEXTURE_TYPE::PLANT_DOOM_MINE;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -352,12 +367,25 @@ struct Reward {
 		}
 	}
 };
-
+struct Level; // Forward declaration for Challenge
+Vector2f gridCellPosition(int row, int col, Entity ent); // Forward declaration for Level
+struct Challenge {
+	enum Status {
+		InProgress = 0,
+		Win,
+		Lose,
+		TakenAction
+	};
+	string description;
+	// must set every case (cant set win and skip inprogress)
+	function<Challenge::Status(Level&)> check = nullptr;
+};
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 3000;
 	string bgPath = "assets/background.png";
+	//string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
@@ -376,11 +404,12 @@ struct Level {
 	int bgRectHeight = 600;
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
-
+	Challenge challenges[10];
+	// Timers
 	Clock clock;
 	Time plantsSelectedTime;
 	Time gameOverTime;
-
+	// Functions
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
 			if(reward.type == Reward::None) {
@@ -409,13 +438,56 @@ struct Level {
 			cout << "plant reward already claimed!" << endl;
 		}
 	}
+	Challenge::Status checkChallenges() {
+		if (isGameOver || isGameWon) return Challenge::TakenAction; // dont lose/win multiple times
+		for (const Challenge& challenge : challenges) {
+			if (challenge.check == nullptr) continue;
+			Challenge::Status s = challenge.check(*this);
+			if (s != Challenge::InProgress) {
+				cout << "Challenge: [" << challenge.description << "] has ";
+				if(s == Challenge::Win) cout << "been won!";
+				else if (s == Challenge::Lose) cout << "been lost!";
+
+				return s;
+			}
+		}
+		return Challenge::InProgress;
+	}
+	void addChallenge(string desc, function<Challenge::Status(Level&)> check) {
+		for (Challenge& challenge : challenges) {
+			if (challenge.check == nullptr) {
+				challenge.description = desc;
+				challenge.check = check;
+				return;
+			}
+		}
+	}
+	void addChallenge(Challenge ch) {
+		addChallenge(ch.description, ch.check);
+	}
+	vector<Entity> onGridPlants;
+	void addonGridPlant(Entity plant, int row, int col) {
+		plant.position = gridCellPosition(row, col, plant);
+		onGridPlants.push_back(plant);
+	}
+	int specialGridCells[gridRows][gridCols]{}; // 0 for nosrmal, 1 for protected, ...
 };
 const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 
-
-// Zombie Clock - to add new zombie after some time interval
+// Set isGameOver to true and record gameOverTime for current level
+void loseGame() {
+	currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
+	isGameOver = true;
+	//cout << "Game Over!" << endl;
+}
+// Set isGameWon to true and Later (record gameOverTime for current level)
+void winGame() {
+	currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
+	isGameWon = true;
+	//cout << "Game Won!" << endl;
+}
 
 //Independet Sprites
 
@@ -423,6 +495,7 @@ Sprite plantSprite;
 Sprite zombieSprite;
 Sprite bulletSprite;
 Sprite uiSprite;
+Sprite gridcellSprite;
 
 // TODO: remove vectors and maps and replace them with arrays :)
 
@@ -501,6 +574,19 @@ Vector2i gridCell_imp(Vector2f pos) {
 
 Vector2i gridCell(Vector2i pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
 Vector2i gridCell(Vector2f pos) { return gridCell_imp({ float(pos.x), float(pos.y) }); }
+Vector2f gridCellPosition(int row, int col, float width, float height) {
+	if (row >= gridraws || col >= gridcols) return { 0,0 };
+	//centrize
+	float x = offsetX + (col * cellWidth) + ((cellWidth - width) / 2); //general formula -> start + (containerSize - objectSize) / 2
+
+	//alighn to the bottom
+	float y = offsetY + (row * cellHeight) + (cellHeight - height);
+
+	return { x, y };
+}
+Vector2f gridCellPosition(int row, int col, Entity ent) {
+	return gridCellPosition(row, col, ent.width, ent.height);
+}
 
 Entity& getEntity(Vector2i gridPos) {
 
@@ -528,7 +614,7 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 		zombie.category = ENTITY_CATEGORY::NONE;
 		zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
 		if (deadZombieCount >= currentLevel->targetZombie) {
-			isGameWon = true;
+			winGame();
 		}
 		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = " << zombie.isDead << endl;
 		return true;
@@ -546,6 +632,7 @@ void resetLevel()
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
 	nextLevelTimerRun = false;
+	drawLevelstartingplants = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -555,6 +642,7 @@ void resetLevel()
 	selectedPlant = 0;
 
 	sunsMoney = currentLevel->startingSuns;
+	spentSuns = 0;
 
 	for (int i = 0; i < gridRows; i++)
 	{
@@ -606,7 +694,6 @@ void nextLevel() {
 	resetLevel();
 	startLevel(currentLevel->lvlNum);
 }
-
 
 // Define Characters - Functions
 
@@ -775,30 +862,6 @@ Entity defineIcePeaShooter() {
 	icePea.setCurrentAnimation(0);
 
 	return icePea;
-}
-Entity defineMiniShroom() {
-	Texture tex;
-	tex.loadFromFile("assets/Minishroom.png");
-	textures[TEXTURE_TYPE::PLANT_MINISHROOM][Default_Texture_Index] = tex;
-
-	Entity miniShroom;
-	miniShroom.category = ENTITY_CATEGORY::PLANT;
-	miniShroom.type = ENTITY_TYPE::PLANT_MINISHROOM;
-	miniShroom.health = 50;
-	miniShroom.attack = 30;
-	miniShroom.price = 25;
-	miniShroom.scale = 0.4f;
-
-	miniShroom.num_animations = 1;
-
-	Animation a;
-	a.frames = 30;
-	a.frameTimer = 0.05f;
-	miniShroom.animations[0] = a;
-
-	miniShroom.setCurrentAnimation(0);
-
-	return miniShroom;
 }
 // zombies
 Entity defineNormalZombie() {
@@ -1243,7 +1306,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced a sun!" << endl;
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
 			plant.growthTimer += delta_time;
 
 			if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
@@ -1281,7 +1345,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 				addSun(newSun);
 				cout << "Sunflower produced" << sunValue << " sun!" << endl;
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 				bool zombieInLane = false;
@@ -1305,13 +1370,73 @@ void DrawPlantsGrid(RenderWindow& window) {
 				}
 			}
 		}
-		else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
-			for (Entity& zombie : entities) {
-				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
-				bool inFront = zombie.position.x > plant.position.x &&
-					zombie.position.x < plant.position.x + plant.width * 2;
+		else if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE) {
+
+			// Phase 1: Wait for 15 seconds before arming
+			if (plant.currentAnimationIndex == 0 &&
+				plant.attackClock.getElapsedTime().asSeconds() >= 15.0f)
+			{
+				// Transition to armed state (animation 1)
+				plant.setCurrentAnimation(1);
+				plant.position.y = offsetY + (plant.gridRow * cellHeight) + (cellHeight - 100);
+
+				// Phase 2: Once armed, check for nearby zombies
+				if (plant.currentAnimationIndex == 1) {
+					for (Entity& zombie : entities) {
+						if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
+
+						bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+						bool close = abs(zombie.position.x - plant.position.x) < 120.0f;
+
+						if (sameRow && close) {
+							// EXPLODE: Damage all zombies in radius
+							for (Entity& z2 : entities) {
+								if (z2.category != ENTITY_CATEGORY::ZOMBIE || z2.isDead) continue;
+								bool inRow = abs(z2.position.y - plant.position.y) < 100.0f;
+								bool inRange = abs(z2.position.x - plant.position.x) < 200.0f;
+								if (inRow && inRange) {
+									z2.health -= plant.attack;  // 1800 damage
+								}
+							}
+
+							// Mine destroys itself after explosion
+							plant.category = ENTITY_CATEGORY::NONE;
+							break;
+						}
+					}
+				}
 			}
 		}
+
+					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+					bool close = zombie.position.x > plant.position.x - 50 &&
+						zombie.position.x < plant.position.x + 200;
+
+					printf("Checking zombie at (%.1f, %.1f) against plant at (%.1f, %.1f): sameRow=%d, close=%d\n",
+						zombie.position.x, zombie.position.y, plant.position.x, plant.position.y,
+						sameRow, close);
+
+
+					if (sameRow && close) {
+						// Trigger explosion animation (1 cycle)
+						plant.DoAnimation(1, 1);
+
+						// After animation completes, deal damage
+						plant.afterAnimation = [](Entity& entity) {
+							for (Entity& z : entities) {
+								if (z.category != ENTITY_CATEGORY::ZOMBIE || z.isDead) continue;
+								if (abs(z.position.y - entity.position.y) < 100.0f) {
+									attackZombie(z, entity.attack, true);  // 9999 damage
+								}
+							}
+							entity.category = ENTITY_CATEGORY::NONE;  // Destroy plant
+							};
+						break;
+					}
+				}
+			}
+		}
+
 
 		plantSprite.setPosition(plant.position);
 		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
@@ -1390,7 +1515,7 @@ void DrawZombies(RenderWindow& window) {
 					//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
 					//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
 					//if (deadZombieCount >= currentLevel->targetZombie) {
-					//	isGameWon = true;
+					//	winGame();
 					//}
 
 					};
@@ -1630,6 +1755,16 @@ void UpdateLawnmowers(RenderWindow& window) {
 	}
 }
 
+// Puts level on-grid starting plants into entities
+void PushLevelStartingPlants() {
+	if (drawLevelstartingplants) return;
+	
+	for (auto& p : currentLevel->onGridPlants) {
+		entities.push_back(p);
+	}
+	drawLevelstartingplants = true;
+}
+
 int t = 1, dz = 0, zmn, zmx;
 void CheckTimer_AddZombie(RenderWindow& window) {
 	if (currentLevel == nullptr) { cout << "Still lvl; unchosen, didnt add zombie\n"; return; }
@@ -1774,6 +1909,14 @@ void DrawSeeds(RenderWindow& window) {
 
 
 void UpdateLevel(RenderWindow& window) {
+	// Check level challenges
+	Challenge::Status levelStatus = currentLevel->checkChallenges();
+	if (levelStatus == Challenge::Lose) {
+		loseGame();
+	}
+	else if(levelStatus == Challenge::Win) {
+		winGame();
+	}
 
 	// Drawing
 	window.clear(Color::Black);
@@ -1810,10 +1953,10 @@ void UpdateLevel(RenderWindow& window) {
 	zombieSprite.setColor(Color::White);
 	plantSprite.setColor(Color::White);
 
-	if (isGameOver) {
+	if (isGameOver) {  // fade out 
 		gameOverScreen.setFillColor(Color(255, 255, 255, 0));
 		gameOverScreen.setScale({ 0, 0 });
-
+		// 1-3.75s: [isGameOver=true & currentLevel->gameOverTime recorder], 3.75-5.75s: fade to gray, 5.75-7.5s: show game over screen, 7.5-8.5s: fade to black, 8.5s: reset and main menu
 		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 1) {
 			float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 1) / 2.0f;
 			if (progress < 0) progress = 0;
@@ -1832,7 +1975,6 @@ void UpdateLevel(RenderWindow& window) {
 			gameOverScreen.setFillColor(Color(255, 255, 255, (int)(255 * progress)));
 			gameOverScreen.setScale({ progress, progress });
 		}
-
 		if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 7.5f) {
 			float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 7.5) / 1.0f;
 			if (progress < 0) progress = 0;
@@ -1854,6 +1996,17 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	window.draw(ground);
+	//for(int r=0; r<gridRows; r++){
+	//	for(int c=0; c<gridCols; c++){
+	//		int cellType = currentLevel->specialGridCells[r][c];
+	//		if (cellType == 0) continue;
+	//		Texture &tex = textures[TEXTURE_TYPE::CELL_BACKGROUND][cellType];
+	//		gridcellSprite.setTexture(tex);
+	//		//gridcellSprite.setScale(Vector2f(cellwidth / tex.getSize().x, cellHeight / tex.getSize().y));
+	//		gridcellSprite.setPosition(gridCellPosition(r, c, cellwidth, cellheight));
+	//		window.draw(gridcellSprite);
+	//	}
+	//}
 	DrawZombies(window);
 	DrawPlantsGrid(window);
 
@@ -2022,6 +2175,8 @@ void UpdateLevel(RenderWindow& window) {
 	// Level Update
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
+	
+	PushLevelStartingPlants();
 
 	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
@@ -2088,12 +2243,19 @@ void UpdateLevel(RenderWindow& window) {
 						plant.gridRow = row;
 						plant.gridCol = col;
 
-						int x = currentLevel->offsetX + (col * currentLevel->cellWidth) + ((currentLevel->cellWidth - plant.width) / 2);
-						int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - plant.height);
+						//centrize
+						int x = offsetX + (col * cellWidth) + ((cellWidth - plant.width) / 2); //general formula -> start + (containerSize - objectSize) / 2
+
+						//alighn to the bottom
+						int y = offsetY + (row * cellHeight) + (cellHeight - plant.height);
 
 						plant.position = Vector2f(x, y);
+
 						entities.push_back(plant);
+						entities.back().attackClock.restart(); // for mines especially, potato mine and doom shroom
+
 						sunsMoney -= plant.price;
+						spentSuns += plant.price;
 					}
 				}
 			}
@@ -2104,8 +2266,7 @@ void UpdateLevel(RenderWindow& window) {
 		{
 			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && lawnmowers[zombie.gridRow].isUsed)//end of the screen
 			{
-				currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
-				isGameOver = true;
+				loseGame();
 				zombie.enteredHome = true;
 				cout << "Zombies ate your brains!\n";
 				break;
@@ -2330,14 +2491,13 @@ int main() {
 	// Loading Textures + Defining entities
 	
 	// Plants
-	Entity repeaterPlant = defineNormalPlant();
+	Entity peashooter = defineNormalPlant();
 	Entity shroom = defineShroomPlant();
 	Entity sunflower = defineSunflower();
 	Entity wallnut = defineWallnut();
 	Entity chomper = defineChomperPlant();
 	Entity sunshroom = defineSunShroom();
 	Entity icePeashooter = defineIcePeaShooter();
-	Entity miniShroom = defineMiniShroom();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -2359,32 +2519,57 @@ int main() {
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
-	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, peashooter, wallnut, chomper, icePeashooter, doomShroom, POTATO_MINE };//, shroom, sunshroom };
 	// Unlock starting plants
-	isEntityUnlocked[repeaterPlant.type] =
+	isEntityUnlocked[peashooter.type] =
 		isEntityUnlocked[sunflower.type] =
 		isEntityUnlocked[icePeashooter.type] =
+		isEntityUnlocked[POTATO_MINE.type] =
+		isEntityUnlocked[doomShroom.type] =
 		//isEntityUnlocked[chomper.type] =
 		true;
+
+	// Main Challenges
+	Challenge challenge_allZombieKilled;
+	challenge_allZombieKilled.description = "Kill all zombies";
+	challenge_allZombieKilled.check = [&](Level& lvl)->Challenge::Status {
+		if (deadZombieCount >= lvl.targetZombie) return Challenge::Win;
+		else return Challenge::InProgress;
+		// must set every case (cant set win and skip inprogress)
+		};
 
 	// Levels
 //---------------------------------------
 // Level 1: Day
 	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
-	levels[1].bgPath = "assets/background.png";
+	//levels[1].startingSuns = 300;
+	levels[1].bgPath = "assets/background.png";			// TODO: SIMON change it
 	levels[1].targetZombie = 2;
 	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
+	// starting plants on the grid
+	levels[1].addonGridPlant(sunflower, 0, 1);
+	levels[1].addonGridPlant(sunflower, 0, 2);
+	levels[1].addonGridPlant(wallnut, 0, 3);
+	// protected squares
+	levels[1].specialGridCells[0][3] = 1;
+	// challenges
+	levels[1].addChallenge(challenge_allZombieKilled);
+	levels[1].addChallenge(
+		"Don't spend more Suns than 50",
+		[&](Level& level) -> Challenge::Status {
+			if (spentSuns > 50) return Challenge::Lose;
+			return Challenge::InProgress;
+		});
 
 	levels[1].offsetX = 450;  
 	levels[1].offsetY = 135; 
