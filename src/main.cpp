@@ -842,7 +842,8 @@ Entity defineMiniShroom() {
 	miniShroom.type = ENTITY_TYPE::PLANT_MINISHROOM;
 	miniShroom.health = 50;
 	miniShroom.attack = 30;
-	miniShroom.price = 25;
+	miniShroom.price = 0;            
+	miniShroom.seedCooldown = 5.0f;  
 	miniShroom.scale = 0.4f;
 
 	miniShroom.num_animations = 1;
@@ -1450,9 +1451,17 @@ void DrawPlantsGrid(RenderWindow& window) {
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 				bool inFront = zombie.position.x > plant.position.x &&
 					zombie.position.x < plant.position.x + plant.width * 5;
-				if ((sameRow && inFront) && plant.attackClock.getElapsedTime().asSeconds() >= 2) {
+
+						if (sameRow && inFront) {
+							zombieInFront = true;
+							break; // Found a target, stop looking
+						}
+					}
+				}
+
+				if (zombieInFront) {
 					plant.attackClock.restart();
-					Entity newBullet = defineNormalBullet();
+					Entity newBullet = defineShroomBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y);
 					newBullets.push_back(newBullet);
@@ -1501,7 +1510,7 @@ void DrawZombies(RenderWindow& window) {
 			mwr.isMoving = true;
 		}
 
-		// dead		// NOTE: Currently not showing where [isDead==true] not[health <= 0] because of the dying animation, but we might change it later
+		// dead		// NOTE: Currently not showing where[isDead==true] not[health <= 0] because of the dying animation, but we might change it later
 		if (zombie.health <= 0) {
 			//cout << "zombie health is " << zombie.health << endl;
 			if (!zombie.isDead && (zombie.currentAnimationIndex == 0
@@ -1908,7 +1917,7 @@ void CheckTimer_AddSun(RenderWindow& window) {
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
 
-Sprite& DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float scale = 1.0f, Color color = Color::White) {
+Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float scale = 1.0f, Color color = Color::White) {
 	Sprite sprite;
 	sprite.setPosition(pos);
 
@@ -1982,7 +1991,17 @@ void DrawSeeds(RenderWindow& window) {
 		i++;
 		Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacketSize.x - 10.0f), 10.0f);
 
-		Sprite& sprite = DrawSeedPacket(window, plant, spritePos, 0.75f);
+		Color packetColor = Color::White;
+		if (sunsMoney < plant.price || plant.currentSeedCooldown > 0) {
+			packetColor = Color(100, 100, 100, 255);
+		}
+
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, packetColor);
+
+		if (plant.currentSeedCooldown > 0.0f && plant.seedCooldown > 0.0f) {
+			float progress = plant.currentSeedCooldown / plant.seedCooldown;
+			float h = sprite.getGlobalBounds().height;
+			float w = sprite.getGlobalBounds().width;
 
 
 		if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
@@ -2058,7 +2077,7 @@ void DrawSelectPlants(RenderWindow& window) {
 			color = Color(64, 64, 64, 255);
 		}
 
-		Sprite& sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
 
 		if (!disabled && mouseJustClicked[0] && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiInteracted = true;
@@ -2420,7 +2439,7 @@ void UpdateLevel(RenderWindow& window) {
 				//normal mode
 				else if (!isShovelActive && !isRelocateActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) {
 					Entity plant;
-					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price) {
+					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price && currentLevel->selectedPlants[selectedPlant].currentSeedCooldown <= 0) {
 						plant = currentLevel->selectedPlants[selectedPlant];
 
 						plant.gridRow = row;
