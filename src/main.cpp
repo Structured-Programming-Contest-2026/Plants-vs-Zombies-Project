@@ -103,6 +103,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
+	PLANT_REPEATER, // <-- ADDED: Repeater Plant
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -144,6 +145,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
+	PLANT_REPEATER, // <-- ADDED: Repeater Plant Texture
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -200,6 +202,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
 		textureType = TEXTURE_TYPE::PLANT_NORMAL;
+		break;
+	case ENTITY_TYPE::PLANT_REPEATER: // <-- ADDED: Repeater Plant case
+		textureType = TEXTURE_TYPE::PLANT_REPEATER;
 		break;
 	case ENTITY_TYPE::PLANT_SHROOM:
 		textureType = TEXTURE_TYPE::PLANT_SHROOM;
@@ -691,6 +696,31 @@ Entity defineNormalPlant() {
 	return planet;
 
 }
+
+Entity defineRepeaterPlant() {
+	Texture tex;
+	tex.loadFromFile("assets/Repeater.png");
+	textures[TEXTURE_TYPE::PLANT_REPEATER][Default_Texture_Index] = tex;
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_REPEATER;
+	plant.health = 100;
+	plant.attack = 30;
+	plant.price = 100;
+	plant.scale = 0.75;
+
+	plant.num_animations = 1;
+	// Idle animation
+	plant.animations[0].frameTimer = 0.1f;
+	plant.animations[0].frames = 14;
+
+	plant.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_REPEATER] = plant;
+	return plant;
+}
+
 Entity defineShroomPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/shroom.png");
@@ -1189,6 +1219,7 @@ Entity defineIceBullet() {
 	textures[TEXTURE_TYPE::IceBullet][Default_Texture_Index] = tex;
 
 	Entity bullet{};
+	bullet.scale = 0.5;
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::IceBullet;
 	bullet.attack = 10;
@@ -1211,6 +1242,7 @@ void UpdateSuns(RenderWindow& window) {
 		uiSprite.setPosition(sun.position);
 		uiSprite.setTexture(tex);
 		uiSprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
+		uiSprite.setScale(Vector2f(1.0f, 1.0f));
 
 		if (sun.targeted) { // for ra
 			uiSprite.setColor(Color(255, 80, 80));
@@ -1258,6 +1290,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				//cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
 		}
+		else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
 					if (chomper_attackZombie(zombie, plant)) break;
@@ -1332,6 +1365,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 					plant.DoAnimation(1, 2);
 				}
 			}
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -1788,6 +1823,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			bulletSprite.setTexture(bulletTex);
 			bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
 			bulletSprite.setPosition(bullet.position);
+			bulletSprite.setScale(Vector2f(bullet.scale, bullet.scale));
 			window.draw(bulletSprite);
 		}
 	}
@@ -2688,6 +2724,7 @@ int main() {
 	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom };//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
+		isEntityUnlocked[normalPlant.type] =
 		isEntityUnlocked[sunflower.type] =
 		isEntityUnlocked[icePeashooter.type] =
 		//isEntityUnlocked[chomper.type] =
