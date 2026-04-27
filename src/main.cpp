@@ -132,6 +132,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SUN,
 	SEEDBANK,
 	SEEDPACKET,
+	BOOSTER,
 
 
 	ZOMBIE_NORMAL,
@@ -243,7 +244,7 @@ Texture& getDefaultEntityTexture(ENTITY_TYPE type) {
 }
 
 struct Animation {
-	int frames = 1;
+	int frames = 0;
 	float frameTimer = 1.0f;
 	int currentFrame = 0;
 	int cycles = 0;
@@ -293,6 +294,9 @@ struct Entity {
 
 	bool hasTackled = false; // for allstar
 	bool isTackling = false; // for allstar
+
+	bool isBoosted = false;
+	float boostAttackTimer = 2.7;
 
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = [](Entity&) {};	// called after animation finish (if animationForCycles != -1)
@@ -439,6 +443,7 @@ Sprite plantSprite;
 Sprite zombieSprite;
 Sprite bulletSprite;
 Sprite uiSprite;
+Sprite ariseSprite;	// for booster for now
 
 // TODO: remove vectors and maps and replace them with arrays :)
 
@@ -455,6 +460,67 @@ struct Sun {
 	int ownerIndex = -1; // for ra
 };
 Sun suns[MAX_SUNS];
+
+// Booster
+int curBoosterCnt = 0;
+int maxBoosterCnt = 2;
+float boosterSpawnDuration = 1.0f;
+float boosterLifeDuration = 3.0f;
+bool isBoostActive = false;
+//float boosterSpawnDuration = 10.0f;
+//float boosterLifeDuration = 5.0f;
+struct Booster {
+	Clock spawnClock;
+	Clock lifeClock;
+	float minSpawnDuration = boosterSpawnDuration;
+	float maxLifeDuration = boosterLifeDuration;
+	//float minDuration = 10.0f;
+	bool isAlive = false;
+	Vector2f position;
+	bool collect() {
+		if(curBoosterCnt >= maxBoosterCnt) {
+			cout << "----------Booster Not Collected ! Boosters already at max capacity!" << endl;
+			return false;
+		}
+		curBoosterCnt++;
+		isAlive = false;
+		spawnClock.restart();
+		cout << "----------Booster collected! total boosters: " << curBoosterCnt << endl;
+		return true;
+	}
+	void activate(Entity& plant) {
+		cout << "activate" << endl;
+		if (!plant.animations[3].frames) {
+			cout << "No Boost for thsi plant\n";
+			return;
+		}
+		curBoosterCnt--;
+		int orgAttackTimer = plant.attackTimer;
+		plant.attackTimer = plant.boostAttackTimer;
+		plant.isBoosted = true;
+		plant.DoAnimation(50, 3); // TODO: ntimes/eachcycletakes + boolmod
+		plant.afterAnimation = [orgAttackTimer](Entity& p){
+			p.attackTimer = orgAttackTimer;
+		};
+	}
+};
+Booster booster;
+void CheckTimer_AddBooster(bool zombieJustDead=false, Vector2f position={0,0}) {
+	//if(10 sec && zombie just dead) ariseBooster
+	if (zombieJustDead && !booster.isAlive && booster.spawnClock.getElapsedTime().asSeconds() >= booster.minSpawnDuration) {
+		//boosterCnt++;
+		booster.isAlive = true;
+		booster.position = position;
+		booster.lifeClock.restart();
+		booster.spawnClock.restart();
+		//cout << "----------Booster added! total boosters: " << boosterCnt << endl;
+	}
+	if (booster.isAlive && booster.lifeClock.getElapsedTime().asSeconds() >= booster.maxLifeDuration) {
+		booster.isAlive = false;
+		booster.spawnClock.restart();
+		//cout << "----------Booster disappeared!" << endl;
+	}
+}
 
 bool isSunAlive(const Sun& sun) {
 	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
@@ -549,6 +615,8 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = " << zombie.isDead << endl;
 		return true;
 	}
+	// Arise a Booster if time is good
+	if (zombie.health <= 0) CheckTimer_AddBooster(true, zombie.position);
 
 	return true;
 }
@@ -661,6 +729,7 @@ Entity defineNormalPlant() {
 	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
 	textures[TEXTURE_TYPE::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
+	textures[TEXTURE_TYPE::PLANT_NORMAL][3].loadFromFile("assets/peashooter-boost.png");
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
 	Entity planet;
@@ -668,17 +737,21 @@ Entity defineNormalPlant() {
 	planet.type = ENTITY_TYPE::PLANT_NORMAL;
 	planet.health = 100;
 	planet.attack = 30;
+	planet.attackTimer = 3.0f;
 	//planet.attack = 5000;
 	planet.price = 25;
 	planet.scale = 0.75;
 
-	planet.num_animations = 3;
+	planet.num_animations = 4;
 	// Idle animation
 	planet.animations[0].frameTimer = 0.05f;
 	planet.animations[0].frames = 31;
 	// Attack animation
 	planet.animations[2].frameTimer = 0.05f;
 	planet.animations[2].frames = 31;
+	// Boost animation
+	planet.animations[3].frameTimer = 0.05f;
+	planet.animations[3].frames = 13;
 	planet.setCurrentAnimation(0);
 
 	plants[ENTITY_TYPE::PLANT_NORMAL] = planet;
@@ -1216,7 +1289,13 @@ void UpdateSuns(RenderWindow& window) {
 	}
 	uiSprite.setColor(Color(255, 255, 255)); // for ra
 }
-
+void UpdateBooster(RenderWindow& window) {
+	if (!booster.isAlive) return;
+	ariseSprite.setPosition(booster.position);
+	ariseSprite.setTexture(textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index]);
+	ariseSprite.setScale(1.0f, 1.0f);
+	window.draw(ariseSprite);
+}
 //we will remove it later
 void DrawDebugGrid(RenderWindow& window) {
 	RectangleShape rect(Vector2f(currentLevel->cellWidth, currentLevel->cellHeight));
@@ -1250,7 +1329,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 				plant.setCurrentAnimation(CurrentState);
 				//cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
+		} 
+		else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
 					if (chomper_attackZombie(zombie, plant)) break;
@@ -1265,7 +1345,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		// plant attacking system
 		if (plant.type == ENTITY_TYPE::PLANT_NORMAL) {
 
-			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
+			if (plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
 
 				bool zombieInLane = false;
 				for (Entity& zombie : entities) {
@@ -1280,15 +1360,20 @@ void DrawPlantsGrid(RenderWindow& window) {
 					}
 				}
 
+				// shoot bullet
 				if (zombieInLane) {
 					plant.attackClock.restart();
 					Entity newBullet = defineNormalBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					newBullets.push_back(newBullet);
-
+					/*if (plant.isBoosted) {
+						for (int i = 0; i < plant.boostBulletsCnt; i++) {
+							
+						}
+					}*/
 					// plant attack animation
-					plant.DoAnimation(1, 2);
+					if(!plant.isBoosted) plant.DoAnimation(1, 2);
 				}
 			}
 		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
@@ -1859,6 +1944,8 @@ Sprite& DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float 
 	window.draw(sprite);
 	window.draw(plantSprite);
 
+	sprite.setScale(1, 1);
+
 	text.setString(std::to_string(plant.price));
 	text.setPosition(pos + Vector2f(13, 103) * scale);
 	text.setCharacterSize(32 * scale);
@@ -2166,7 +2253,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	if (isGameWon == true) {
 		// rewards (debug)
-
+		//cout << "You win!\n";
 		if (currentLevel->winTime == Time::Zero) {
 			currentLevel->winTime = currentLevel->clock.getElapsedTime();
 		}
@@ -2197,14 +2284,16 @@ void UpdateLevel(RenderWindow& window) {
 		return;
 	}
 
-	isGameWon = true;
+	//isGameWon = true;
 	// Level Update
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
+	CheckTimer_AddBooster(false);
 
 	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
+	UpdateBooster(window);
 	DrawSeeds(window);
 	DrawDebugGrid(window);
 
@@ -2227,6 +2316,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	window.draw(uiSprite);
 	uiSprite.setColor(Color::White);
+	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
 
 	// Magic_Shovel
 	Texture& relocateTex = getTexture(TEXTURE_TYPE::MAGIC_SHOVEL);
@@ -2252,6 +2342,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	window.draw(uiSprite);
 	uiSprite.setColor(Color::White);
+	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
 
 
 	if (!uiInteracted && mouseJustClicked[0]) {
@@ -2260,6 +2351,7 @@ void UpdateLevel(RenderWindow& window) {
 			Sun& sun = suns[i];
 			if (!isSunAlive(sun)) continue;
 
+			// check mouse pos in sun rect (200x200)
 			if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
 				sunsMoney += suns[i].sunValue;
 
@@ -2272,7 +2364,16 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 
+		// Collect booster
+		if(booster.isAlive && !uiInteracted) {
+			if (mousePos.x >= booster.position.x && mousePos.x <= booster.position.x + 200 && mousePos.y >= booster.position.y && mousePos.y <= booster.position.y + 200) {
+				booster.collect();
+				uiInteracted = true;
+			}
+		}
+
 		if (!uiInteracted) {
+			// clicked item on grid
 			auto [row, col] = gridCell(mousePos);
 
 			if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
@@ -2327,6 +2428,18 @@ void UpdateLevel(RenderWindow& window) {
 							selectedPlantIndex = -1;
 						}
 					}
+				}
+
+				// Boost Plant
+				else if (isBoostActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::PLANT) 
+				{
+					//curBoosterCnt--;
+					isBoostActive = false;
+					booster.activate(clickedEntity);
+					cout << "Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
+					/*clickedEntity.boosted = true;
+					clickedEntity.boostStartTime = currentLevel->clock.getElapsedTime();
+					isBoostActive = false;*/
 				}
 
 			//normal mode
@@ -2625,6 +2738,7 @@ int main() {
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 	textures[TEXTURE_TYPE::MAGIC_SHOVEL][Default_Texture_Index].loadFromFile("assets/relocate.png");
+	textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index].loadFromFile("assets/booster.png");
 
 	// Font
 	font = new Font();
@@ -2740,6 +2854,11 @@ int main() {
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				sunsMoney += 1000;
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::B) {
+				// FOR TESTING ONLY
+				if (curBoosterCnt) isBoostActive = true;
+				cout << "Booster Pressed! Waiting to click plant" << endl;
 			}
 		}
 
