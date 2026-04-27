@@ -113,7 +113,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_ICE_PEASHOOTER,
 	PLANT_POTATO_MINE,
 	PLANT_DOOM_MINE,
-   PLANT_CHEERY_BOMB,
+	PLANT_CHEERY_BOMB,
 
 	NormalBullet,
 	IceBullet,
@@ -159,7 +159,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_ICE_PEASHOOTER,
 	PLANT_POTATO_MINE,
 	PLANT_DOOM_MINE,
-   PLANT_CHEERY_BOMB,
+	PLANT_CHEERY_BOMB,
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
@@ -391,8 +391,7 @@ struct Reward {
 		if (entity.category == ENTITY_CATEGORY::PLANT) {
 			type = Plant;
 			plantType = entity.type;
-		}
-		else {
+		} else {
 			type = None;
 		}
 	}
@@ -436,8 +435,7 @@ struct Level {
 		}*/
 		if (r.type == Reward::Coins) {
 			coinReward = r;
-		}
-		else if (r.type == Reward::Plant) {
+		} else if (r.type == Reward::Plant) {
 			plantReward = r;
 		}
 	}
@@ -445,16 +443,14 @@ struct Level {
 		if (!coinReward.isClaimed) {
 			coinsMoney += coinReward.coins, coinReward.isClaimed = true;
 			cout << "coins " << int(coinReward.coins) << " added! now its " << coinsMoney << endl;
-		}
-		else if (coinReward.isClaimed) {
+		} else if (coinReward.isClaimed) {
 			cout << "coins reward already claimed!" << endl;
 		}
 
 		if (!plantReward.isClaimed) {
 			isEntityUnlocked[plantReward.plantType] = true, plantReward.isClaimed = true;
 			cout << "plant " << int(plantReward.plantType) << " unlocked!" << endl;
-		}
-		else if (plantReward.isClaimed) {
+		} else if (plantReward.isClaimed) {
 			cout << "plant reward already claimed!" << endl;
 		}
 	}
@@ -641,11 +637,9 @@ void startLevel(int level) {
 void nextLevel() {
 	if (currentLevel == nullptr) {
 		currentLevel = &levels[1];
-	}
-	else if (currentLevel->lvlNum < number_levels) {
+	} else if (currentLevel->lvlNum < number_levels) {
 		currentLevel = &levels[currentLevel->lvlNum + 1];
-	}
-	else {
+	} else {
 		cout << "No more levels!" << endl;
 		return;
 	}
@@ -665,8 +659,7 @@ Sprite defineGroundSprite(Texture& tex) {
 		if (!tex.loadFromFile(currentLevel->bgPath)) {
 			cout << "Error: Could not load assets/background.png" << endl;
 		}
-	}
-	else {
+	} else {
 		tex.loadFromFile("assets/background.png");
 	}
 
@@ -858,7 +851,7 @@ Entity defineIcePeaShooter() {
 	return icePea;
 }
 Entity defineCherryBomb() {
-	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB] [0].loadFromFile("assets/CherryBomb.png");
+	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB][0].loadFromFile("assets/CherryBomb.png");
 	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB][1].loadFromFile("assets/cherryexp.png");
 
 	Entity cherry{};
@@ -895,8 +888,8 @@ Entity defineMiniShroom() {
 	miniShroom.type = ENTITY_TYPE::PLANT_MINISHROOM;
 	miniShroom.health = 50;
 	miniShroom.attack = 30;
-	miniShroom.price = 0;            
-	miniShroom.seedCooldown = 5.0f;  
+	miniShroom.price = 0;
+	miniShroom.seedCooldown = 5.0f;
 	miniShroom.scale = 0.4f;
 
 	miniShroom.num_animations = 1;
@@ -1365,8 +1358,7 @@ void UpdateSuns(RenderWindow& window) {
 
 		if (sun.targeted) { // for ra
 			uiSprite.setColor(Color(255, 80, 80));
-		}
-		else {
+		} else {
 			uiSprite.setColor(Color(255, 255, 255));
 		}
 
@@ -1408,8 +1400,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				plant.setCurrentAnimation(CurrentState);
 				//cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 			}
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_CHOMPER) {
 			if (plant.currentAnimationIndex == 0) { // IDLE
 				for (Entity& zombie : entities) {
 					if (chomper_attackZombie(zombie, plant)) break;
@@ -1449,8 +1440,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					// plant attack animation
 					plant.DoAnimation(1, 2);
 				}
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE || plant.type == ENTITY_TYPE::PLANT_POTATO_MINE) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE || plant.type == ENTITY_TYPE::PLANT_POTATO_MINE) {
 
 				// before exp (animation 0)
 				if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE && plant.currentAnimationIndex == 0) {
@@ -1483,19 +1473,17 @@ void DrawPlantsGrid(RenderWindow& window) {
 							// plant.afterAnimation = [this](Entity& p) { ... }
 
 							// Replace with:
-							plant.afterAnimation = [&](Entity& p)
-								{
-									float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
+							plant.afterAnimation = [&](Entity& p) {
+								float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
 
-									for (Entity& z : entities) {
-										if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead)
-										{
-											if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-												z.health -= p.attack;
-											}
+								for (Entity& z : entities) {
+									if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
+										if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
+											z.health -= p.attack;
 										}
 									}
-									p.category = ENTITY_CATEGORY::NONE; // plant disappears
+								}
+								p.category = ENTITY_CATEGORY::NONE; // plant disappears
 								};
 							float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
 
@@ -1513,13 +1501,12 @@ void DrawPlantsGrid(RenderWindow& window) {
 				}
 			}
 
-		}
-		else if (plant.type == ENTITY_TYPE::PLANT_CHEERY_BOMB) {
+		} else if (plant.type == ENTITY_TYPE::PLANT_CHEERY_BOMB) {
 			// START EXPLOSION ANIMATION
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 				plant.setCurrentAnimation(1); // تتحول للحالة الجاهزة
 			}
-			return;
+
 			if (plant.currentAnimationIndex != 1) {
 				plant.DoAnimation(1, 1);
 
@@ -1543,8 +1530,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					p.category = ENTITY_CATEGORY::NONE;
 					};
 
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_REPEATER) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_REPEATER) {
 				if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 					bool zombieInLane = false;
@@ -1578,8 +1564,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					}
 
 				}
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 				// Sun Flower
 				if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 					plant.attackClock.restart();
@@ -1594,8 +1579,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					addSun(newSun);
 					cout << "Sunflower produced a sun!" << endl;
 				}
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
 				plant.growthTimer += delta_time;
 
 				if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
@@ -1633,8 +1617,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 					addSun(newSun);
 					cout << "Sunflower produced" << sunValue << " sun!" << endl;
 				}
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_ICE_PEASHOOTER) {
 				if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 					bool zombieInLane = false;
@@ -1657,8 +1640,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 						newBullets.push_back(newBullet);
 					}
 				}
-			}
-			else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
+			} else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
 				if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
 					bool zombieInFront = false;
 
@@ -1685,222 +1667,246 @@ void DrawPlantsGrid(RenderWindow& window) {
 					}
 				}
 			}
-
-			plantSprite.setPosition(plant.position);
-			plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
-			plantSprite.setScale(Vector2f(plant.scale, plant.scale));
-			//hover for the plants
-			if (isRelocating && selectedPlantIndex != -1 &&
-				plant.gridRow == entities[selectedPlantIndex].gridRow &&
-				plant.gridCol == entities[selectedPlantIndex].gridCol && !plant.isDead) {
-				plantSprite.setColor(Color(200, 200, 200, 180));
-			}
-			else {
-				plantSprite.setColor(Color::White);
-			}
-			// ----------------------------------------
-
-			window.draw(plantSprite);
-			plantSprite.setColor(Color::White);//normal highlight
-			plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
 		}
 
-		for (Entity& bullet : newBullets) {
-			entities.push_back(bullet);
+		plantSprite.setPosition(plant.position);
+		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
+		plantSprite.setScale(Vector2f(plant.scale, plant.scale));
+		//hover for the plants
+		if (isRelocating && selectedPlantIndex != -1 &&
+			plant.gridRow == entities[selectedPlantIndex].gridRow &&
+			plant.gridCol == entities[selectedPlantIndex].gridCol && !plant.isDead) {
+			plantSprite.setColor(Color(200, 200, 200, 180));
+		} else {
+			plantSprite.setColor(Color::White);
 		}
+		// ----------------------------------------
+
+		window.draw(plantSprite);
+		plantSprite.setColor(Color::White);//normal highlight
+		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
+	}
+
+	for (Entity& bullet : newBullets) {
+		entities.push_back(bullet);
 	}
 }
 
-	void DrawZombies(RenderWindow& window)
-	{
-		for (Entity& zombie : entities) {
-			if (zombie.category != ENTITY_CATEGORY::ZOMBIE)
-				continue;
+void DrawZombies(RenderWindow& window) {
+	for (Entity& zombie : entities) {
+		if (zombie.category != ENTITY_CATEGORY::ZOMBIE)
+			continue;
 
-			if (zombie.freezeTimer > 0)
-			{
-				zombie.freezeTimer -= delta_time;
-			}
+		if (zombie.freezeTimer > 0) {
+			zombie.freezeTimer -= delta_time;
+		}
 
-			// hit by lawnmower (car)
-			auto& mwr = lawnmowers[zombie.gridRow];
-			if (mwr.position.x >= zombie.position.x
-				&& !mwr.isUsed
-				//&& mwr.position.x < windowWidth-offsetX
-				) {
-				attackZombie(zombie, 100000, true);
-				mwr.isMoving = true;
-			}
+		// hit by lawnmower (car)
+		auto& mwr = lawnmowers[zombie.gridRow];
+		if (mwr.position.x >= zombie.position.x
+			&& !mwr.isUsed
+			//&& mwr.position.x < windowWidth-offsetX
+			) {
+			attackZombie(zombie, 100000, true);
+			mwr.isMoving = true;
+		}
 
 
 
-			// dead		// NOTE: Currently not showing where[isDead==true] not[health <= 0] because of the dying animation, but we might change it later
-			if (zombie.health <= 0) {
-				//cout << "zombie health is " << zombie.health << endl;
-				if (!zombie.isDead && (zombie.currentAnimationIndex == 0
-					|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
-					|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
-					|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
-					|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
-					|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
-					// health done but not started dying animation yet
+		// dead		// NOTE: Currently not showing where[isDead==true] not[health <= 0] because of the dying animation, but we might change it later
+		if (zombie.health <= 0) {
+			//cout << "zombie health is " << zombie.health << endl;
+			if (!zombie.isDead && (zombie.currentAnimationIndex == 0
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
+				|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
+				// health done but not started dying animation yet
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
-						for (int i = 0; i < MAX_SUNS; i++) {
-							if (suns[i].ownerIndex == zombie.id) {
-								suns[i].targeted = false;
-								suns[i].ownerIndex = -1;
-							}
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) { // for ra
+					for (int i = 0; i < MAX_SUNS; i++) {
+						if (suns[i].ownerIndex == zombie.id) {
+							suns[i].targeted = false;
+							suns[i].ownerIndex = -1;
 						}
-						zombie.isUsingAbility = false;
 					}
+					zombie.isUsingAbility = false;
+				}
 
-					zombie.DoAnimation(1, 1); // play dying animation once
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
-						zombie.scale = 1.3f;
+				zombie.DoAnimation(1, 1); // play dying animation once
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
+					zombie.scale = 1.3f;
 
-					zombie.afterAnimation = [&zombie](Entity& entity) {	// After Death Animation
-						// (For ra) Ra drops stored suns after death
-						if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
-							int sunsToDrop = zombie.storedSunValue / 25;
+				zombie.afterAnimation = [&zombie](Entity& entity) {	// After Death Animation
+					// (For ra) Ra drops stored suns after death
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.storedSunValue > 0) { // for ra
+						int sunsToDrop = zombie.storedSunValue / 25;
 
-							for (int i = 0; i < sunsToDrop; i++) {
-								Sun newSun{};
-								newSun.position = zombie.position;
-								newSun.clicked = false;
-								newSun.lifeClock.restart();
+						for (int i = 0; i < sunsToDrop; i++) {
+							Sun newSun{};
+							newSun.position = zombie.position;
+							newSun.clicked = false;
+							newSun.lifeClock.restart();
 
-								addSun(newSun);
-							}
-
-							zombie.storedSunValue = 0;
+							addSun(newSun);
 						}
-						// Zombie Dead 
-						attackZombie(zombie, 10000, false); // kill without animation (already played)
+
+						zombie.storedSunValue = 0;
+					}
+					// Zombie Dead 
+					attackZombie(zombie, 10000, false); // kill without animation (already played)
 
 
-						// Old Code [Replaced]
-						// Zombie Dead[ This code is written in attackZombie function ]
-						//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
-						//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
-						//if (deadZombieCount >= currentLevel->targetZombie) {
-						//	isGameWon = true;
-						//}
+					// Old Code [Replaced]
+					// Zombie Dead[ This code is written in attackZombie function ]
+					//zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
+					//entity.category = ENTITY_CATEGORY::NONE; // remove after animation
+					//if (deadZombieCount >= currentLevel->targetZombie) {
+					//	isGameWon = true;
+					//}
 
-						};
-					zombie.x_vel = 0;
-				}
-
-				else if (zombie.isDead) {
-					// health done and animation finished, so we remove the zombie
-					zombie.category = ENTITY_CATEGORY::NONE;
-					continue;
-				}
-				//else if(!zombie.isDead){
-				//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
-				//}
+					};
+				zombie.x_vel = 0;
 			}
 
-			// Animation
-			if ((!isGameOver && !isGameWon) || zombie.enteredHome) zombie.nextFrame(); // next frame
-			IntRect frameRect = getFrameRect(zombie);
-			zombieSprite.setTextureRect(frameRect); // crop texture
+			else if (zombie.isDead) {
+				// health done and animation finished, so we remove the zombie
+				zombie.category = ENTITY_CATEGORY::NONE;
+				continue;
+			}
+			//else if(!zombie.isDead){
+			//	// health done and dying animation started but not finished yet, so we do nothing and wait for the animation to finish
+			//}
+		}
 
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.health > 0) { // for ra
+		// Animation
+		if ((!isGameOver && !isGameWon) || zombie.enteredHome) zombie.nextFrame(); // next frame
+		IntRect frameRect = getFrameRect(zombie);
+		zombieSprite.setTextureRect(frameRect); // crop texture
 
-				// start ability
-				if (!zombie.isUsingAbility && zombie.abilityClock.getElapsedTime().asSeconds() >= 3.0f
-					&& anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.health > 0) { // for ra
 
-					bool hasUnclaimedSun = false;
+			// start ability
+			if (!zombie.isUsingAbility && zombie.abilityClock.getElapsedTime().asSeconds() >= 3.0f
+				&& anySunAlive() && zombie.storedSunValue < zombie.maxSunValue && zombie.position.x < windowWidth - 300) {
+
+				bool hasUnclaimedSun = false;
+				for (int i = 0; i < MAX_SUNS; i++) {
+					if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
+						hasUnclaimedSun = true;
+						break;
+					}
+				}
+
+				if (hasUnclaimedSun) {
+					zombie.isUsingAbility = true;
+					zombie.abilityClock.restart();
+					zombie.x_vel = 0;
+					zombie.DoAnimation(-1, 2);
+					zombie.scale = 1.5f;
+
 					for (int i = 0; i < MAX_SUNS; i++) {
 						if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
-							hasUnclaimedSun = true;
-							break;
-						}
-					}
-
-					if (hasUnclaimedSun) {
-						zombie.isUsingAbility = true;
-						zombie.abilityClock.restart();
-						zombie.x_vel = 0;
-						zombie.DoAnimation(-1, 2);
-						zombie.scale = 1.5f;
-
-						for (int i = 0; i < MAX_SUNS; i++) {
-							if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
-								suns[i].targeted = true;
-								suns[i].ownerIndex = zombie.id;
-								suns[i].lifeClock.restart();
-							}
+							suns[i].targeted = true;
+							suns[i].ownerIndex = zombie.id;
+							suns[i].lifeClock.restart();
 						}
 					}
 				}
+			}
 
-				// pull suns
-				if (zombie.isUsingAbility) {
+			// pull suns
+			if (zombie.isUsingAbility) {
+				for (int i = 0; i < MAX_SUNS; i++) {
+					Sun& sun = suns[i];
+					if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != zombie.id) continue;
+
+					float dx = zombie.position.x - sun.position.x;
+					float dy = zombie.position.y - sun.position.y;
+					float dist = sqrt(dx * dx + dy * dy);
+
+					if (dist > 1.0f) {
+						sun.position.x += (dx / dist) * 300.0f * delta_time;
+						sun.position.y += (dy / dist) * 300.0f * delta_time;
+					}
+
+					if (dist < 60.0f) {
+						if (zombie.storedSunValue + 25 <= zombie.maxSunValue) {
+							sun.clicked = true;
+							sun.targeted = false;
+							sun.ownerIndex = -1;
+							zombie.storedSunValue += 25;
+						}
+					}
+				}
+				bool hasLiveSuns = false;
+				for (int i = 0; i < MAX_SUNS; i++) {
+					if (suns[i].ownerIndex == zombie.id && isSunAlive(suns[i]))
+						hasLiveSuns = true;
+				}
+				// end ability
+				if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
+
 					for (int i = 0; i < MAX_SUNS; i++) {
-						Sun& sun = suns[i];
-						if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != zombie.id) continue;
-
-						float dx = zombie.position.x - sun.position.x;
-						float dy = zombie.position.y - sun.position.y;
-						float dist = sqrt(dx * dx + dy * dy);
-
-						if (dist > 1.0f) {
-							sun.position.x += (dx / dist) * 300.0f * delta_time;
-							sun.position.y += (dy / dist) * 300.0f * delta_time;
-						}
-
-						if (dist < 60.0f) {
-							if (zombie.storedSunValue + 25 <= zombie.maxSunValue) {
-								sun.clicked = true;
-								sun.targeted = false;
-								sun.ownerIndex = -1;
-								zombie.storedSunValue += 25;
-							}
+						if (suns[i].ownerIndex == zombie.id) {
+							suns[i].targeted = false;
+							suns[i].ownerIndex = -1;
 						}
 					}
-					bool hasLiveSuns = false;
-					for (int i = 0; i < MAX_SUNS; i++) {
-						if (suns[i].ownerIndex == zombie.id && isSunAlive(suns[i]))
-							hasLiveSuns = true;
-					}
-					// end ability
-					if (zombie.isUsingAbility && (zombie.abilityClock.getElapsedTime().asSeconds() >= zombie.abilityDuration || !hasLiveSuns)) {
+					zombie.isUsingAbility = false;
+					zombie.x_vel = 0.05f;
+					zombie.setCurrentAnimation(0);
+					zombie.scale = 1.0f;
+					zombie.abilityClock.restart();
+				}
+			}
+		}
 
-						for (int i = 0; i < MAX_SUNS; i++) {
-							if (suns[i].ownerIndex == zombie.id) {
-								suns[i].targeted = false;
-								suns[i].ownerIndex = -1;
-							}
-						}
-						zombie.isUsingAbility = false;
-						zombie.x_vel = 0.05f;
-						zombie.setCurrentAnimation(0);
-						zombie.scale = 1.0f;
-						zombie.abilityClock.restart();
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.health > 0) { // for conehead
+			if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
+				zombie.setCurrentAnimation(2);
+			}
+		}
+
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.health > 0) { // for newspaper
+			if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
+				zombie.setCurrentAnimation(2);
+				zombie.x_vel = 0.12f;
+				zombie.attackTimer = 0.4f;
+			}
+		}
+
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.health > 0) { // for allstar
+			if (!zombie.hasTackled && !zombie.isTackling) {
+				bool plantAhead = false;
+				for (int i = 0; i < entities.size(); i++) {
+					if (entities[i].category != ENTITY_CATEGORY::PLANT)
+						continue;
+					if (entities[i].isDead)
+						continue;
+					if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
+						zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+						plantAhead = true;
+						break;
 					}
+				}
+
+				if (plantAhead) {
+					zombie.isTackling = true;
+					zombie.x_vel = 0;
+					zombie.DoAnimation(1, 3);
+					zombie.afterAnimation = [](Entity& entity) {
+						entity.isTackling = false;
+						entity.hasTackled = true;
+						entity.x_vel = 0.05f;
+						entity.setCurrentAnimation(0);
+						};
 				}
 			}
 
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.health > 0) { // for conehead
-				if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-					zombie.setCurrentAnimation(2);
-				}
-			}
-
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.health > 0) { // for newspaper
-				if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-					zombie.setCurrentAnimation(2);
-					zombie.x_vel = 0.12f;
-					zombie.attackTimer = 0.4f;
-				}
-			}
-
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.health > 0) { // for allstar
-				if (!zombie.hasTackled && !zombie.isTackling) {
-					bool plantAhead = false;
+			if (zombie.isTackling) {
+				if (zombie.currentAnimation.currentFrame >= 8) {
 					for (int i = 0; i < entities.size(); i++) {
 						if (entities[i].category != ENTITY_CATEGORY::PLANT)
 							continue;
@@ -1908,109 +1914,76 @@ void DrawPlantsGrid(RenderWindow& window) {
 							continue;
 						if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
 							zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
-							plantAhead = true;
+							entities[i].health = 0;
+							entities[i].category = ENTITY_CATEGORY::NONE;
+							entities[i].isDead = true;
 							break;
 						}
 					}
-
-					if (plantAhead) {
-						zombie.isTackling = true;
-						zombie.x_vel = 0;
-						zombie.DoAnimation(1, 3);
-						zombie.afterAnimation = [](Entity& entity) {
-							entity.isTackling = false;
-							entity.hasTackled = true;
-							entity.x_vel = 0.05f;
-							entity.setCurrentAnimation(0);
-							};
-					}
-				}
-
-				if (zombie.isTackling) {
-					if (zombie.currentAnimation.currentFrame >= 8) {
-						for (int i = 0; i < entities.size(); i++) {
-							if (entities[i].category != ENTITY_CATEGORY::PLANT)
-								continue;
-							if (entities[i].isDead)
-								continue;
-							if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-								zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
-								entities[i].health = 0;
-								entities[i].category = ENTITY_CATEGORY::NONE;
-								entities[i].isDead = true;
-								break;
-							}
-						}
-					}
 				}
 			}
-
-			// move
-			if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel;
-
-			if (zombie.enteredHome) {
-				if (zombie.position.y < 525) {
-					zombie.position.y += 0.075;
-					if (zombie.position.y > 525) zombie.position.y = 525;
-				}
-				else if (zombie.position.y > 525) {
-					zombie.position.y -= 0.075;
-					if (zombie.position.y < 525) zombie.position.y = 525;
-				}
-				else {
-					zombie.position.x -= zombie.x_vel;
-				}
-			}
-
-			auto [r, c] = gridCell(zombie.position);
-			if (zombie.position.x > 0 + edgeSpace) {
-				// Eat
-				Entity& plant = getEntity({ r, c });
-				if (plant.category == ENTITY_CATEGORY::PLANT) {
-					if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
-						// close enough - not just touch
-						zombie.x_vel = 0;
-						if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
-							zombie.attackClock.restart();
-							plant.health -= zombie.attack;
-							if (plant.health <= 0) {
-								if (zombie.health > 0) zombie.x_vel = .05;
-								plant.category = ENTITY_CATEGORY::NONE;
-								plant.isDead = true;
-								cout << "Plant Killed\n";
-							}
-						}
-					}
-				}
-				else if (zombie.health > 0) {
-					if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-						if (zombie.freezeTimer > 0) {
-							zombie.x_vel = 0.02f;
-						}
-						else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
-							zombie.x_vel = 0.12f;
-						}
-						else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
-							zombie.x_vel = 0.18f;
-						}
-						else {
-							zombie.x_vel = .05; // no plant - has health - move normally
-						}
-					}
-				}
-			}
-
-			int frameHeight = frameRect.getSize().y;
-			float actualHeight = frameHeight * zombie.scale;
-			Vector2f adjustedPosition = zombie.position;
-			adjustedPosition.y -= (actualHeight - currentLevel->cellHeight);
-
-			zombieSprite.setPosition(adjustedPosition);
-			zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
-			zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
-
-			window.draw(zombieSprite);
 		}
+
+		// move
+		if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel;
+
+		if (zombie.enteredHome) {
+			if (zombie.position.y < 525) {
+				zombie.position.y += 0.075;
+				if (zombie.position.y > 525) zombie.position.y = 525;
+			} else if (zombie.position.y > 525) {
+				zombie.position.y -= 0.075;
+				if (zombie.position.y < 525) zombie.position.y = 525;
+			} else {
+				zombie.position.x -= zombie.x_vel;
+			}
+		}
+
+		auto [r, c] = gridCell(zombie.position);
+		if (zombie.position.x > 0 + edgeSpace) {
+			// Eat
+			Entity& plant = getEntity({ r, c });
+			if (plant.category == ENTITY_CATEGORY::PLANT) {
+				if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
+					// close enough - not just touch
+					zombie.x_vel = 0;
+					if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+						zombie.attackClock.restart();
+						plant.health -= zombie.attack;
+						if (plant.health <= 0) {
+							if (zombie.health > 0) zombie.x_vel = .05;
+							plant.category = ENTITY_CATEGORY::NONE;
+							plant.isDead = true;
+							cout << "Plant Killed\n";
+						}
+					}
+				}
+			} else if (zombie.health > 0) {
+				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
+					if (zombie.freezeTimer > 0) {
+						zombie.x_vel = 0.02f;
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
+						zombie.x_vel = 0.12f;
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
+						zombie.x_vel = 0.18f;
+					} else {
+						zombie.x_vel = .05; // no plant - has health - move normally
+					}
+				}
+			}
+		}
+
+		int frameHeight = frameRect.getSize().y;
+		float actualHeight = frameHeight * zombie.scale;
+		Vector2f adjustedPosition = zombie.position;
+		adjustedPosition.y -= (actualHeight - currentLevel->cellHeight);
+
+		zombieSprite.setPosition(adjustedPosition);
+		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
+		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
+
+		window.draw(zombieSprite);
+	}
 }
 void UpdateAndDrawBullets(RenderWindow& window) {
 	for (Entity& bullet : entities) {
@@ -2092,8 +2065,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		t = 1, waveClockX.restart();
 		ZombieMinGapTime = zmn, ZombieMaxGapTime = zmx, currentLevel->waveLimit += currentLevel->waveLimitChange;
 		cout << "switch to bet----------------------------\n";
-	}
-	else if (t == 1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
+	} else if (t == 1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
 		// bet to in
 		t = 0, waveClockX.restart();
 		dz = 0, zmn = ZombieMinGapTime, zmx = ZombieMaxGapTime;
@@ -2243,8 +2215,7 @@ void DrawSeeds(RenderWindow& window) {
 					if (plant.currentSeedCooldown <= 0 && sunsMoney >= plant.price) {
 						selectedPlant = i;
 					}
-				}
-				else {
+				} else {
 					removePlant = i;
 				}
 			}
@@ -2324,8 +2295,7 @@ void DrawSelectPlants(RenderWindow& window) {
 
 	if (currentLevel->selectedPlants.size() == 0) {
 		startButton.setColor(Color(64, 64, 64, 255));
-	}
-	else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->arePlantsSelected = true;
@@ -2386,8 +2356,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	if (currentLevel->selectedPlants.size() == 0) {
 		startButton.setColor(Color(64, 64, 64, 255));
-	}
-	else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->claimRewards();
@@ -2432,18 +2401,15 @@ void UpdateLevel(RenderWindow& window) {
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
 		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
 		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
-	}
-	else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
 
 		ground.setTextureRect(IntRect(maxPan * progress, 0, visibleWidth, actualTexHeight));
-	}
-	else if (!currentLevel->arePlantsSelected) {
+	} else if (!currentLevel->arePlantsSelected) {
 		ground.setTextureRect(IntRect(maxPan, 0, visibleWidth, actualTexHeight));
-	}
-	else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 2.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
@@ -2522,8 +2488,7 @@ void UpdateLevel(RenderWindow& window) {
 			ground.setColor(Color(c, c, c, 255));
 			zombieSprite.setColor(Color(c, c, c, 255));
 			plantSprite.setColor(Color(c, c, c, 255));
-		}
-		else {
+		} else {
 			DrawRewardsScreen(window);
 		}
 
@@ -2535,8 +2500,7 @@ void UpdateLevel(RenderWindow& window) {
 		DrawSelectPlants(window);
 
 		return;
-	}
-	else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
 		return;
 	}
 
@@ -2668,8 +2632,7 @@ void UpdateLevel(RenderWindow& window) {
 							isRelocating = false;
 							selectedPlantIndex = -1;
 							isRelocateActive = false;
-						}
-						else {
+						} else {
 							isRelocating = false;
 							selectedPlantIndex = -1;
 						}
@@ -2785,15 +2748,13 @@ void DrawMainMenu(RenderWindow& window) {
 
 		if (previousSelectedLevel == i) {
 			scale = Vector2f(1.0f, 1.0f) * (1 - animationProgress) + Vector2f(0.75f, 0.75f) * animationProgress;
-		}
-		else if (!selected) {
+		} else if (!selected) {
 			scale = Vector2f(0.75f, 0.75f);
 		}
 
 		if (!selected && !hovered) {
 			sprite.setColor(Color(128, 128, 128, 255));
-		}
-		else {
+		} else {
 			sprite.setColor(Color::White);
 		}
 
@@ -3093,12 +3054,10 @@ int main() {
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
 				window.close();
-			}
-			else if (event.type == sf::Event::MouseButtonPressed) {
+			} else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
 				else if (event.mouseButton.button == sf::Mouse::Right) mouseJustClicked[1] = true; //edit_bug
-			}
-			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				sunsMoney += 1000;
 			}
@@ -3108,8 +3067,7 @@ int main() {
 		if (currentLevel != nullptr) {
 			if (music.getStatus() == Music::Playing) music.stop();
 			UpdateLevel(window);
-		}
-		else {
+		} else {
 			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
 		}
