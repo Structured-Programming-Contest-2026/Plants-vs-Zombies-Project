@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <vector>
 #define SFML_STATIC
 #include <SFML/Graphics.hpp>
@@ -111,6 +111,9 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
 	PLANT_ICE_PEASHOOTER,
+	PLANT_POTATO_MINE,
+	PLANT_DOOM_MINE,
+   PLANT_CHEERY_BOMB,
 
 	NormalBullet,
 	IceBullet,
@@ -152,7 +155,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_CHOMPER,
 	PLANT_SUNSHROOM,
 	PLANT_ICE_PEASHOOTER,
-
+	PLANT_POTATO_MINE,
+	PLANT_DOOM_MINE,
+   PLANT_CHEERY_BOMB,
 	NormalBullet,
 	IceBullet,
 	SHOVEL,
@@ -170,7 +175,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	// To use textures[getTextureType(entity.type)][entity.currentAnimationIndex] on setting texture of sprites
 	TEXTURE_TYPE textureType = TEXTURE_TYPE::NONE;
 	switch (type) {
-		//zmobies�
+		//zmobies 
 	case ENTITY_TYPE::ZOMBIE_NORMAL:
 		textureType = TEXTURE_TYPE::ZOMBIE_NORMAL;
 		break;
@@ -229,6 +234,16 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
+		break;
+	case ENTITY_TYPE::PLANT_POTATO_MINE:
+		textureType = TEXTURE_TYPE::PLANT_POTATO_MINE;
+		break;
+	case ENTITY_TYPE::PLANT_DOOM_MINE:
+		textureType = TEXTURE_TYPE::PLANT_DOOM_MINE;
+		break;
+		break;
+	case ENTITY_TYPE::PLANT_CHEERY_BOMB:
+		textureType = TEXTURE_TYPE::PLANT_CHEERY_BOMB;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -311,7 +326,7 @@ struct Entity {
 		updateDimensions();
 	}
 	void setAllAnimations(int num, Animation anim) {
-		// example : all animations are the same size, time, etc ..�
+		// example : all animations are the same size, time, etc .. 
 		// so zombie.setAllAnimations(2, {frames, frameTimer})
 		num_animations = num;
 		for (int i = 0; i < num; i++) {
@@ -337,7 +352,7 @@ struct Entity {
 		}
 	}
 	void DoAnimation(int forCycles = 1, int idx = 0) {
-		// forCycles = (-1)� ---> Infinite / Manual change
+		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
 		setCurrentAnimation(idx);
 		updateDimensions();
@@ -457,7 +472,7 @@ struct Sun {
 Sun suns[MAX_SUNS];
 
 bool isSunAlive(const Sun& sun) {
-	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick� �
+	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
 }
 bool addSun(Sun sun) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -796,6 +811,34 @@ Entity defineIcePeaShooter() {
 
 	return icePea;
 }
+Entity defineCherryBomb() {
+	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB] [0].loadFromFile("assets/CherryBomb.png");
+	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB][1].loadFromFile("assets/cherryexp.png");
+
+	Entity cherry{};
+	cherry.category = ENTITY_CATEGORY::PLANT;
+	cherry.type = ENTITY_TYPE::PLANT_CHEERY_BOMB;
+	cherry.health = 300;
+	cherry.attack = 9999;
+	cherry.price = 150;
+	cherry.scale = 1.0f;
+	cherry.width = 120;
+	cherry.height = 120;
+
+	cherry.num_animations = 2;
+
+	// animation 0 = النبتة العادية
+	cherry.animations[0].frames = 7;   // ← غير لعدد الفريمات
+	cherry.animations[0].frameTimer = 0.1f;
+
+	// animation 1 = الانفجار
+	cherry.animations[1].frames = 8;  // ← غير لعدد الفريمات
+	cherry.animations[1].frameTimer = 0.05f;
+
+	cherry.setCurrentAnimation(0);
+	return cherry;
+}
+
 Entity defineMiniShroom() {
 	Texture tex;
 	tex.loadFromFile("assets/Minishroom.png");
@@ -982,6 +1025,53 @@ Entity defineChomperPlant() {
 
 	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 	return Chomper;
+}
+Entity definePOTATO_MINE() {
+	textures[TEXTURE_TYPE::PLANT_POTATO_MINE][0].loadFromFile("assets/PotatoMine2.png");
+	textures[TEXTURE_TYPE::PLANT_POTATO_MINE][1].loadFromFile("assets/PotatoMine.png");
+	Entity mine{};
+	mine.category = ENTITY_CATEGORY::PLANT;
+	mine.type = ENTITY_TYPE::PLANT_POTATO_MINE;
+	mine.health = 200;
+	mine.attack = 1800;
+	mine.price = 25;
+	mine.scale = 0.8f;
+	mine.num_animations = 2;
+	// Sleeping animation
+	mine.animations[0].frames = 1;
+	mine.animations[0].frameTimer = 0.1f;
+	// Ready animation
+	mine.animations[1].frames = 8;
+	mine.animations[1].frameTimer = 0.08f;
+	mine.setCurrentAnimation(0);
+	return mine;
+}
+Entity defineDOOM_SHROOM() {
+	textures[TEXTURE_TYPE::PLANT_DOOM_MINE][0].loadFromFile("assets/doom_shroom.png");
+	textures[TEXTURE_TYPE::PLANT_DOOM_MINE][1].loadFromFile("assets/doomexp.png");
+
+	Entity shroom{};
+	shroom.category = ENTITY_CATEGORY::PLANT;
+	shroom.type = ENTITY_TYPE::PLANT_DOOM_MINE;
+	shroom.health = 300;
+	shroom.attack = 9999;
+	shroom.price = 125;
+	shroom.scale = 1.2f;
+	shroom.width = 120;
+	shroom.height = 120;
+
+	shroom.num_animations = 2;
+
+	// animation 0 = النبتة العادية
+	shroom.animations[0].frames = 41;   // ← غير الرقم ده لعدد الفريمات
+	shroom.animations[0].frameTimer = 0.1f;
+
+	// animation 1 = الانفجار
+	shroom.animations[1].frames = 14;  // ← غير الرقم ده لعدد الفريمات
+	shroom.animations[1].frameTimer = 0.05f;
+
+	shroom.setCurrentAnimation(0);
+	return shroom;
 }
 bool chomper_attackZombie(Entity& zombie, Entity& plant) {
 	if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) return false;
@@ -1190,7 +1280,7 @@ Entity defineIceBullet() {
 
 	return bullet;
 }
-// Drawing - Functions�
+// Drawing - Functions 
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -1291,7 +1381,101 @@ void DrawPlantsGrid(RenderWindow& window) {
 					plant.DoAnimation(1, 2);
 				}
 			}
-		} else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
+			else if (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE || plant.type == ENTITY_TYPE::PLANT_POTATO_MINE) {
+
+				// before exp (animation 0)
+				if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE && plant.currentAnimationIndex == 0) {
+					// ready to exp
+					if (plant.attackClock.getElapsedTime().asSeconds() >= 1.0f) {
+						plant.setCurrentAnimation(1); // تتحول للحالة الجاهزة
+					}
+					return; //cant exp under ground
+				}
+
+				// ثانياً: تشيك لو في زومبي قريب عشان يحصل انفجار
+				for (Entity& zombie : entities) {
+					if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
+
+					float diffY = abs(zombie.position.y - plant.position.y);
+					float diffX = abs(zombie.position.x - plant.position.x);
+
+					
+					float triggerRange = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 200.0f : 50.0f;
+
+					if (diffY < 60.0f && diffX < triggerRange) {
+						// 1. شغل أنميشن الانفجار (افترضنا إنه رقم 1 في الدوم ورقم 2 في البطاطس)
+						int blastAnimIdx = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 1 : 2;
+						plant.DoAnimation(1, blastAnimIdx);
+
+						// 2. حدد اللي هيحصل لما الأنميشن يخلص (الضرر)
+						plant.afterAnimation = [&](Entity& p) {
+							// Replace the lambda capture [this] with a capture of the entities vector by reference.
+							// Find this code (inside DrawPlantsGrid or similar):
+							// plant.afterAnimation = [this](Entity& p) { ... }
+
+							// Replace with:
+							plant.afterAnimation = [&](Entity& p)
+								{
+									float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
+
+									for (Entity& z : entities) {
+										if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead)
+										{
+											if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
+												z.health -= p.attack;
+											}
+										}
+									}
+									p.category = ENTITY_CATEGORY::NONE; // plant disappears
+								};
+							float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
+
+							for (Entity& z : entities) {
+								if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
+									if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
+										z.health -= p.attack;
+									}
+								}
+							}
+							p.category = ENTITY_CATEGORY::NONE; // النبات يختفي
+							};
+						break;
+					}
+				}
+			}
+		
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_CHEERY_BOMB) {
+			// START EXPLOSION ANIMATION
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
+				plant.setCurrentAnimation(1); // تتحول للحالة الجاهزة
+			}
+			return; 
+			if (plant.currentAnimationIndex != 1) { 
+				plant.DoAnimation(1, 1);
+
+				
+				plant.afterAnimation = [&](Entity& p) {
+					// RANGE OF EXPLOSION 
+					float explosionRange = 150.0f;
+
+					for (Entity& z : entities) {
+						if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
+							float diffY = abs(z.position.y - p.position.y);
+							float diffX = abs(z.position.x - p.position.x);
+
+							// 3*3
+							if (diffY < 120.0f && diffX < explosionRange) {
+								z.health -= p.attack; // عادة الـ attack بتاعها بيموت أي زومبي عادي فوراً
+							}
+						}
+					}
+					//DISAPPER AFTER EXPLOSION
+					p.category = ENTITY_CATEGORY::NONE;
+					};
+			}
+		}
+		else if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER) {
 			// Sun Flower
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 				plant.attackClock.restart();
@@ -2600,6 +2784,9 @@ int main() {
 	Entity sunshroom = defineSunShroom();
 	Entity icePeashooter = defineIcePeaShooter();
 	Entity miniShroom = defineMiniShroom();
+	Entity POTATOMINE = definePOTATO_MINE();
+	Entity doomShroom = defineDOOM_SHROOM();
+	Entity CHEERY_BOMB = defineCherryBomb();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -2631,13 +2818,16 @@ int main() {
 	font->loadFromFile("assets/impact.ttf");
 
 	// General Plants to any level
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter, miniShroom };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB };//, shroom, sunshroom };
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
 		isEntityUnlocked[sunflower.type] =
 		isEntityUnlocked[icePeashooter.type] =
 		//isEntityUnlocked[chomper.type] =
 		isEntityUnlocked[miniShroom.type] =
+		isEntityUnlocked[POTATOMINE.type] =
+		isEntityUnlocked[doomShroom.type] =
+		isEntityUnlocked[CHEERY_BOMB.type] =
 		true;
 
 	// Levels
