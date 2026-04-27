@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-#define SFML_STATIC
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <functional>
@@ -65,8 +64,8 @@ bool isShovelActive = false;
 
 //relocate
 bool isRelocateActive = false;
-bool isRelocating = false;  
-int selectedPlantIndex = -1; 
+bool isRelocating = false;
+int selectedPlantIndex = -1;
 
 // lawnmower - cars
 struct Lawnmower {
@@ -1390,9 +1389,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 			plant.gridRow == entities[selectedPlantIndex].gridRow &&
 			plant.gridCol == entities[selectedPlantIndex].gridCol && !plant.isDead) {
 			plantSprite.setColor(Color(200, 200, 200, 180));
-		}
-		else 
-		{
+		} else {
 			plantSprite.setColor(Color::White);
 		}
 		// ----------------------------------------
@@ -2208,7 +2205,7 @@ void UpdateLevel(RenderWindow& window) {
 	DrawSeeds(window);
 	DrawDebugGrid(window);
 
-	
+
 	//Normal_Shovel
 	Texture& shovelTex = getTexture(TEXTURE_TYPE::SHOVEL);
 	uiSprite.setTexture(shovelTex);
@@ -2233,9 +2230,9 @@ void UpdateLevel(RenderWindow& window) {
 	uiSprite.setTexture(relocateTex);
 	resizeSpriteToTex(uiSprite, relocateTex);
 	uiSprite.setScale(Vector2f(0.09f, 0.09f));
-	uiSprite.setPosition(780.0f, 20.0f); 
+	uiSprite.setPosition(780.0f, 20.0f);
 
-	if (isRelocateActive) uiSprite.setColor(Color(150, 150, 150)); 
+	if (isRelocateActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
 
 	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
@@ -2290,24 +2287,20 @@ void UpdateLevel(RenderWindow& window) {
 
 				// Magic Shovel
 				else if (isRelocateActive && mouseJustClicked[0]) {
-				
-					if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT)
-					{
-						for (int i = 0; i < entities.size(); i++) 
-						{
+
+					if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT) {
+						for (int i = 0; i < entities.size(); i++) {
 							if (entities[i].category == ENTITY_CATEGORY::PLANT &&
-								entities[i].gridRow == row && entities[i].gridCol == col && !entities[i].isDead)
-							{
+								entities[i].gridRow == row && entities[i].gridCol == col && !entities[i].isDead) {
 								selectedPlantIndex = i;
 								isRelocating = true;
 								break;
 							}
 						}
 					}
-					
+
 					else if (isRelocating) {
-						if (clickedEntity.category == ENTITY_CATEGORY::NONE) 
-						{
+						if (clickedEntity.category == ENTITY_CATEGORY::NONE) {
 							// if it is possible
 							entities[selectedPlantIndex].gridRow = row;
 							entities[selectedPlantIndex].gridCol = col;
@@ -2316,22 +2309,19 @@ void UpdateLevel(RenderWindow& window) {
 							int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - entities[selectedPlantIndex].height);
 							entities[selectedPlantIndex].position = Vector2f(x, y);
 
-						
+
 							isRelocating = false;
 							selectedPlantIndex = -1;
 							isRelocateActive = false;
-						}
-						else
-						{
+						} else {
 							isRelocating = false;
 							selectedPlantIndex = -1;
 						}
 					}
 				}
 
-			//normal mode
-				else if (!isShovelActive && !isRelocateActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) 
-				{
+				//normal mode
+				else if (!isShovelActive && !isRelocateActive && mouseJustClicked[0] && clickedEntity.category == ENTITY_CATEGORY::NONE) {
 					Entity plant;
 					if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price) {
 						plant = currentLevel->selectedPlants[selectedPlant];

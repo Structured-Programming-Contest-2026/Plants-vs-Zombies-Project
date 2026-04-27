@@ -28,5 +28,6 @@
     <None Include="doc\FLOW_DIAGRAMS.md" />
     <None Include="doc\INDEX.md" />
     <None Include="doc\GETTING_STARTED.md" />
+    <None Include="..\SFML-2.6.1\bin\openal32.dll" />
   </ItemGroup>
 </Project>
