@@ -248,9 +248,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_DOOM_MINE:
 		textureType = TEXTURE_TYPE::PLANT_DOOM_MINE;
 		break;
-		break;
 	case ENTITY_TYPE::PLANT_CHEERY_BOMB:
 		textureType = TEXTURE_TYPE::PLANT_CHEERY_BOMB;
+		break;
 
 	case ENTITY_TYPE::ShroomBullet:
 		textureType = TEXTURE_TYPE::ShroomBullet;
