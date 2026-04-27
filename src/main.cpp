@@ -114,6 +114,7 @@ enum class ENTITY_TYPE : uint8_t {
 
 	NormalBullet,
 	IceBullet,
+	ShroomBullet,
 
 
 
@@ -156,6 +157,7 @@ enum class TEXTURE_TYPE : uint8_t {
 
 	NormalBullet,
 	IceBullet,
+	ShroomBullet,
 	SHOVEL,
 	MAGIC_SHOVEL,
 };
@@ -234,6 +236,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
 		break;
+	case ENTITY_TYPE::ShroomBullet:
+		textureType = TEXTURE_TYPE::ShroomBullet;
+		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
 		break;
@@ -260,6 +265,9 @@ struct Entity {
 	int health = 100;
 	int attack = 15;
 	int price = 25;
+
+	float seedCooldown = 1.0f;       // <--- ADDED: default cooldown for all plants
+	float currentSeedCooldown = 0.0f; // <--- ADDED: active cooldown timer
 
 	int num_animations = 1,
 		currentAnimationIndex = 0;
@@ -1228,6 +1236,20 @@ Entity defineIceBullet() {
 
 	return bullet;
 }
+Entity defineShroomBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/ShroomBullet.png");
+	textures[TEXTURE_TYPE::ShroomBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.scale = 0.3;
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::ShroomBullet;
+	bullet.attack = 5;
+	bullet.x_vel = -0.4f;
+
+	return bullet;
+}
 // Drawing - Functions 
 
 void UpdateSuns(RenderWindow& window) {
@@ -1333,7 +1355,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 				}
 			}
 		}
-		else if (plant.type == ENTITY_TYPE::PLANT_REPEATER) { 
+		else if (plant.type == ENTITY_TYPE::PLANT_REPEATER) {
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f) {
 
 				bool zombieInLane = false;
@@ -1447,10 +1469,15 @@ void DrawPlantsGrid(RenderWindow& window) {
 			}
 		}
 		else if (plant.type == ENTITY_TYPE::PLANT_MINISHROOM) {
-			for (Entity& zombie : entities) {
-				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
-				bool inFront = zombie.position.x > plant.position.x &&
-					zombie.position.x < plant.position.x + plant.width * 5;
+			if (plant.attackClock.getElapsedTime().asSeconds() >= 2.0f) {
+				bool zombieInFront = false;
+
+				for (Entity& zombie : entities) {
+					// Check if it is actually a living zombie!
+					if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
+						bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+						bool inFront = zombie.position.x > plant.position.x &&
+							zombie.position.x < plant.position.x + plant.width * 5;
 
 						if (sameRow && inFront) {
 							zombieInFront = true;
@@ -2003,6 +2030,11 @@ void DrawSeeds(RenderWindow& window) {
 			float h = sprite.getGlobalBounds().height;
 			float w = sprite.getGlobalBounds().width;
 
+			RectangleShape overlay(Vector2f(w, h * progress));
+			overlay.setPosition(spritePos.x, spritePos.y + h * (1.0f - progress));
+			overlay.setFillColor(Color(0, 0, 0, 150));
+			window.draw(overlay);
+		}
 
 		if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiSprite.setColor(Color(128, 128, 128, 255));
@@ -2011,7 +2043,9 @@ void DrawSeeds(RenderWindow& window) {
 			if (mouseJustClicked[0]) {
 				uiInteracted = true;
 				if (currentLevel->arePlantsSelected) {
-					selectedPlant = i;
+					if (plant.currentSeedCooldown <= 0 && sunsMoney >= plant.price) {
+						selectedPlant = i;
+					}
 				}
 				else {
 					removePlant = i;
@@ -2314,6 +2348,15 @@ void UpdateLevel(RenderWindow& window) {
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
 
+	for (auto& plant : currentLevel->selectedPlants) {
+		if (plant.currentSeedCooldown > 0.0f) {
+			plant.currentSeedCooldown -= delta_time;
+			if (plant.currentSeedCooldown < 0.0f) {
+				plant.currentSeedCooldown = 0.0f;
+			}
+		}
+	}
+
 	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
@@ -2451,6 +2494,7 @@ void UpdateLevel(RenderWindow& window) {
 						plant.position = Vector2f(x, y);
 						entities.push_back(plant);
 						sunsMoney -= plant.price;
+						currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
 					}
 				}
 			}
