@@ -986,6 +986,31 @@ Entity defineShroomPlant() {
 
 	// update
 	shroom.updateEntity = [](Entity& plant) {
+		if (plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
+
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
+
+					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
+						zombie.position.x > plant.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			// shoot bullet
+			if (zombieInLane) {
+				plant.attackClock.restart();
+				Entity newBullet = defineShroomBullet();
+				newBullet.attack = plant.attack;
+				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+				newBullets.push_back(newBullet);
+				//entities.push_back(newBullet)
+			}
+		}
 
 		};
 
