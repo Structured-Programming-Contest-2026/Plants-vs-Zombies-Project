@@ -319,6 +319,7 @@ struct Entity {
 	int price = 25;
 
 	Time lastDamaged = Time::Zero;
+	int targetId = -1; //for the chomper
 
 	float seedCooldown = 1.0f;       // <--- ADDED: default cooldown for all plants
 	float currentSeedCooldown = 0.0f; // <--- ADDED: active cooldown timer
@@ -1391,62 +1392,94 @@ Entity defineWallnut() {
 		};
 	return wallnut;
 }
-Entity defineChomperPlant() {
+Entity defineChomperPlant() 
+{
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
-	Chomper.health = 200;
+	Chomper.health = 300;
 	Chomper.price = 150;
 	Chomper.scale = 0.85;
-	Chomper.attack = 10000; // one attack kill
+	Chomper.attack = 10000; 
 
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].loadFromFile("assets/ChomperAttack.png"); // ATTACK
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][1].setSmooth(false);
-	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png");
+	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].loadFromFile("assets/ChomperDigest.png"); // DIGEST
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][2].setSmooth(false);
 
 	Chomper.num_animations = 3;
-	Animation a;
-	a.frames = 13;
-	a.frameTimer = 0.1f;
-	Chomper.animations[0] = a; // IDLE Animation
-	a.frames = 9;
-	a.frameTimer = 0.1f;
-	Chomper.animations[1] = a; // ATTACK Animation
-	a.frames = 6;
-	a.frameTimer = 0.1f;
-	Chomper.animations[2] = a; // DIGEST Animation
+	Animation anim;
+
+	anim.frames = 13;
+	anim.frameTimer = 0.1f;
+	Chomper.animations[0] = anim;
+
+	anim.frames = 9;
+	anim.frameTimer = 0.08f;
+	Chomper.animations[1] = anim;
+
+	anim.frames = 6;
+	anim.frameTimer = 0.15f;
+	Chomper.animations[2] = anim;
 
 	Chomper.setCurrentAnimation(0);
 
-
 	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 
-	// update
 	Chomper.updateEntity = [](Entity& plant) {
-		if (plant.currentAnimationIndex == 0) { // IDLE
+	
+		if (plant.currentAnimationIndex == 0) {
 			for (Entity& zombie : entities) {
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
 
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
+
+				
 				bool inFront = zombie.position.x > plant.position.x &&
-					zombie.position.x < plant.position.x + plant.width * 0.5;
-				// NOTE: Distance from zombie depends on (Texture) width * scale
+					zombie.position.x < plant.position.x + plant.width * 0.55;
 
-				if ((sameRow && inFront) && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
-					attackZombie(zombie, plant.attack, false); // adjust health, isDead and deadZombieCount
-					plant.attackClock.restart().asSeconds();
+				if (sameRow && inFront && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
+					plant.targetId = zombie.id;
+					zombie.x_vel = 0;          
 
-					plant.DoAnimation(1, 1);
-					plant.afterAnimation = [](Entity& entity) {
-						entity.DoAnimation(20, 2);
-						entity.afterAnimation = [](Entity& entity) {
-							entity.DoAnimation(-1, 0);
+					plant.DoAnimation(1, 1); 
+					plant.afterAnimation = [](Entity& p) {
+						p.DoAnimation(25, 2); 
+						p.afterAnimation = [](Entity& e) {
+							e.DoAnimation(-1, 0);
+							e.afterAnimation = [](Entity&) {};
 							};
 						};
-					return;	// attacked 1
+					break;
+				}
+			}
+		}
+
+		if (plant.currentAnimationIndex == 1) {
+			int currentF = plant.currentAnimation.currentFrame;
+
+			if (plant.targetId != -1) {
+				for (Entity& z : entities) {
+					if (z.id == plant.targetId && !z.isDead) {
+
+						if (currentF >= 3 && currentF <= 4) {
+
+							z.scale = plant.scale * 0.60f;
+
+							z.position.x = plant.position.x + 35;
+							z.position.y = plant.position.y - 10;
+
+						}
+
+						if (currentF == 5) {
+							attackZombie(z, 10000, false); 
+							plant.targetId = -1;
+						}
+
+						break;
+					}
 				}
 			}
 		}
