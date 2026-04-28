@@ -311,6 +311,8 @@ struct Entity {
 	int attack = 15;
 	int price = 25;
 
+	Time lastDamaged = Time::Zero;
+
 	float seedCooldown = 1.0f;       // <--- ADDED: default cooldown for all plants
 	float currentSeedCooldown = 0.0f; // <--- ADDED: active cooldown timer
 
@@ -676,6 +678,7 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 	if (zombie.type == ENTITY_TYPE::NONE || zombie.isDead) return false; // already dead
 
 	zombie.health -= attack;
+	zombie.lastDamaged = currentLevel->clock.getElapsedTime();
 	//cout << "from `attackzombie` Zombie attacked! health now: " << zombie.health << endl;
 	if (zombie.health <= 0 && !withDyingAnimation) {
 		zombie.category = ENTITY_CATEGORY::NONE;
@@ -1949,6 +1952,8 @@ void DrawPlantsGrid(RenderWindow& window) {
 			plantSprite.setColor(Color::White);
 		}
 		// ----------------------------------------
+		int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - plant.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
+		plantSprite.setColor(Color(255, damage, damage));
 		window.draw(plantSprite);
 		plantSprite.setColor(Color::White);//normal highlight
 		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
@@ -2191,6 +2196,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
+			plant.lastDamaged = currentLevel->clock.getElapsedTime();
 			if (plant.health <= 0) {
 				if (zombie.health > 0) zombie.x_vel = .05;
 				plant.category = ENTITY_CATEGORY::NONE;
@@ -2284,6 +2290,9 @@ void DrawZombies(RenderWindow& window) {
 		zombieSprite.setPosition(adjustedPosition);
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
+
+		int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
+		zombieSprite.setColor(Color(255, damage, damage));
 
 		window.draw(zombieSprite);
 	}
