@@ -102,7 +102,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
-	PLANT_REPEATER, // <-- ADDED: Repeater Plant
+	PLANT_REPEATER, 
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -149,7 +149,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
-	PLANT_REPEATER, // <-- ADDED: Repeater Plant Texture
+	PLANT_REPEATER,
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -2178,7 +2178,9 @@ void DrawZombies(RenderWindow& window) {
 				zombieEatPlant(zombie, plant);
 			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					if (zombie.freezeTimer > 0) {
+					if (zombie.isSuperFrozen) {
+						zombie.x_vel = 0.002f;
+					} else if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 0.02f;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
