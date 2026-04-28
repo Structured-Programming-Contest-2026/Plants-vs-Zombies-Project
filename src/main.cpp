@@ -748,6 +748,21 @@ void nextLevel() {
 }
 
 
+
+
+float easeInOut(float t) {
+	float k = 1.5f;
+
+	float shaped = (t < 0.5f)
+		? 0.5f * pow(2.0f * t, k)
+		: 1.0f - 0.5f * pow(2.0f * (1.0f - t), k);
+
+	float eased = -(cos(shaped * 3.14159265358979323846f) - 1.0f) / 2.0f;
+
+	return eased;
+}
+
+
 // Define Characters - Functions
 
 // ground
@@ -2451,16 +2466,19 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 void DrawSelectPlants(RenderWindow& window) {
-	if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
+	if (currentLevel->clock.getElapsedTime().asSeconds() < 2.45f) {
 		return;
 	}
 
 	DrawSeeds(window);
 
+	Vector2f animationOffset = {};
+
+	animationOffset.x = -750.0f * easeInOut(1.0f - std::min((currentLevel->clock.getElapsedTime().asSeconds() - 2.25f) / 1.0f, 1.0f));
 
 	Sprite bgSprite;
 	bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
-	bgSprite.setPosition(Vector2f(10, 123.0f));
+	bgSprite.setPosition(Vector2f(10, 123.0f) + animationOffset);
 	bgSprite.setScale(Vector2f(1.5f, 1.5f));
 
 	window.draw(bgSprite);
@@ -2482,7 +2500,7 @@ void DrawSelectPlants(RenderWindow& window) {
 		if (!isEntityUnlocked[plant.type]) continue;
 
 		i++;
-		Vector2f spritePos = Vector2f(50.0f, 190.0f) + Vector2f((i % 7) * (seedPacketSize.x - 10.0f), 10.0f + (i / 7) * 130.0f);
+		Vector2f spritePos = Vector2f(50.0f, 190.0f) + animationOffset + Vector2f((i % 7) * (seedPacketSize.x - 10.0f), 10.0f + (i / 7) * 130.0f);
 
 		Vector2u size = Vector2u(Vector2f(seedPacketSize) * 0.75f);
 
@@ -2512,7 +2530,7 @@ void DrawSelectPlants(RenderWindow& window) {
 
 	startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
 	startButton.setScale(Vector2f(1.5f, 1.5f));
-	startButton.setPosition(Vector2f(250.0f, 780.0f));
+	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
 	if (currentLevel->selectedPlants.size() == 0) {
 		startButton.setColor(Color(64, 64, 64, 255));
@@ -2639,18 +2657,22 @@ void screenAnimation(RenderWindow& window) {
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
 		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
 		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 3.75f) {
-		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.5f) / 2.0f;
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 2.0f) {
+		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.0f) / 1.0f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
+
+		progress = easeInOut(progress);
 
 		ground.setTextureRect(IntRect(maxPan * progress, 0, visibleWidth, actualTexHeight));
 	} else if (!currentLevel->arePlantsSelected) {
 		ground.setTextureRect(IntRect(maxPan, 0, visibleWidth, actualTexHeight));
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
-		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 2.0f;
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 0.75f) {
+		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) / 0.75f;
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
+
+		progress = easeInOut(progress);
 
 		ground.setTextureRect(IntRect(maxPan - (maxPan * progress), 0, visibleWidth, actualTexHeight));
 	}
@@ -2915,7 +2937,7 @@ void UpdateLevel(RenderWindow& window) {
 		DrawSelectPlants(window);
 
 		return;
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 2) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 1.0f) {
 		return;
 	}
 
