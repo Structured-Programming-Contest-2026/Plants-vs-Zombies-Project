@@ -132,6 +132,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_SELECTOR_BACKGROUND,
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
+	LEVEL_BACKGROUND_HOUSE,
+	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
 	LUSTER,
 	SEED_CHOOSER,
@@ -444,7 +446,6 @@ struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 3000;
-	string bgPath = "assets/background.png";
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
@@ -761,17 +762,6 @@ void nextLevel() {
 
 // ground
 Sprite defineGroundSprite(Texture& tex) {
-	if (currentLevel != nullptr) {
-		// this doesnt run .. cuz its run only once, beginning of main, before even textures is loaded
-		tex.loadFromFile(currentLevel->bgPath);
-		cout << "trying to load " << currentLevel->bgPath << endl;
-		if (!tex.loadFromFile(currentLevel->bgPath)) {
-			cout << "Error: Could not load assets/background.png" << endl;
-		}
-	} else {
-		tex.loadFromFile("assets/background.png");
-	}
-
 	/*tex.setRepeated(true);*/
 
 	Sprite groundSp;
@@ -2568,7 +2558,7 @@ void DrawSelectPlants(RenderWindow& window) {
 
 		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
 
-		if (!disabled && mouseJustClicked[0] && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (!disabled && mouseJustClicked[0] && currentLevel->selectedPlants.size() < 5 && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiInteracted = true;
 			currentLevel->selectedPlants.push_back(plant);
 		}
@@ -2947,9 +2937,23 @@ void UpdateLevel(RenderWindow& window) {
 		gameOverAnimation(window);
 	}
 
+	if (currentLevel == nullptr) return;
+	int level = currentLevel->lvlNum;
+	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
+
+	if (isGameOver) {
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
+		window.draw(ground);
+	}
+
 	DrawZombies(window);
 	DrawPlantsGrid(window);
+
+	if (isGameOver) {
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
+		window.draw(ground);
+	}
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
@@ -3008,7 +3012,7 @@ void UpdateLevel(RenderWindow& window) {
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
-			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && currentLevel->lawnmowers[zombie.gridRow].isUsed)//end of the screen
+			if (!zombie.isDead && zombie.position.x <= leftEdgeForZombies && (!currentLevel->lawnmowersEnabled || currentLevel->lawnmowers[zombie.gridRow].isUsed))//end of the screen
 			{
 				currentLevel->gameOverTime = currentLevel->clock.getElapsedTime();
 				isGameOver = true;
@@ -3311,9 +3315,9 @@ int main() {
 	// Levels
 //---------------------------------------
 // Level 1: Day
+	levels[1].lvlNum = 1;
 	levels[1].plant_types = mainPlantTypes;
 	levels[1].zombie_types = { zombie, zombieConehead };
-	levels[1].bgPath = "assets/background.png";
 	levels[1].targetZombie = 20;
 	//levels[1].targetZombie = 2;
 	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
@@ -3328,12 +3332,12 @@ int main() {
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
 	// Level 2: Egypt
+	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
 	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
 	levels[2].targetZombie = 25;
 	//levels[2].targetZombie = 2;
-	levels[2].bgPath = "assets/pharoas.png";
 	levels[2].addReward(500);
 	levels[2].addReward(wallnut);
 
@@ -3347,10 +3351,10 @@ int main() {
 
 	//------------------------------------------
 	// Level 3: Night
+	levels[3].lvlNum = 3;
 	levels[3].plant_types = mainPlantTypes;
 	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
 	levels[3].startingSuns = 100;
-	levels[3].bgPath = "assets/night.png";
 	levels[3].offsetX = 450;
 	levels[3].offsetY = 135;
 	levels[3].cellWidth = 150;
@@ -3360,12 +3364,18 @@ int main() {
 
 
 	// setting levels background textures
-	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/background.png");
+	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
+	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
-		cout << "loading file txt " << levels[lvl].bgPath << endl;
+		string path = "assets/levels/level" + to_string(lvl) + ".png";
+		string housePath = "assets/levels/level" + to_string(lvl) + "_house.png";
+		string opendoorPath = "assets/levels/level" + to_string(lvl) + "_opendoor.png";
+		cout << "Loading level " << lvl << " files" << endl;
 		levels[lvl].lvlNum = lvl;
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(levels[lvl].bgPath);
-		cout << "done loaded " << levels[lvl].bgPath << endl;
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(path);
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile(housePath);
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile(opendoorPath);
+		cout << "Loaded level " << lvl << " files" << endl;
 	}
 
 
