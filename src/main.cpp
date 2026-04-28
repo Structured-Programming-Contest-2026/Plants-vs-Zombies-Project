@@ -45,7 +45,7 @@ bool isGameOver = false, isGameWon = false;
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
-lawnmower_endline = windowWidth - 150; // which x pos to stop at
+lawnmower_endline = windowWidth - 300; // which x pos to stop at
 //Sending Zombies
 float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 float ZombieMinGapTime = 7,
@@ -3015,8 +3015,6 @@ void UpdateLevel(RenderWindow& window) {
 
 		if (!currentLevel->arePlantsSelected) progress = 0;
 
-		cout << progress << endl;
-
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][level]);
 
 		bool rolling = currentLevel->arePlantsSelected && diff >= 0.75f;
@@ -3395,7 +3393,7 @@ int main() {
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
-	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/Sun3.png");
+	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/sun.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
@@ -3519,12 +3517,15 @@ int main() {
 		delta_time = dtTime.asSeconds();
 		mousePos = Mouse::getPosition(window);
 
+		mousePos.x *= (float)windowWidth / window.getSize().x;
+		mousePos.y *= (float)windowHeight / window.getSize().y;
+
 		uiInteracted = false;
 		mouseJustClicked[0] = false;
 		mouseJustClicked[1] = false;
 
 		while (window.pollEvent(event)) {
-			if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
+			if (event.type == Event::Closed) {
 				window.close();
 			} else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
