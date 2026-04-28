@@ -32,6 +32,9 @@ const int eatDistance = z_eat_p_distance;
 RectangleShape gameOverScreen, gameWonScreen;
 Sprite ground, lawnmowerSprite;
 
+float screenFlashAlpha = 0.0f;
+RectangleShape screenFlashOverlay;
+
 float delta_time = 1.0f;
 Vector2i mousePos;
 // left - right
@@ -102,7 +105,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
-	PLANT_REPEATER, // <-- ADDED: Repeater Plant
+	PLANT_REPEATER, 
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -113,6 +116,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_POTATO_MINE,
 	PLANT_DOOM_MINE,
 	PLANT_CHEERY_BOMB,
+	PLANT_ICESHROOM,
 
 	NormalBullet,
 	IceBullet,
@@ -151,7 +155,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
-	PLANT_REPEATER, // <-- ADDED: Repeater Plant Texture
+	PLANT_REPEATER,
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -162,6 +166,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_POTATO_MINE,
 	PLANT_DOOM_MINE,
 	PLANT_CHEERY_BOMB,
+	PLANT_ICESHROOM,
+
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
@@ -236,6 +242,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::PLANT_ICE_PEASHOOTER:
 		textureType = TEXTURE_TYPE::PLANT_ICE_PEASHOOTER;
+		break;
+	case ENTITY_TYPE::PLANT_ICESHROOM:
+		textureType = TEXTURE_TYPE::PLANT_ICESHROOM;
 		break;
 		//other
 	case ENTITY_TYPE::NormalBullet:
@@ -313,6 +322,7 @@ struct Entity {
 	int AnimationForCycles = -1;
 
 	float freezeTimer = 0.0f;
+	bool isSuperFrozen = false;
 
 	Bullet bullet;
 
@@ -991,6 +1001,31 @@ Entity defineShroomPlant() {
 
 	// update
 	shroom.updateEntity = [](Entity& plant) {
+		if (plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
+
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
+
+					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
+						zombie.position.x > plant.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			// shoot bullet
+			if (zombieInLane) {
+				plant.attackClock.restart();
+				Entity newBullet = defineShroomBullet();
+				newBullet.attack = plant.attack;
+				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+				newBullets.push_back(newBullet);
+				//entities.push_back(newBullet)
+			}
+		}
 
 		};
 
@@ -1557,6 +1592,45 @@ Entity defineDOOM_SHROOM() {
 		}
 		};
 	return shroom;
+}
+Entity defineIceShroom() {
+	// Load the texture into index 0
+	textures[TEXTURE_TYPE::PLANT_ICESHROOM][0].loadFromFile("assets/IceShroom.png");
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_ICESHROOM;
+	plant.health = 100;
+	plant.price = 75;
+	plant.seedCooldown = 20.0f;
+	plant.scale = 1.0f;
+
+	plant.num_animations = 1;
+	plant.animations[0].frames = 11;
+	plant.animations[0].frameTimer = 0.1f;
+
+	plant.setCurrentAnimation(0);
+
+	plant.updateEntity = [](Entity& p) {
+		if (p.attackClock.getElapsedTime().asSeconds() >= 1.5f) {
+
+			screenFlashAlpha = 160.0f;
+
+			for (Entity& z : entities) {
+				if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
+					z.freezeTimer = 6.0f;
+					z.isSuperFrozen = true;
+					z.health -= 20;
+				}
+			}
+
+			p.category = ENTITY_CATEGORY::NONE;
+			p.isDead = true;
+		}
+		};
+
+	plants[ENTITY_TYPE::PLANT_ICESHROOM] = plant;
+	return plant;
 }
 
 // zombies
@@ -2133,7 +2207,12 @@ void DrawZombies(RenderWindow& window) {
 			continue;
 
 		if (zombie.freezeTimer > 0) {
+			zombieSprite.setColor(Color(100, 150, 255));
 			zombie.freezeTimer -= delta_time;
+		}
+		else {
+			zombie.isSuperFrozen = false;
+			zombieSprite.setColor(Color::White);
 		}
 		// lawnmowers
 		checkZombieHitByLawnmower(zombie);
@@ -2183,7 +2262,9 @@ void DrawZombies(RenderWindow& window) {
 				zombieEatPlant(zombie, plant);
 			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					if (zombie.freezeTimer > 0) {
+					if (zombie.isSuperFrozen) {
+						zombie.x_vel = 0.002f;
+					} else if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 0.02f;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
 						zombie.x_vel = 0.12f;
@@ -2781,6 +2862,7 @@ void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col)
 		int y = currentLevel->offsetY + (row * currentLevel->cellHeight) + (currentLevel->cellHeight - plant.height);
 
 		plant.position = Vector2f(x, y);
+		plant.attackClock.restart();
 		entities.push_back(plant);
 		sunsMoney -= plant.price;
 		currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
@@ -2962,9 +3044,17 @@ void UpdateLevel(RenderWindow& window) {
 	DrawSeeds(window);
 	DrawDebugGrid(window);
 
+	if (screenFlashAlpha > 0) {
+		screenFlashAlpha -= delta_time * 600.0f;
+		if (screenFlashAlpha < 0) screenFlashAlpha = 0;
 
-	UI_DrawClick(window);
-	UI_Interaction(window);
+		screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
+		screenFlashOverlay.setFillColor(Color(200, 230, 255, (Uint8)screenFlashAlpha));
+		window.draw(screenFlashOverlay);
+	}
+
+		UI_DrawClick(window);
+		UI_Interaction(window);
 
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
@@ -3193,6 +3283,9 @@ int select_levels_background_music(Music& music) {
 }
 
 int main() {
+	screenFlashOverlay.setPosition(0, 0);
+	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
+
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	Event event;
@@ -3217,6 +3310,7 @@ int main() {
 	Entity POTATOMINE = definePOTATO_MINE();
 	Entity doomShroom = defineDOOM_SHROOM();
 	Entity CHEERY_BOMB = defineCherryBomb();
+	Entity iceShroom = defineIceShroom();
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -3250,7 +3344,7 @@ int main() {
 
 	// General Plants to any level
 
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom };//, shroom, sunshroom };
 
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
@@ -3262,6 +3356,7 @@ int main() {
 		isEntityUnlocked[POTATOMINE.type] =
 		isEntityUnlocked[doomShroom.type] =
 		isEntityUnlocked[CHEERY_BOMB.type] =
+		isEntityUnlocked[iceShroom.type] =
 		true;
 
 	// Levels
