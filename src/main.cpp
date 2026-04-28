@@ -541,10 +541,10 @@ Sun suns[MAX_SUNS];
 
 // Booster
 int curBoosterCnt = 0;
+bool isBoostActive = false;
 int maxBoosterCnt = 2;
 float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
-bool isBoostActive = false;
 //float boosterSpawnDuration = 10.0f;
 //float boosterLifeDuration = 5.0f;
 struct Booster {
@@ -712,6 +712,9 @@ void resetLevel() {
 	selectedPlant = 0;
 
 	sunsMoney = currentLevel->startingSuns;
+
+	curBoosterCnt = 0;
+	isBoostActive = false;
 
 	for (int i = 0; i < gridRows; i++) {
 		currentLevel->lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
