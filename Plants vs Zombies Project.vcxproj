@@ -102,13 +102,15 @@
       <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>rmdir "$(OutDir)" /s /q &amp; exit 0</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Remove all files in output directory</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy assets "$(OutDir)assets\" /E /Y &amp;&amp; copy openal32.dll "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy the assets folder to build directory</Message>
@@ -132,13 +134,15 @@
       <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>rmdir "$(OutDir)" /s /q &amp; exit 0</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Remove all files in output directory</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy assets "$(OutDir)assets\" /E /Y &amp;&amp; copy openal32.dll "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy the assets folder to build directory</Message>
@@ -160,13 +164,15 @@
       <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s-d.lib;sfml-window-s-d.lib;freetype.lib;sfml-graphics-s-d.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s-d.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>rmdir "$(OutDir)" /s /q &amp; exit 0</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Remove all files in output directory</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy assets "$(OutDir)assets\" /E /Y &amp;&amp; copy openal32.dll "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy the assets folder to build directory</Message>
@@ -190,13 +196,15 @@
       <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>rmdir "$(OutDir)" /s /q &amp; exit 0</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Remove all files in output directory</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy assets "$(OutDir)assets\" /E /Y &amp;&amp; copy openal32.dll "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy the assets folder to build directory</Message>
