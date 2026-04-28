@@ -105,7 +105,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 
 	PLANT_NORMAL,
-	PLANT_REPEATER, 
+	PLANT_REPEATER,
 	PLANT_SHROOM,
 	PLANT_MINISHROOM,
 	PLANT_SUNFLOWER,
@@ -895,15 +895,15 @@ Entity defineNormalPlant() {
 
 			// shoot bullet
 			if (zombieInLane) {
-				plant.attackClock.restart();
-				Entity newBullet = defineNormalBullet();
-				newBullet.attack = plant.attack;
-				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-				newBullets.push_back(newBullet);
-				//entities.push_back(newBullet);
+				if (plant.currentAnimationIndex != 2) plant.DoAnimation(1, 2);
 
-				// plant attack animation
-				plant.DoAnimation(1, 2);
+				if (plant.currentAnimation.currentFrame == 15) {
+					plant.attackClock.restart();
+					Entity newBullet = defineNormalBullet();
+					newBullet.attack = plant.attack;
+					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+					newBullets.push_back(newBullet);
+				}
 			}
 		}
 		};
@@ -2209,8 +2209,7 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.freezeTimer > 0) {
 			zombieSprite.setColor(Color(100, 150, 255));
 			zombie.freezeTimer -= delta_time;
-		}
-		else {
+		} else {
 			zombie.isSuperFrozen = false;
 			zombieSprite.setColor(Color::White);
 		}
@@ -2568,7 +2567,7 @@ void DrawSelectPlants(RenderWindow& window) {
 	text.setFont(*font);
 	text.setString("Choose your plants");
 	text.setFillColor(Color(255, 255, 255, 128));
-	text.setPosition(Vector2f(240, 130.0f));
+	text.setPosition(Vector2f(240, 130.0f) + animationOffset);
 
 	window.draw(text);
 
@@ -3053,8 +3052,8 @@ void UpdateLevel(RenderWindow& window) {
 		window.draw(screenFlashOverlay);
 	}
 
-		UI_DrawClick(window);
-		UI_Interaction(window);
+	UI_DrawClick(window);
+	UI_Interaction(window);
 
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
