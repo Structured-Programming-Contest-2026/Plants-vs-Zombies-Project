@@ -3259,7 +3259,7 @@ int main() {
 	levels[1].offsetY = 135;
 	levels[1].cellWidth = 150;
 	levels[1].cellHeight = 170;
-	//setupLevelLawnmowers(levels[1]);
+	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
 	// Level 2: Egypt
 	levels[2].lvlNum = 2;
@@ -3275,7 +3275,7 @@ int main() {
 	levels[2].offsetY = 135;
 	levels[2].cellWidth = 150;
 	levels[2].cellHeight = 170;
-	//setupLevelLawnmowers(levels[2]);
+	setupLevelLawnmowers(levels[2]);
 
 
 
@@ -3289,7 +3289,7 @@ int main() {
 	levels[3].offsetY = 135;
 	levels[3].cellWidth = 150;
 	levels[3].cellHeight = 170;
-	//setupLevelLawnmowers(levels[3]);
+	setupLevelLawnmowers(levels[3]);
 
 
 
