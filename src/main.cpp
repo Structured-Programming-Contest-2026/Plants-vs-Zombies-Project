@@ -103,6 +103,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_CONEHEAD,
 	ZOMBIE_NEWSPAPER,
 	ZOMBIE_ALLSTAR,
+	ZOMBIE_PHARAOH,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -155,6 +156,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_CONEHEAD,
 	ZOMBIE_NEWSPAPER,
 	ZOMBIE_ALLSTAR,
+	ZOMBIE_PHARAOH,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -216,6 +218,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_ALLSTAR:
 		textureType = TEXTURE_TYPE::ZOMBIE_ALLSTAR;
+		break;
+	case ENTITY_TYPE::ZOMBIE_PHARAOH:
+		textureType = TEXTURE_TYPE::ZOMBIE_PHARAOH;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -357,6 +362,10 @@ struct Entity {
 
 	bool hasTackled = false; // for allstar
 	bool isTackling = false; // for allstar
+
+	bool shellDestroyed = false;   // for pharaoh
+	bool playingShellAnim = false; // for pharaoh
+	Animation shellAnim;           // for pharaoh
 
 	bool isBoosted = false;
 	float boostAttackTimer = 2.7;
@@ -1888,6 +1897,43 @@ Entity defineAllStarZombie() {
 	return zombie;
 }
 
+Entity definePharaohZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][0].loadFromFile("assets/PharaohZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][1].loadFromFile("assets/PharaohZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][2].loadFromFile("assets/PharaohZombie2.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3].loadFromFile("assets/ShellBreak.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_PHARAOH;
+	zombie.health = 600;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05f;
+	// Animations
+	zombie.num_animations = 4;
+	Animation anim;
+	// walk
+	anim.frames = 66;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 55;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+	// no shell walk
+	anim.frames = 65;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
+	// shell break
+	anim.frames = 41;
+	anim.frameTimer = 0.05f;
+	zombie.animations[3] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
+
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -1987,6 +2033,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
 
@@ -2005,6 +2052,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			zombie.DoAnimation(1, 1);
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 				zombie.scale = 1.3f;
+			if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
+				zombie.scale = 0.8f;
 
 
 			// [1.2] After Death Animation
@@ -2200,6 +2249,18 @@ void updateConeheadZombie(Entity& zombie) {
 	}
 }
 
+void updatePharaohZombie(Entity& zombie) {
+	if (zombie.health <= 300 && !zombie.shellDestroyed) {
+		zombie.shellDestroyed = true;
+		zombie.playingShellAnim = true;
+		zombie.shellAnim = zombie.animations[3];
+		zombie.shellAnim.currentFrame = 0;
+		zombie.shellAnim.clock.restart();
+		zombie.setCurrentAnimation(2);
+		zombie.x_vel = 0.08f;
+	}
+}
+
 void zombieEatPlant(Entity& zombie, Entity& plant) {
 	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		// close enough - not just touch
@@ -2262,6 +2323,9 @@ void DrawZombies(RenderWindow& window) {
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.health > 0) { // for allstar
 			updateZombieAllStars(zombie);
 		}
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.health > 0) { // for pharaoh
+			updatePharaohZombie(zombie);
+		}
 
 		// zombie move
 		if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel;
@@ -2286,6 +2350,8 @@ void DrawZombies(RenderWindow& window) {
 						zombie.x_vel = 0.12f;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
 						zombie.x_vel = 0.18f;
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
+						zombie.x_vel = 0.08f;
 					} else {
 						zombie.x_vel = .05; // no plant - has health - move normally
 					}
@@ -2308,6 +2374,32 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		window.draw(zombieSprite);
+
+		// to play pharaoh zombie's shell breaking animation
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.playingShellAnim) {
+			if (zombie.shellAnim.clock.getElapsedTime().asSeconds() >= zombie.shellAnim.frameTimer) {
+				zombie.shellAnim.clock.restart();
+				zombie.shellAnim.currentFrame++;
+				if (zombie.shellAnim.currentFrame >= zombie.shellAnim.frames) {
+					zombie.playingShellAnim = false;     // all frames done and only 1 cycle so stop animation
+				}
+			}
+
+			Texture& shellTex = textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3];
+			float frameWidth = shellTex.getSize().x / zombie.shellAnim.frames;
+			float frameHeight = shellTex.getSize().y;
+
+			uiSprite.setTexture(shellTex);
+			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame* frameWidth, 0, frameWidth, shellTex.getSize().y));
+			// (x initial position for each frame, 0 is top of frame)
+
+			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
+			uiSprite.setScale(3.0f, 3.0f);
+			uiSprite.setPosition(zombie.position.x + 100, zombie.position.y + 130);
+			window.draw(uiSprite);
+			uiSprite.setOrigin(0.0f, 0.0f); // reset
+			uiSprite.setScale(1.0f, 1.0f);  // reset
+		}
 	}
 }
 
@@ -3347,6 +3439,170 @@ int select_levels_background_music(Music& music) {
 	return 0;
 }
 
+int level_1_music(Music& music) {
+	if (!music.openFromFile("assets/audio/06. Main Music 00.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_2_music(Music& music) {
+	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_3_music(Music& music) {
+	if (!music.openFromFile("assets/audio/14. Main Music 08.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_4_music(Music& music) {
+	if (!music.openFromFile("assets/audio/15. Main Music 09.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_5_music(Music& music) {
+	if (!music.openFromFile("assets/audio/17. Main Music 11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_6_music(Music& music) {
+	if (!music.openFromFile("assets/audio/18. Main Music 12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int after_huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX siren.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int pause_music(Music& music) {
+	if (!music.openFromFile("assets/audio/24. pause.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int win_music(Music& music) {
+	if (!music.openFromFile("assets/audio/26. winmusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int eating_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX chomp.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+
+	int playCount = 0;
+	const int maxPlays = 3;
+
+	music.play();
+
+	while (playCount < maxPlays) {
+		if (music.getStatus() == sf::SoundSource::Stopped) {
+			playCount++;
+			if (playCount < maxPlays) {
+				music.play();
+			}
+		}
+	}
+
+	return 0;
+}
+
+int small_red_car_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX lawnmower.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int zombies_are_coming_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices awooga.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int before_lose_music_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices scream.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int lose_music(Music& music) {
+	if (!music.openFromFile("assets/audio/05. losemusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+
 int main() {
 	screenFlashOverlay.setPosition(0, 0);
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
@@ -3389,6 +3645,7 @@ int main() {
 	Entity zombieConehead = defineConeheadZombie();
 	Entity zombieNewspaper = defineNewspaperZombie();
 	Entity zombieAllStar = defineAllStarZombie();
+	Entity zombiePharaoh = definePharaohZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -3450,7 +3707,7 @@ int main() {
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].plant_types.push_back(shroom);
-	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy };
+	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
 	levels[2].targetZombie = 25;
 	//levels[2].targetZombie = 2;
 	levels[2].addReward(500);
