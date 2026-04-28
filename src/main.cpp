@@ -45,7 +45,7 @@ bool isGameOver = false, isGameWon = false;
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
 int lawnmower_backoff = 150,	// from beginning edge
-lawnmower_endline = windowWidth - 300; // which x pos to stop at
+lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
 float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 float ZombieMinGapTime = 7,
@@ -687,9 +687,6 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 	if (zombie.health <= 0 && !withDyingAnimation) {
 		zombie.category = ENTITY_CATEGORY::NONE;
 		zombie.isDead = true, deadZombieCount++, ZombieGap_dt += 0.05;
-		if (deadZombieCount >= currentLevel->targetZombie) {
-			isGameWon = true;
-		}
 		cout << "Zombie died! total dead: " << deadZombieCount << " isDead = " << zombie.isDead << endl;
 		return true;
 	}
@@ -999,7 +996,7 @@ Entity defineShroomPlant() {
 	shroom.price = 15;
 	shroom.scale = 0.9;
 	// Idle animation
-	shroom.num_animations = 1;
+	shroom.num_animations = 2;
 	shroom.animations[0].frameTimer = 0.1f;
 	shroom.animations[0].frames = 30;
 	shroom.setCurrentAnimation(0);
@@ -1277,6 +1274,7 @@ Entity defineMiniShroom() {
 	Texture tex;
 	tex.loadFromFile("assets/Minishroom.png");
 	textures[TEXTURE_TYPE::PLANT_MINISHROOM][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_MINISHROOM][1].loadFromFile("assets/Minishroom_attack.png");
 
 	Entity miniShroom;
 	miniShroom.category = ENTITY_CATEGORY::PLANT;
@@ -1285,14 +1283,15 @@ Entity defineMiniShroom() {
 	miniShroom.attack = 30;
 	miniShroom.price = 0;
 	miniShroom.seedCooldown = 5.0f;
-	miniShroom.scale = 0.4f;
+	miniShroom.scale = 0.75f;
 
-	miniShroom.num_animations = 1;
+	miniShroom.num_animations = 2;
 
-	Animation a;
-	a.frames = 30;
-	a.frameTimer = 0.05f;
-	miniShroom.animations[0] = a;
+	miniShroom.animations[0].frames = 12;
+	miniShroom.animations[0].frameTimer = 0.25f;
+
+	miniShroom.animations[1].frames = 10;
+	miniShroom.animations[1].frameTimer = 0.15f;
 
 	miniShroom.setCurrentAnimation(0);
 
@@ -1316,12 +1315,15 @@ Entity defineMiniShroom() {
 			}
 
 			if (zombieInFront) {
-				plant.attackClock.restart();
-				Entity newBullet = defineShroomBullet();
-				newBullet.attack = plant.attack;
-				newBullet.position = Vector2f(plant.position.x + 70, plant.position.y);
-				newBullets.push_back(newBullet);
-				//entities.push_back(newBullet);
+				plant.DoAnimation(1, 1);
+
+				if (plant.currentAnimation.currentFrame == 4) {
+					plant.attackClock.restart();
+					Entity newBullet = defineShroomBullet();
+					newBullet.attack = plant.attack;
+					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y + 50);
+					newBullets.push_back(newBullet);
+				}
 			}
 		}
 		};
@@ -3117,6 +3119,10 @@ void UpdateLevel(RenderWindow& window) {
 	UI_DrawClick(window);
 	UI_Interaction(window);
 
+	if (deadZombieCount >= currentLevel->targetZombie) {
+		isGameWon = true;
+	}
+
 	for (Entity& zombie : entities) {
 		if (zombie.category == ENTITY_CATEGORY::ZOMBIE)//zombie and not dead
 		{
@@ -3219,11 +3225,6 @@ void DrawMainMenu(RenderWindow& window) {
 		sprite.setTextureRect({ 0, 200, 370, 320 });
 		sprite.setScale(scale / 1.5f);
 		sprite.setPosition(pos + Vector2f(0, -32));
-		if (i + 1 == 2) {
-			sprite.setTextureRect({ 200, 500, 400, 375 });
-			sprite.setScale(scale / 1.75f);
-			sprite.setPosition(pos + Vector2f(-8, -46));
-		}
 		window.draw(sprite);
 
 		sprite.setTextureRect({ 0, 0, (int)levelTexSize.x, (int)levelTexSize.y });
@@ -3349,6 +3350,8 @@ int main() {
 
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+
+	window.setSize(Vector2u(1280, 720));
 	Event event;
 	// Characters
 	Texture groundTex, lawnTex;
