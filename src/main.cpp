@@ -132,9 +132,11 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_SELECTOR_BACKGROUND,
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
+	LEVEL_BACKGROUND_DIRT,
 	LEVEL_BACKGROUND_HOUSE,
 	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
+	GRID_ROLL,
 	LUSTER,
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
@@ -408,6 +410,8 @@ struct Entity {
 		}
 	}
 	void DoAnimation(int forCycles = 1, int idx = 0) {
+		if (currentAnimationIndex == idx) return;
+
 		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
 		setCurrentAnimation(idx);
@@ -898,7 +902,7 @@ Entity defineNormalPlant() {
 
 			// shoot bullet
 			if (zombieInLane) {
-				if (plant.currentAnimationIndex != 2) plant.DoAnimation(1, 2);
+				plant.DoAnimation(1, 2);
 
 				if (plant.currentAnimation.currentFrame == 15) {
 					plant.attackClock.restart();
@@ -1952,8 +1956,10 @@ void DrawPlantsGrid(RenderWindow& window) {
 			plantSprite.setColor(Color::White);
 		}
 		// ----------------------------------------
-		int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - plant.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
-		plantSprite.setColor(Color(255, damage, damage));
+		if (!isGameOver) {
+			int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - plant.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
+			plantSprite.setColor(Color(255, damage, damage));
+		}
 		window.draw(plantSprite);
 		plantSprite.setColor(Color::White);//normal highlight
 		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
@@ -2291,8 +2297,10 @@ void DrawZombies(RenderWindow& window) {
 		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
 
-		int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
-		zombieSprite.setColor(Color(255, damage, damage));
+		if (!isGameOver) {
+			int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
+			zombieSprite.setColor(Color(255, damage, damage));
+		}
 
 		window.draw(zombieSprite);
 	}
@@ -2735,6 +2743,8 @@ void DrawWinScreen(RenderWindow& window) {
 
 // Screen Animations
 void screenAnimation(RenderWindow& window) {
+	int level = currentLevel->lvlNum;
+
 	int actualTexWidth = ground.getTexture()->getSize().x;
 	int actualTexHeight = ground.getTexture()->getSize().y;
 	//zoom_scale
@@ -2745,7 +2755,8 @@ void screenAnimation(RenderWindow& window) {
 	int maxPan = std::max(0, actualTexWidth - visibleWidth);
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
 		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
-		ground.setColor(Color(255, 255, 255, (int)(255 * currentLevel->clock.getElapsedTime().asSeconds())));
+		int c = (int)(255 * currentLevel->clock.getElapsedTime().asSeconds());
+		ground.setColor(Color(c, c, c, 255));
 	} else if (currentLevel->clock.getElapsedTime().asSeconds() < 2.0f) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - 1.0f) / 1.0f;
 		if (progress < 0) progress = 0;
@@ -2997,6 +3008,50 @@ void UpdateLevel(RenderWindow& window) {
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
 
+	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
+		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
+
+		float progress = (diff - 0.75f) / 5.0f + 0.15f;
+
+		if (!currentLevel->arePlantsSelected) progress = 0;
+
+		cout << progress << endl;
+
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][level]);
+
+		bool rolling = currentLevel->arePlantsSelected && diff >= 0.75f;
+
+		int dirtLeft = 0;
+
+		if (rolling) {
+			int right = ground.getGlobalBounds().left + ground.getGlobalBounds().width;
+
+			ground.setOrigin(1400 - 1400 * progress, 0);
+			ground.setPosition(right, 0);
+			ground.setTextureRect(IntRect(1400 * progress, 0, 1400 - 1400 * progress, 600));
+
+			dirtLeft = ground.getGlobalBounds().left;
+		}
+
+		window.draw(ground);
+
+		ground.setTextureRect(IntRect(0, 0, 1400, 600));
+		ground.setOrigin(0, 0);
+		ground.setPosition(Vector2f(0, 0));
+
+		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
+			Sprite roll;
+			Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
+			roll.setTexture(rollTex);
+			roll.setOrigin(rollTex.getSize().x / 2, 0);
+			roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
+			float scale = 1.0f;
+			scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
+			roll.setScale(Vector2f(scale, scale));
+			window.draw(roll);
+		}
+	}
+
 	if (isGameOver) {
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
 		window.draw(ground);
@@ -3027,7 +3082,7 @@ void UpdateLevel(RenderWindow& window) {
 		DrawSelectPlants(window);
 
 		return;
-	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 1.0f) {
+	} else if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f) {
 		return;
 	}
 
@@ -3336,6 +3391,7 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
+	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
@@ -3422,14 +3478,14 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
-		string path = "assets/levels/level" + to_string(lvl) + ".png";
-		string housePath = "assets/levels/level" + to_string(lvl) + "_house.png";
-		string opendoorPath = "assets/levels/level" + to_string(lvl) + "_opendoor.png";
 		cout << "Loading level " << lvl << " files" << endl;
 		levels[lvl].lvlNum = lvl;
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile(path);
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile(housePath);
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile(opendoorPath);
+
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + ".png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_house.png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
+
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
 
