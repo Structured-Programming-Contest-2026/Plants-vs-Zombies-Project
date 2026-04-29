@@ -5,6 +5,7 @@
 #include <functional>
 #include <cmath>
 #include <fstream>
+#include <queue>
 
 using namespace std;
 using namespace sf;
@@ -296,9 +297,12 @@ struct Animation {
 };
 
 struct Bullet {
+	ENTITY_CATEGORY category = ENTITY_CATEGORY::Bullet;
 	Vector2f position;
 	Vector2f velocity;
-	int damage = 0;
+	int attack = 0;
+	int idx = -1;
+	int x_vel = 0.05f;
 	// type
 	// Animation
 
@@ -309,6 +313,24 @@ struct Bullet {
 		position += velocity * deltaTime;
 	}*/
 };
+
+
+//queue<int> emptyBulletIdx;
+//void addBullet(Bullet bullet) {
+//	if (emptyBulletIdx.empty()) {
+//		bullet.idx = bullets.size();
+//		bullets.push_back(bullet);
+//	}
+//	else {
+//		bullets[emptyBulletIdx.front()] = bullet;
+//		emptyBulletIdx.pop();
+//	}
+//}
+//void removeBullet(Entity bullet) {
+//	emptyBulletIdx.push(bullet.idx);
+//	bullets[bullet.idx].category = ENTITY_CATEGORY::NONE;	// reset the bullet at that index
+//	bullets[bullet.idx].idx = -1;	// reset the bullet at that index
+//}
 
 
 struct Entity {
@@ -369,7 +391,7 @@ struct Entity {
 	Animation shellAnim;           // for pharaoh
 
 	bool isBoosted = false;
-	float boostAttackTimer = 2.7;
+	float boostAttackTimer = 0.1;
 
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = [](Entity&) {};	// called after animation finish (if animationForCycles != -1)
@@ -436,7 +458,7 @@ map<ENTITY_TYPE, Entity> plants;
 
 vector<Entity> entities;
 vector<Entity> newBullets;	// test
-vector<Bullet> bullets;
+vector<Entity> bullets;
 
 struct Reward {
 	enum {
@@ -550,7 +572,7 @@ struct Sun {
 Sun suns[MAX_SUNS];
 
 // Booster
-int curBoosterCnt = 0;
+int curBoosterCnt = 10;
 bool isBoostActive = false;
 int maxBoosterCnt = 2;
 float boosterSpawnDuration = 1.0f;
@@ -586,9 +608,10 @@ struct Booster {
 		int orgAttackTimer = plant.attackTimer;
 		plant.attackTimer = plant.boostAttackTimer;
 		plant.isBoosted = true;
-		plant.DoAnimation(50, 3); // TODO: ntimes/eachcycletakes + boolmod
+		plant.DoAnimation(10, 3); // TODO: ntimes/eachcycletakes + boolmod
 		plant.afterAnimation = [orgAttackTimer](Entity& p) {
 			p.attackTimer = orgAttackTimer;
+			p.isBoosted = false;
 			};
 	}
 };
@@ -897,6 +920,26 @@ Entity defineNormalPlant() {
 	plant.updateEntity = [](Entity& plant) {
 		if (plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
 
+			// Boost
+			if (plant.isBoosted) {
+				// shoot bullets
+				if (plant.currentAnimation.currentFrame == plant.currentAnimation.frames / 2) {
+					plant.attackClock.restart();
+					Entity newBullet = defineNormalBullet();
+					//Bullet newBullet = defineNormalBullet();
+					newBullet.attack = plant.attack;
+					newBullet.x_vel *= 2;
+					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
+					bullets.push_back(newBullet);
+					newBullet.position = Vector2f(plant.position.x + 200, plant.position.y + 50);
+					bullets.push_back(newBullet);
+					newBullet.position = Vector2f(plant.position.x + 300, plant.position.y + 50);
+					bullets.push_back(newBullet);
+				}
+				return;	 // to not loop zombies
+			}
+
+			// Normal
 			bool zombieInLane = false;
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
@@ -909,17 +952,18 @@ Entity defineNormalPlant() {
 					}
 				}
 			}
-
 			// shoot bullet
 			if (zombieInLane) {
 				plant.DoAnimation(1, 2);
 
-				if (plant.currentAnimation.currentFrame == 15) {
+				if (plant.currentAnimation.currentFrame == plant.currentAnimation.frames/2) {
 					plant.attackClock.restart();
 					Entity newBullet = defineNormalBullet();
+					//Bullet newBullet = defineNormalBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-					newBullets.push_back(newBullet);
+					//addBullet(newBullet);
+					bullets.push_back(newBullet);
 				}
 			}
 		}
@@ -977,13 +1021,15 @@ Entity defineRepeaterPlant() {
 				Entity newBullet1 = defineNormalBullet();
 				newBullet1.attack = atk;
 				newBullet1.position = Vector2f(pos.x + 100, pos.y + 50);
-				newBullets.push_back(newBullet1);
+				bullets.push_back(newBullet1);
+				//newBullets.push_back(newBullet1);
 				//entities.push_back(newBullet1);
 
 				Entity newBullet2 = defineNormalBullet();
 				newBullet2.attack = atk;
 				newBullet2.position = Vector2f(pos.x + 50, pos.y + 50);
-				newBullets.push_back(newBullet2);
+				bullets.push_back(newBullet2);
+				//newBullets.push_back(newBullet2);
 				//entities.push_back(newBullet2);
 
 				// Commented By Omar Hadidi - Missing Attack Animation
@@ -1039,7 +1085,8 @@ Entity defineShroomPlant() {
 				Entity newBullet = defineShroomBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-				newBullets.push_back(newBullet);
+				bullets.push_back(newBullet);
+				//newBullets.push_back(newBullet);
 				//entities.push_back(newBullet)
 			}
 		}
@@ -1212,7 +1259,8 @@ Entity defineIcePeaShooter() {
 				Entity newBullet = defineIceBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y);
-				newBullets.push_back(newBullet);
+				bullets.push_back(newBullet);
+				//newBullets.push_back(newBullet);
 				//entities.push_back(newBullet);
 			}
 		}
@@ -1335,7 +1383,8 @@ Entity defineMiniShroom() {
 					Entity newBullet = defineShroomBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y + 50);
-					newBullets.push_back(newBullet);
+					bullets.push_back(newBullet);
+					//newBullets.push_back(newBullet);
 				}
 			}
 		}
@@ -2049,10 +2098,16 @@ void DrawPlantsGrid(RenderWindow& window) {
 		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
 	}
 
-	for (Entity& bullet : newBullets) {
-		entities.push_back(bullet);
-	}
-	newBullets.clear();
+	// Bullets Cleaning
+	/*int b = 0, nb = 0;
+	for (b = 0, nb = 0; b < bullets.size() && nb < newBullets.size(); ) {
+		if(bullets[b].type == ENTITY_CATEGORY::NONE) bullets[b] = newBullets[nb++];
+		else b++;
+	}*/
+	/*while(nb < newBullets.size()) {
+		bullets.push_back(newBullets[nb++]);
+	}*/
+	//newBullets.clear();
 }
 // Returns true if zombie disappeared (finished death animation) , false otherwise (living or still dying)
 bool healthDone_DyingZombie(Entity& zombie) {
@@ -2437,7 +2492,7 @@ void DrawZombies(RenderWindow& window) {
 }
 
 void UpdateAndDrawBullets(RenderWindow& window) {
-	for (Entity& bullet : entities) {
+	for (Entity& bullet : bullets) {
 		if (bullet.category != ENTITY_CATEGORY::Bullet) continue;
 
 		bullet.position.x -= bullet.x_vel; // move right
@@ -2994,7 +3049,7 @@ void uiBoostPlant(RenderWindow& window, Entity& clickedEntity) {
 	//curBoosterCnt--;
 	isBoostActive = false;
 	booster.activate(clickedEntity);
-	cout << "Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
+	cout << "======== Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
 	/*clickedEntity.boosted = true;
 	clickedEntity.boostStartTime = currentLevel->clock.getElapsedTime();
 					isBoostActive = false;*/
