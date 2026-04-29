@@ -148,9 +148,14 @@ enum class TEXTURE_TYPE : uint8_t {
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
 	SUN,
+	COIN,
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+
+	PROGRESS_EMPTY,
+	PROGRESS_FULL,
+	PROGRESS_HEAD,
 
 
 	ZOMBIE_NORMAL,
@@ -2627,7 +2632,16 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float s
 	return sprite;
 }
 void DrawSeeds(RenderWindow& window) {
-	const Vector2f pos = Vector2f(10.0f, 0);
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(0, -100) * (1 - easeInOut(animationProgress));
+	if (!currentLevel->arePlantsSelected) {
+		animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - 2.25f) / 1.0f;
+		if (animationProgress > 1) animationProgress = 1;
+		animationOffset = Vector2f(-750, 0) * (1 - easeInOut(animationProgress));
+	}
+
+	const Vector2f pos = Vector2f(10.0f, 0) + animationOffset;
 
 	Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
 
@@ -3130,6 +3144,86 @@ void UI_Interaction(RenderWindow& window) {
 
 }
 
+void DrawLevelStats(RenderWindow& window) {
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(-200, 0) * (1 - easeInOut(animationProgress));
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	Sprite sprite;
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::COIN));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::COIN).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -20) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().y
+	);
+
+	text.setString(std::to_string(coinsMoney) + " Coins");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Yellow);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+	// Boosts
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::BOOSTER));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::BOOSTER).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().y
+	);
+
+	text.setString(std::to_string(-1) + " Boosts");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Green);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+
+	// Progress Bar
+
+	{
+		float progressValue = (float)deadZombieCount / currentLevel->targetZombie;
+		progressValue = 0.045f + (progressValue * (1 - 0.045f * 2));
+
+		Sprite progress;
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_EMPTY));
+		progress.setOrigin(progress.getLocalBounds().getSize());
+		progress.setPosition(Vector2f(windowWidth - 100, windowHeight - 5) + (Vector2f(0, 75) * (1 - easeInOut(animationProgress))));
+		progress.setScale(0.35f, 0.35f);
+
+		window.draw(progress);
+
+		Vector2u texSize = getTexture(TEXTURE_TYPE::PROGRESS_FULL).getSize();
+
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_FULL));
+		progress.setTextureRect(IntRect{ 0, 0, int(texSize.x * progressValue), (int)texSize.y });
+
+		window.draw(progress);
+
+		sprite.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_HEAD));
+		sprite.setOrigin(Vector2f(getTexture(TEXTURE_TYPE::PROGRESS_HEAD).getSize()) / 2.0f);
+		sprite.setScale(0.25f, 0.25f);
+		sprite.setPosition(Vector2f(progress.getGlobalBounds().left + progress.getGlobalBounds().width, progress.getPosition().y - 35));
+
+		window.draw(sprite);
+	}
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
@@ -3257,6 +3351,8 @@ void UpdateLevel(RenderWindow& window) {
 
 	UI_DrawClick(window);
 	UI_Interaction(window);
+
+	DrawLevelStats(window);
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
@@ -3949,11 +4045,15 @@ int main() {
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::COIN][Default_Texture_Index].loadFromFile("assets/coin.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 	textures[TEXTURE_TYPE::MAGIC_SHOVEL][Default_Texture_Index].loadFromFile("assets/relocate.png");
 	textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index].loadFromFile("assets/booster.png");
+	textures[TEXTURE_TYPE::PROGRESS_EMPTY][Default_Texture_Index].loadFromFile("assets/progress_empty.png");
+	textures[TEXTURE_TYPE::PROGRESS_FULL][Default_Texture_Index].loadFromFile("assets/progress_full.png");
+	textures[TEXTURE_TYPE::PROGRESS_HEAD][Default_Texture_Index].loadFromFile("assets/progress_head.png");
 
 	// Font
 	font = new Font();
