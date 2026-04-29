@@ -2139,7 +2139,6 @@ bool healthDone_DyingZombie(Entity& zombie) {
 
 void checkZombieReachedHome(Entity& zombie) {}
 void checkZombieHitByLawnmower(Entity& zombie) {
-	attackZombie(zombie, 100000, true);
 	// hit by lawnmower (car)
 	auto& mwr = currentLevel->lawnmowers[zombie.gridRow];
 	if (!mwr.isUsed && mwr.position.x >= zombie.position.x) {
