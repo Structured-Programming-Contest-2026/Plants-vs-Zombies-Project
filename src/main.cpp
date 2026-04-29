@@ -106,6 +106,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_NEWSPAPER,
 	ZOMBIE_ALLSTAR,
 	ZOMBIE_PHARAOH,
+	ZOMBIE_SHIELDGUARD,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -170,6 +171,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_NEWSPAPER,
 	ZOMBIE_ALLSTAR,
 	ZOMBIE_PHARAOH,
+	ZOMBIE_SHIELDGUARD,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -234,6 +236,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_PHARAOH:
 		textureType = TEXTURE_TYPE::ZOMBIE_PHARAOH;
+		break;
+	case ENTITY_TYPE::ZOMBIE_SHIELDGUARD:
+		textureType = TEXTURE_TYPE::ZOMBIE_SHIELDGUARD;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -2037,6 +2042,32 @@ Entity definePharaohZombie() {
 	return zombie;
 }
 
+Entity defineShieldGuardZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_SHIELDGUARD][0].loadFromFile("assets/ShieldGuardZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_SHIELDGUARD][1].loadFromFile("assets/ShieldGuardZombieDeath.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_SHIELDGUARD;
+	zombie.health = 150;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05f;
+	// Animations
+	zombie.num_animations = 2;
+	Animation anim;
+	// walk
+	anim.frames = 36;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 28;
+	anim.frameTimer = 0.08f;
+	zombie.animations[1] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -2163,7 +2194,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				zombie.scale = 1.3f;
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
 				zombie.scale = 0.8f;
-
+			if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD) // for shield guard
+				zombie.scale = 1.2f;
 
 			// [1.2] After Death Animation
 			zombie.afterAnimation = [&zombie](Entity& entity) {
@@ -2531,6 +2563,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				bullet.position.x >= zombie.position.x &&
 				bullet.position.x <= zombie.position.x + 100.0f) // almost touched
 			{
+				// shield guard zombie only dies to shroom bullet
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
+					bullet.category = ENTITY_CATEGORY::NONE; // bullet disappears and doesnt do damage
+					break;   // bullet is gone so stop loop from checking other zombies
+				}
+				
 				attackZombie(zombie, bullet.attack, true);
 
 				if (bullet.type == ENTITY_TYPE::IceBullet) {
@@ -4177,6 +4215,7 @@ int main() {
 	Entity zombieNewspaper = defineNewspaperZombie();
 	Entity zombieAllStar = defineAllStarZombie();
 	Entity zombiePharaoh = definePharaohZombie();
+	Entity zombieShieldGuard = defineShieldGuardZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -4247,7 +4286,7 @@ int main() {
 	// Level 2: Night
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
-	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
 	levels[2].targetZombie = 25;
 	levels[2].startingSuns = 100;
 	levels[2].offsetX = 450;
