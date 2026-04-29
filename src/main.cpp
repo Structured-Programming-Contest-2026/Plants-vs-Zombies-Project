@@ -2139,6 +2139,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 
 void checkZombieReachedHome(Entity& zombie) {}
 void checkZombieHitByLawnmower(Entity& zombie) {
+	attackZombie(zombie, 100000, true);
 	// hit by lawnmower (car)
 	auto& mwr = currentLevel->lawnmowers[zombie.gridRow];
 	if (!mwr.isUsed && mwr.position.x >= zombie.position.x) {
@@ -2807,6 +2808,8 @@ void DrawSelectPlants(RenderWindow& window) {
 	window.draw(text);
 }
 void DrawRewardsScreen(RenderWindow& window) {
+	bool unlockedPlant = currentLevel->plantReward.plantType != ENTITY_TYPE::NONE;
+
 	Text text;
 	text.setFont(*font);
 	text.setString("You unlocked a new plant!");
@@ -2815,7 +2818,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 	text.setCharacterSize(64);
 	text.setOrigin(text.getLocalBounds().getSize() / 2.0f);
 
-	window.draw(text);
+	if (unlockedPlant) window.draw(text);
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
@@ -2836,9 +2839,9 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	packetBg.setRotation(diff * 3.14f);
 
-	window.draw(packetBg);
+	if (unlockedPlant) window.draw(packetBg);
 
-	DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, scale);
+	if (unlockedPlant) DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, false, scale);
 
 	Sprite startButton;
 
