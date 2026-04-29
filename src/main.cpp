@@ -1240,6 +1240,8 @@ Entity defineCherryBomb() {
 	cherry.width = 120;
 	cherry.height = 120;
 
+	cherry.seedCooldown = 20.0f;
+
 	cherry.num_animations = 2;
 
 	// animation 0 = النبتة العادية
