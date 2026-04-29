@@ -1793,10 +1793,10 @@ Entity defineBigZombie() {
 
 	return zombie;
 }
-Entity defineTorchlightZombie() {
-	Texture tex;
-	tex.loadFromFile("assets/torchlightzombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][Default_Texture_Index] = tex;
+Entity defineTorchlightZombie()
+{
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][0].loadFromFile("assets/torchlightzombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][1].loadFromFile("assets/TorchlightZombieDeath.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -1806,10 +1806,17 @@ Entity defineTorchlightZombie() {
 	zombie.attack = 20;
 	zombie.x_vel = 0.05f;
 	zombie.scale = 0.8f;
-	// Walk animation
-	zombie.num_animations = 1;
-	zombie.animations[0].frameTimer = 0.1f;
-	zombie.animations[0].frames = 8;
+
+	zombie.num_animations = 2;
+	Animation anim;
+	anim.frameTimer = 0.1f;
+	anim.frames = 8;
+	zombie.animations[0] = anim;
+
+	anim.frameTimer = 0.12f;
+	anim.frames = 8;
+	zombie.animations[1] = anim;
+
 	zombie.setCurrentAnimation(0);
 	return zombie;
 }
