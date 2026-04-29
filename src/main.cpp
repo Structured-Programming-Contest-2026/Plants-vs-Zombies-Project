@@ -3472,6 +3472,170 @@ int select_levels_background_music(Music& music) {
 	return 0;
 }
 
+int level_1_music(Music& music) {
+	if (!music.openFromFile("assets/audio/06. Main Music 00.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_2_music(Music& music) {
+	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_3_music(Music& music) {
+	if (!music.openFromFile("assets/audio/14. Main Music 08.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_4_music(Music& music) {
+	if (!music.openFromFile("assets/audio/15. Main Music 09.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_5_music(Music& music) {
+	if (!music.openFromFile("assets/audio/17. Main Music 11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_6_music(Music& music) {
+	if (!music.openFromFile("assets/audio/18. Main Music 12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int after_huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX siren.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int pause_music(Music& music) {
+	if (!music.openFromFile("assets/audio/24. pause.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int win_music(Music& music) {
+	if (!music.openFromFile("assets/audio/26. winmusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int eating_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX chomp.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+
+	int playCount = 0;
+	const int maxPlays = 3;
+
+	music.play();
+
+	while (playCount < maxPlays) {
+		if (music.getStatus() == sf::SoundSource::Stopped) {
+			playCount++;
+			if (playCount < maxPlays) {
+				music.play();
+			}
+		}
+	}
+
+	return 0;
+}
+
+int small_red_car_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX lawnmower.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int zombies_are_coming_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices awooga.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int before_lose_music_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices scream.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int lose_music(Music& music) {
+	if (!music.openFromFile("assets/audio/05. losemusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+
 int main() {
 	screenFlashOverlay.setPosition(0, 0);
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
