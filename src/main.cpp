@@ -3251,6 +3251,8 @@ void UpdateLevel(RenderWindow& window) {
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
 
+	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f) UpdateLawnmowers(window);
+
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
 		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
 
@@ -3402,7 +3404,6 @@ void UpdateLevel(RenderWindow& window) {
 		}
 	}
 
-	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	UpdateBooster(window);
@@ -4059,6 +4060,8 @@ int lose_music(Music& music) {
 
 
 int main() {
+	srand(time(0));
+
 	screenFlashOverlay.setPosition(0, 0);
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
