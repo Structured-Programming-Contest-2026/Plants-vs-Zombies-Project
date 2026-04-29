@@ -4084,6 +4084,8 @@ int main() {
 	levels[2].offsetY = 135;
 	levels[2].cellWidth = 150;
 	levels[2].cellHeight = 170;
+	levels[2].plantReward = shroom;
+	levels[2].coinReward = 200;
 	setupLevelLawnmowers(levels[2]);
 
 	//------------------------------------------
@@ -4099,6 +4101,8 @@ int main() {
 	levels[3].offsetY = 135;
 	levels[3].cellWidth = 150;
 	levels[3].cellHeight = 170;
+	levels[3].plantReward = wallnut;
+	levels[3].coinReward = 300;
 	setupLevelLawnmowers(levels[3]);
 
 	//------------------------------------------
@@ -4115,6 +4119,8 @@ int main() {
 	levels[4].offsetY = 135;
 	levels[4].cellWidth = 150;
 	levels[4].cellHeight = 170;
+	levels[4].plantReward = repeaterPlant;
+	levels[4].coinReward = 400;
 	setupLevelLawnmowers(levels[4]);
 	//------------------------------------------
 
