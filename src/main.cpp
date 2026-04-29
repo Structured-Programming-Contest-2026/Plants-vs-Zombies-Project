@@ -970,7 +970,7 @@ Entity defineNormalPlant() {
 			if (zombieInLane) {
 				plant.DoAnimation(1, 2);
 
-				if (plant.currentAnimation.currentFrame == plant.currentAnimation.frames/2) {
+				if (plant.currentAnimation.currentFrame == plant.currentAnimation.frames / 2) {
 					plant.attackClock.restart();
 					Entity newBullet = defineNormalBullet();
 					//Bullet newBullet = defineNormalBullet();
@@ -1842,8 +1842,7 @@ Entity defineBigZombie() {
 
 	return zombie;
 }
-Entity defineTorchlightZombie()
-{
+Entity defineTorchlightZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][0].loadFromFile("assets/torchlightzombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][1].loadFromFile("assets/TorchlightZombieDeath.png");
 
@@ -2655,6 +2654,12 @@ void CheckTimer_AddSun(RenderWindow& window) {
 	}
 }
 
+void screenFade(RenderWindow& window, float v) {
+	sf::RectangleShape fade(Vector2f(windowWidth, windowHeight));
+	fade.setFillColor(Color(0, 0, 0, (Uint8)(255 * v)));
+	window.draw(fade);
+}
+
 // There is a bug in SFML that causes the program to crash when exiting
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
@@ -2692,7 +2697,7 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, bool in
 	float scaleFactor = 74.0f / frameHeight;
 	plantSprite.setScale(Vector2f(scaleFactor, scaleFactor) * scale);
 
-	if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (interactable && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 		sprite.setColor(color * Color(128, 128, 128, 255));
 		plantSprite.setColor(color * Color(128, 128, 128, 255));
 	}
@@ -2726,7 +2731,7 @@ void DrawSeeds(RenderWindow& window) {
 	uiSprite.setPosition(pos);
 	uiSprite.setTexture(seedBank);
 	resizeSpriteToTex(uiSprite, seedBank);
-	uiSprite.setScale(Vector2f(1.4f, 1.4f));
+	uiSprite.setScale(Vector2f(1.0f, 1.0f));
 
 	window.draw(uiSprite);
 	uiSprite.setScale(Vector2f(1.0f, 1.0f));
@@ -2735,7 +2740,8 @@ void DrawSeeds(RenderWindow& window) {
 	text.setFont(*font);
 	text.setString(std::to_string(sunsMoney));
 	text.setFillColor(Color());
-	text.setPosition(pos + Vector2f(32, 82));
+	text.setOrigin(Vector2f(text.getGlobalBounds().getSize()) / 2.0f);
+	text.setPosition(pos + Vector2f(72, 136));
 
 	window.draw(text);
 
@@ -2746,19 +2752,19 @@ void DrawSeeds(RenderWindow& window) {
 	int i = -1;
 	for (auto& plant : currentLevel->selectedPlants) {
 		i++;
-		Vector2f spritePos = pos + Vector2f(115.0f + i * (seedPacketSize.x - 10.0f), 10.0f);
+		Vector2f spritePos = pos + Vector2f(155.0f + i * (seedPacketSize.x + 10), 24.0f);
 
 		Color packetColor = Color::White;
 		if (sunsMoney < plant.price || plant.currentSeedCooldown > 0) {
 			packetColor = Color(100, 100, 100, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, packetColor);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.9f, packetColor);
 
 		if (plant.currentSeedCooldown > 0.0f && plant.seedCooldown > 0.0f) {
 			float progress = plant.currentSeedCooldown / plant.seedCooldown;
-			float h = sprite.getGlobalBounds().height * .75f;
-			float w = sprite.getGlobalBounds().width * .75f;
+			float h = sprite.getGlobalBounds().height * 0.9f;
+			float w = sprite.getGlobalBounds().width * 0.9f;
 
 			RectangleShape overlay(Vector2f(w, h * progress));
 			overlay.setPosition(spritePos.x, spritePos.y + h * (1.0f - progress));
@@ -2802,7 +2808,7 @@ void DrawSelectPlants(RenderWindow& window) {
 
 	Sprite bgSprite;
 	bgSprite.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER));
-	bgSprite.setPosition(Vector2f(10, 123.0f) + animationOffset);
+	bgSprite.setPosition(Vector2f(10, 183.0f) + animationOffset);
 	bgSprite.setScale(Vector2f(1.5f, 1.5f));
 
 	window.draw(bgSprite);
@@ -2810,8 +2816,8 @@ void DrawSelectPlants(RenderWindow& window) {
 	Text text;
 	text.setFont(*font);
 	text.setString("Choose your plants");
-	text.setFillColor(Color(255, 255, 255, 128));
-	text.setPosition(Vector2f(240, 130.0f) + animationOffset);
+	text.setFillColor(Color(255, 255, 255, 192));
+	text.setPosition(Vector2f(240, 195.0f) + animationOffset);
 
 	window.draw(text);
 
@@ -2824,7 +2830,7 @@ void DrawSelectPlants(RenderWindow& window) {
 		if (!isEntityUnlocked[plant.type]) continue;
 
 		i++;
-		Vector2f spritePos = Vector2f(50.0f, 190.0f) + animationOffset + Vector2f((i % 7) * (seedPacketSize.x - 10.0f), 10.0f + (i / 7) * 130.0f);
+		Vector2f spritePos = Vector2f(50.0f, 250.0f) + animationOffset + Vector2f((i % 6) * (seedPacketSize.x + 5.0f), 10.0f + (i / 6) * 150.0f);
 
 		Vector2u size = Vector2u(Vector2f(seedPacketSize) * 0.75f);
 
@@ -2842,7 +2848,7 @@ void DrawSelectPlants(RenderWindow& window) {
 			color = Color(64, 64, 64, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, color);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.9f, color);
 
 		if (!disabled && mouseJustClicked[0] && currentLevel->selectedPlants.size() < 5 && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiInteracted = true;
@@ -2892,6 +2898,9 @@ void DrawRewardsScreen(RenderWindow& window) {
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
 	float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->winTime.asSeconds();
+
+	screenFade(window, 0.5f * std::min(diff / 1.0f, 1.0f));
+
 	float progress = (diff - 1) / 0.5f;
 	if (progress > 1) progress = 1;
 	float scale = 2.0f * progress;
@@ -2971,6 +2980,7 @@ void DrawWinScreen(RenderWindow& window) {
 }
 
 // Screen Animations
+
 void screenAnimation(RenderWindow& window) {
 	int level = currentLevel->lvlNum;
 
@@ -3015,10 +3025,7 @@ void gameOverAnimation(RenderWindow& window) {
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
 
-		int c = 255 - (int)(128 * progress);
-		ground.setColor(Color(c, c, c, 255));
-		zombieSprite.setColor(Color(c, c, c, 255));
-		plantSprite.setColor(Color(c, c, c, 255));
+		screenFade(window, progress * 0.5f);
 	}
 	if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 2.5) {
 		float progress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() - 2.5) / 0.75f;
@@ -3037,22 +3044,13 @@ void gameOverAnimation(RenderWindow& window) {
 		int c = 255 - (int)(255 * progress);
 		gameOverScreen.setFillColor(Color(c, c, c, 255));
 
-		c = 128 - (int)(128 * progress);
-		ground.setColor(Color(c, c, c, 255));
-		zombieSprite.setColor(Color(c, c, c, 255));
-		plantSprite.setColor(Color(c, c, c, 255));
+		screenFade(window, progress);
 	}
 	if (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->gameOverTime.asSeconds() > 8.5f) {
 		resetLevel();
 		currentLevel = nullptr;
 		return;
 	}
-}
-
-void screenFade(RenderWindow& window, float v) {
-	sf::RectangleShape fade(Vector2f(windowWidth, windowHeight));
-	fade.setFillColor(Color(0, 0, 0, (Uint8)(255 * v)));
-	window.draw(fade);
 }
 
 // UI interaction parts
@@ -3315,10 +3313,6 @@ void UpdateLevel(RenderWindow& window) {
 	zombieSprite.setColor(Color::White);
 	plantSprite.setColor(Color::White);
 
-	if (isGameOver) {
-		gameOverAnimation(window);
-	}
-
 	if (currentLevel == nullptr) return;
 	int level = currentLevel->lvlNum;
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
@@ -3440,7 +3434,10 @@ void UpdateLevel(RenderWindow& window) {
 	if (isGameOver) {
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
 		window.draw(ground);
+
+		gameOverAnimation(window);
 	}
+	if (currentLevel == nullptr) return;
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
