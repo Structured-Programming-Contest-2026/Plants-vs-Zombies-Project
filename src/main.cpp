@@ -143,6 +143,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_BACKGROUND_HOUSE,
 	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
+	LEVEL_ICON,
 	GRID_ROLL,
 	LUSTER,
 	SEED_CHOOSER,
@@ -1244,6 +1245,8 @@ Entity defineCherryBomb() {
 	cherry.scale = 1.0f;
 	cherry.width = 120;
 	cherry.height = 120;
+
+	cherry.seedCooldown = 20.0f;
 
 	cherry.num_animations = 2;
 
@@ -3272,22 +3275,94 @@ void UpdateLevel(RenderWindow& window) {
 		ground.setOrigin(0, 0);
 		ground.setPosition(Vector2f(0, 0));
 
-		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
-			Sprite roll;
-			Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
-			roll.setTexture(rollTex);
-			roll.setOrigin(rollTex.getSize().x / 2, 0);
-			roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
-			float scale = 1.0f;
-			scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
-			roll.setScale(Vector2f(scale, scale));
-			window.draw(roll);
+		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000)
+		{
+			if (level != 4) 
+			{
+				Sprite roll;
+				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
+				roll.setTexture(rollTex);
+				roll.setOrigin(rollTex.getSize().x / 2, 0);
+				roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
+				float scale = 1.0f;
+				scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
+				roll.setScale(Vector2f(scale, scale));
+				window.draw(roll);
+			}
 		}
 	}
 
 	if (isGameOver) {
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
 		window.draw(ground);
+	}
+
+	//fake zombies
+	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
+		
+		
+		float previewDiff = currentLevel->clock.getElapsedTime().asSeconds();
+		float camProgress = 0.0f;
+
+		if (previewDiff >= 1.0f && previewDiff < 2.0f) 
+		{
+			camProgress = easeInOut((previewDiff - 1.0f) / 1.0f);//حته بتاعت يوتيوبر كبير (:
+		}
+		else if (previewDiff >= 2.0f && !currentLevel->arePlantsSelected)
+		{
+			camProgress = 1.0f;
+		} 
+		else if (currentLevel->arePlantsSelected) 
+		{
+			float pan = (previewDiff - currentLevel->plantsSelectedTime.asSeconds()) / 0.75f;
+			camProgress = 1.0f - easeInOut(min(pan, 1.0f));
+		}
+
+
+
+		float targetX = 1250.0f;
+
+	
+		float startX = (windowWidth + 200.0f) - (camProgress * ((windowWidth + 200.0f) - targetX));
+
+	
+		if (currentLevel->zombie_types.size() > 0) 
+		{
+
+			float offsetX[5] = { 0, 90, 40, 130, 70 };
+
+			for (int raw = 0; raw < 4; raw++)
+			{
+				for (int col = 0; col < 3; col++) 
+				{ 
+
+					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
+					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
+
+					Texture& zomTex = textures[getTextureType(dummyZombie.type)][0];
+					int frames = dummyZombie.animations[0].frames;
+
+					if (frames > 0) 
+					{
+						int frameWidth = zomTex.getSize().x / frames;
+
+						int frame = (int)(previewDiff * 15 + raw * 3 + col * 7) % frames;
+
+						zombieSprite.setTexture(zomTex);
+						zombieSprite.setTextureRect(IntRect(frame * frameWidth, 0, frameWidth, zomTex.getSize().y));
+						zombieSprite.setScale(Vector2f(dummyZombie.scale, dummyZombie.scale));
+						zombieSprite.setColor(Color::White);
+
+						float actualHeight = zomTex.getSize().y * dummyZombie.scale;
+						float zomY = currentLevel->offsetY + (raw * currentLevel->cellHeight) - (actualHeight - currentLevel->cellHeight);
+						float zomX = startX + offsetX[raw] + (col * 130);
+
+						zombieSprite.setPosition(zomX, zomY);
+						window.draw(zombieSprite);
+					}
+				}
+			}
+		}
 	}
 
 	DrawZombies(window);
@@ -3483,9 +3558,12 @@ void DrawLevelSelector(RenderWindow& window) {
 			sprite.setColor(Color::White);
 		}
 
-		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][i + 1]);
-		sprite.setTextureRect({ 0, 200, 370, 320 });
-		sprite.setScale(scale / 1.5f);
+		Texture& iconTex = textures[TEXTURE_TYPE::LEVEL_ICON][i + 1];
+		sprite.setTexture(iconTex);
+		sprite.setTextureRect({ 0, 0, (int)iconTex.getSize().x, (int)iconTex.getSize().y });
+		float fitScaleX = 370.0f / iconTex.getSize().x;
+		float fitScaleY = 320.0f / iconTex.getSize().y;
+		sprite.setScale(Vector2f(fitScaleX * (scale.x / 1.5f), fitScaleY * (scale.y / 1.5f)));
 		sprite.setPosition(pos + Vector2f(0, -32));
 		window.draw(sprite);
 
@@ -4095,39 +4173,69 @@ int main() {
 	levels[1].cellHeight = 170;
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
-	// Level 2: Egypt
+//---------------------------------------
+	// Level 2: Night
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
-	levels[2].plant_types.push_back(shroom);
-	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
-	levels[2].targetZombie = 25;
-	//levels[2].targetZombie = 2;
-	levels[2].addReward(500);
-	levels[2].addReward(wallnut);
-
+	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+	levels[2].targetZombie = 25; 
+	levels[2].startingSuns = 100; 
 	levels[2].offsetX = 450;
 	levels[2].offsetY = 135;
 	levels[2].cellWidth = 150;
 	levels[2].cellHeight = 170;
 	setupLevelLawnmowers(levels[2]);
 
-
-
 	//------------------------------------------
-	// Level 3: Night
+	// Level 3: Egypt
 	levels[3].lvlNum = 3;
 	levels[3].plant_types = mainPlantTypes;
-	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
-	levels[3].startingSuns = 100;
+	levels[3].plant_types.push_back(shroom); 
+	levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
+	levels[3].targetZombie = 30; 
+	levels[3].addReward(500);
+	levels[3].addReward(wallnut);
 	levels[3].offsetX = 450;
 	levels[3].offsetY = 135;
 	levels[3].cellWidth = 150;
 	levels[3].cellHeight = 170;
 	setupLevelLawnmowers(levels[3]);
 
+	//------------------------------------------
+	// Level 4: Wild West
+	levels[4].lvlNum = 4;
+	levels[4].plant_types = mainPlantTypes; 
+	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar }; 
+	levels[4].targetZombie = 30; 
+	levels[4].waveLimit = 12;
+	levels[4].waveTimer = 15;
+	levels[4].startingSuns = 3000; 
+	levels[4].isUnlocked = true;
+	levels[4].offsetX = 450;
+	levels[4].offsetY = 135;
+	levels[4].cellWidth = 150;
+	levels[4].cellHeight = 170;
+	setupLevelLawnmowers(levels[4]);
+	//------------------------------------------
+
+	// Level 5: Squaid Game
+	levels[5].lvlNum = 5;
+	levels[5].plant_types = mainPlantTypes;
+	levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
+	levels[5].targetZombie = 40;
+	levels[5].waveLimit = 15; 
+	levels[5].waveTimer = 18; 
+	levels[5].startingSuns = 50;
+	levels[5].isUnlocked = true;
+	levels[5].offsetX = 450;
+	levels[5].offsetY = 135;
+	levels[5].cellWidth = 150;
+	levels[5].cellHeight = 170;
+	setupLevelLawnmowers(levels[5]);
 
 
-	// setting levels background textures
+
+	// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
@@ -4138,6 +4246,7 @@ int main() {
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_house.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
+		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
 
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
