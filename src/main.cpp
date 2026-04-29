@@ -134,6 +134,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	GREEN_BUTTON,
 	WOOD_BUTTON,
 	MAINMENU_BACKGROUND,
+	STORE_WINDOW,
 	LEVEL_SELECTOR_BACKGROUND,
 	LEVEL_SELECTOR_BACKGROUND_BACK,
 	LEVEL_OPTION_BACKGROUND,
@@ -3277,7 +3278,8 @@ void UpdateLevel(RenderWindow& window) {
 }
 
 bool selectingLevel = false;
-Time startSelectingLevelTime = Time::Zero;
+bool inStore = false;
+Time startMenuItemTime = Time::Zero;
 Time startMainMenuTime = Time::Zero;
 
 void DrawLevelSelector(RenderWindow& window) {
@@ -3434,17 +3436,105 @@ void DrawLevelSelector(RenderWindow& window) {
 	}
 
 	{
-		float progress = 1 - ((gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() - 0.25f) / 0.25f;
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
+}
+
+void DrawStore(RenderWindow& window) {
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::MAINMENU_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	Texture storeTex = getTexture(TEXTURE_TYPE::STORE_WINDOW);
+	sprite.setTexture(storeTex);
+	sprite.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f);
+	sprite.setScale(Vector2f(
+		windowWidth / (float)storeTex.getSize().x,
+		windowHeight / (float)storeTex.getSize().y
+	));
+	sprite.setOrigin(Vector2f(storeTex.getSize()) / 2.0f);
+
+	window.draw(sprite);
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	text.setString("Shop");
+	text.setCharacterSize(64);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setFillColor(Color::Yellow);
+	text.setPosition(Vector2f(windowWidth / 2.0f, 200));
+
+	window.draw(text);
+	text.setCharacterSize(48);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth / 2.0f, windowHeight) + Vector2f(0, -70));
+	text.setString(std::string("Back"));
+	text.setFillColor(Color::Red);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			inStore = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
 		if (progress < 0) progress = 0;
 		screenFade(window, progress);
 	}
 }
 
 void DrawMainMenu(RenderWindow& window) {
-	if (selectingLevel && (gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() > 0.25f) {
-		DrawLevelSelector(window);
-		return;
+	if ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() > 0.25f) {
+		if (selectingLevel) {
+			DrawLevelSelector(window);
+			return;
+		}
+
+		if (inStore) {
+			DrawStore(window);
+			return;
+		}
 	}
+
+	bool buttonsEnabled = true;
+	if (selectingLevel || inStore) buttonsEnabled = false;
 
 	Sprite sprite;
 
@@ -3495,13 +3585,13 @@ void DrawMainMenu(RenderWindow& window) {
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 	text.setPosition(button.getPosition());
 
-	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
 		button.setColor(Color(128, 128, 128, 255));
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
 			selectingLevel = true;
-			startSelectingLevelTime = gameClock.getElapsedTime();
+			startMenuItemTime = gameClock.getElapsedTime();
 		}
 	}
 
@@ -3516,12 +3606,13 @@ void DrawMainMenu(RenderWindow& window) {
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 	text.setPosition(button.getPosition());
 
-	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
 		button.setColor(Color(128, 128, 128, 255));
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			// TOOD: open store
+			inStore = true;
+			startMenuItemTime = gameClock.getElapsedTime();
 		}
 	}
 
@@ -3536,7 +3627,7 @@ void DrawMainMenu(RenderWindow& window) {
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 	text.setPosition(button.getPosition());
 
-	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
 		button.setColor(Color(128, 128, 128, 255));
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
@@ -3548,8 +3639,8 @@ void DrawMainMenu(RenderWindow& window) {
 	window.draw(button);
 	window.draw(text);
 
-	if (selectingLevel) {
-		float progress = (gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() / 0.25f;
+	if (selectingLevel || inStore) {
+		float progress = (gameClock.getElapsedTime() - startMenuItemTime).asSeconds() / 0.25f;
 		if (progress > 1) progress = 1;
 		screenFade(window, progress);
 	}
@@ -3848,6 +3939,7 @@ int main() {
 	textures[TEXTURE_TYPE::GREEN_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/green_button.png");
 	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
 	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
+	textures[TEXTURE_TYPE::STORE_WINDOW][Default_Texture_Index].loadFromFile("assets/mainmenu/store_window.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
