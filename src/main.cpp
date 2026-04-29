@@ -149,9 +149,14 @@ enum class TEXTURE_TYPE : uint8_t {
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
 	SUN,
+	COIN,
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+
+	PROGRESS_EMPTY,
+	PROGRESS_FULL,
+	PROGRESS_HEAD,
 
 
 	ZOMBIE_NORMAL,
@@ -2134,6 +2139,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 
 void checkZombieReachedHome(Entity& zombie) {}
 void checkZombieHitByLawnmower(Entity& zombie) {
+	attackZombie(zombie, 100000, true);
 	// hit by lawnmower (car)
 	auto& mwr = currentLevel->lawnmowers[zombie.gridRow];
 	if (!mwr.isUsed && mwr.position.x >= zombie.position.x) {
@@ -2584,7 +2590,7 @@ void CheckTimer_AddSun(RenderWindow& window) {
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
 
-Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float scale = 1.0f, Color color = Color::White) {
+Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, bool interactable = false, float scale = 1.0f, Color color = Color::White) {
 	Sprite sprite;
 	sprite.setPosition(pos);
 
@@ -2617,6 +2623,11 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float s
 	float scaleFactor = 74.0f / frameHeight;
 	plantSprite.setScale(Vector2f(scaleFactor, scaleFactor) * scale);
 
+	if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		sprite.setColor(color * Color(128, 128, 128, 255));
+		plantSprite.setColor(color * Color(128, 128, 128, 255));
+	}
+
 	window.draw(sprite);
 	window.draw(plantSprite);
 
@@ -2630,7 +2641,16 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float s
 	return sprite;
 }
 void DrawSeeds(RenderWindow& window) {
-	const Vector2f pos = Vector2f(10.0f, 0);
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(0, -100) * (1 - easeInOut(animationProgress));
+	if (!currentLevel->arePlantsSelected) {
+		animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - 2.25f) / 1.0f;
+		if (animationProgress > 1) animationProgress = 1;
+		animationOffset = Vector2f(-750, 0) * (1 - easeInOut(animationProgress));
+	}
+
+	const Vector2f pos = Vector2f(10.0f, 0) + animationOffset;
 
 	Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
 
@@ -2664,7 +2684,7 @@ void DrawSeeds(RenderWindow& window) {
 			packetColor = Color(100, 100, 100, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, packetColor);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, packetColor);
 
 		if (plant.currentSeedCooldown > 0.0f && plant.seedCooldown > 0.0f) {
 			float progress = plant.currentSeedCooldown / plant.seedCooldown;
@@ -2753,7 +2773,7 @@ void DrawSelectPlants(RenderWindow& window) {
 			color = Color(64, 64, 64, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, color);
 
 		if (!disabled && mouseJustClicked[0] && currentLevel->selectedPlants.size() < 5 && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiInteracted = true;
@@ -2788,6 +2808,8 @@ void DrawSelectPlants(RenderWindow& window) {
 	window.draw(text);
 }
 void DrawRewardsScreen(RenderWindow& window) {
+	bool unlockedPlant = currentLevel->plantReward.plantType != ENTITY_TYPE::NONE;
+
 	Text text;
 	text.setFont(*font);
 	text.setString("You unlocked a new plant!");
@@ -2796,7 +2818,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 	text.setCharacterSize(64);
 	text.setOrigin(text.getLocalBounds().getSize() / 2.0f);
 
-	window.draw(text);
+	if (unlockedPlant) window.draw(text);
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
@@ -2817,9 +2839,9 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	packetBg.setRotation(diff * 3.14f);
 
-	window.draw(packetBg);
+	if (unlockedPlant) window.draw(packetBg);
 
-	DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, scale);
+	if (unlockedPlant) DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, false, scale);
 
 	Sprite startButton;
 
@@ -3133,6 +3155,86 @@ void UI_Interaction(RenderWindow& window) {
 
 }
 
+void DrawLevelStats(RenderWindow& window) {
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(-200, 0) * (1 - easeInOut(animationProgress));
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	Sprite sprite;
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::COIN));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::COIN).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -20) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().y
+	);
+
+	text.setString(std::to_string(coinsMoney) + " Coins");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Yellow);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+	// Boosts
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::BOOSTER));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::BOOSTER).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().y
+	);
+
+	text.setString(std::to_string(-1) + " Boosts");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Green);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+
+	// Progress Bar
+
+	{
+		float progressValue = (float)deadZombieCount / currentLevel->targetZombie;
+		progressValue = 0.045f + (progressValue * (1 - 0.045f * 2));
+
+		Sprite progress;
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_EMPTY));
+		progress.setOrigin(progress.getLocalBounds().getSize());
+		progress.setPosition(Vector2f(windowWidth - 100, windowHeight - 5) + (Vector2f(0, 75) * (1 - easeInOut(animationProgress))));
+		progress.setScale(0.35f, 0.35f);
+
+		window.draw(progress);
+
+		Vector2u texSize = getTexture(TEXTURE_TYPE::PROGRESS_FULL).getSize();
+
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_FULL));
+		progress.setTextureRect(IntRect{ 0, 0, int(texSize.x * progressValue), (int)texSize.y });
+
+		window.draw(progress);
+
+		sprite.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_HEAD));
+		sprite.setOrigin(Vector2f(getTexture(TEXTURE_TYPE::PROGRESS_HEAD).getSize()) / 2.0f);
+		sprite.setScale(0.25f, 0.25f);
+		sprite.setPosition(Vector2f(progress.getGlobalBounds().left + progress.getGlobalBounds().width, progress.getPosition().y - 35));
+
+		window.draw(sprite);
+	}
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
@@ -3151,6 +3253,8 @@ void UpdateLevel(RenderWindow& window) {
 	int level = currentLevel->lvlNum;
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
+
+	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f) UpdateLawnmowers(window);
 
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
 		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
@@ -3181,10 +3285,8 @@ void UpdateLevel(RenderWindow& window) {
 		ground.setOrigin(0, 0);
 		ground.setPosition(Vector2f(0, 0));
 
-		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000)
-		{
-			if (level != 4) 
-			{
+		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
+			if (level != 4) {
 				Sprite roll;
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
 				roll.setTexture(rollTex);
@@ -3205,21 +3307,16 @@ void UpdateLevel(RenderWindow& window) {
 
 	//fake zombies
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
-		
-		
+
+
 		float previewDiff = currentLevel->clock.getElapsedTime().asSeconds();
 		float camProgress = 0.0f;
 
-		if (previewDiff >= 1.0f && previewDiff < 2.0f) 
-		{
+		if (previewDiff >= 1.0f && previewDiff < 2.0f) {
 			camProgress = easeInOut((previewDiff - 1.0f) / 1.0f);//حته بتاعت يوتيوبر كبير (:
-		}
-		else if (previewDiff >= 2.0f && !currentLevel->arePlantsSelected)
-		{
+		} else if (previewDiff >= 2.0f && !currentLevel->arePlantsSelected) {
 			camProgress = 1.0f;
-		} 
-		else if (currentLevel->arePlantsSelected) 
-		{
+		} else if (currentLevel->arePlantsSelected) {
 			float pan = (previewDiff - currentLevel->plantsSelectedTime.asSeconds()) / 0.75f;
 			camProgress = 1.0f - easeInOut(min(pan, 1.0f));
 		}
@@ -3228,19 +3325,16 @@ void UpdateLevel(RenderWindow& window) {
 
 		float targetX = 1250.0f;
 
-	
+
 		float startX = (windowWidth + 200.0f) - (camProgress * ((windowWidth + 200.0f) - targetX));
 
-	
-		if (currentLevel->zombie_types.size() > 0) 
-		{
+
+		if (currentLevel->zombie_types.size() > 0) {
 
 			float offsetX[5] = { 0, 90, 40, 130, 70 };
 
-			for (int raw = 0; raw < 4; raw++)
-			{
-				for (int col = 0; col < 3; col++) 
-				{ 
+			for (int raw = 0; raw < 4; raw++) {
+				for (int col = 0; col < 3; col++) {
 
 					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
 					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
@@ -3248,8 +3342,7 @@ void UpdateLevel(RenderWindow& window) {
 					Texture& zomTex = textures[getTextureType(dummyZombie.type)][0];
 					int frames = dummyZombie.animations[0].frames;
 
-					if (frames > 0) 
-					{
+					if (frames > 0) {
 						int frameWidth = zomTex.getSize().x / frames;
 
 						int frame = (int)(previewDiff * 15 + raw * 3 + col * 7) % frames;
@@ -3314,7 +3407,6 @@ void UpdateLevel(RenderWindow& window) {
 		}
 	}
 
-	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	UpdateBooster(window);
@@ -3332,6 +3424,8 @@ void UpdateLevel(RenderWindow& window) {
 
 	UI_DrawClick(window);
 	UI_Interaction(window);
+
+	DrawLevelStats(window);
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
@@ -3969,11 +4063,16 @@ int lose_music(Music& music) {
 
 
 int main() {
+	srand(time(0));
+
 	screenFlashOverlay.setPosition(0, 0);
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+	bool fullscreen = false;
+	Vector2i oldPos;
+	Vector2u oldSize;
 
 	window.setSize(Vector2u(1280, 720));
 	Event event;
@@ -4027,11 +4126,15 @@ int main() {
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::COIN][Default_Texture_Index].loadFromFile("assets/coin.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 	textures[TEXTURE_TYPE::MAGIC_SHOVEL][Default_Texture_Index].loadFromFile("assets/relocate.png");
 	textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index].loadFromFile("assets/booster.png");
+	textures[TEXTURE_TYPE::PROGRESS_EMPTY][Default_Texture_Index].loadFromFile("assets/progress_empty.png");
+	textures[TEXTURE_TYPE::PROGRESS_FULL][Default_Texture_Index].loadFromFile("assets/progress_full.png");
+	textures[TEXTURE_TYPE::PROGRESS_HEAD][Default_Texture_Index].loadFromFile("assets/progress_head.png");
 
 	// Font
 	font = new Font();
@@ -4078,8 +4181,8 @@ int main() {
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
 	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
-	levels[2].targetZombie = 25; 
-	levels[2].startingSuns = 100; 
+	levels[2].targetZombie = 25;
+	levels[2].startingSuns = 100;
 	levels[2].offsetX = 450;
 	levels[2].offsetY = 135;
 	levels[2].cellWidth = 150;
@@ -4092,9 +4195,9 @@ int main() {
 	// Level 3: Egypt
 	levels[3].lvlNum = 3;
 	levels[3].plant_types = mainPlantTypes;
-	levels[3].plant_types.push_back(shroom); 
+	levels[3].plant_types.push_back(shroom);
 	levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
-	levels[3].targetZombie = 30; 
+	levels[3].targetZombie = 30;
 	levels[3].addReward(500);
 	levels[3].addReward(wallnut);
 	levels[3].offsetX = 450;
@@ -4108,12 +4211,12 @@ int main() {
 	//------------------------------------------
 	// Level 4: Wild West
 	levels[4].lvlNum = 4;
-	levels[4].plant_types = mainPlantTypes; 
-	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar }; 
-	levels[4].targetZombie = 30; 
+	levels[4].plant_types = mainPlantTypes;
+	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+	levels[4].targetZombie = 30;
 	levels[4].waveLimit = 12;
 	levels[4].waveTimer = 15;
-	levels[4].startingSuns = 3000; 
+	levels[4].startingSuns = 3000;
 	levels[4].isUnlocked = true;
 	levels[4].offsetX = 450;
 	levels[4].offsetY = 135;
@@ -4129,8 +4232,8 @@ int main() {
 	levels[5].plant_types = mainPlantTypes;
 	levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
 	levels[5].targetZombie = 40;
-	levels[5].waveLimit = 15; 
-	levels[5].waveTimer = 18; 
+	levels[5].waveLimit = 15;
+	levels[5].waveTimer = 18;
 	levels[5].startingSuns = 50;
 	levels[5].isUnlocked = true;
 	levels[5].offsetX = 450;
@@ -4180,6 +4283,7 @@ int main() {
 
 	// Game Loop
 
+
 	Clock DeltaTimeClock;
 
 	gameClock.restart();
@@ -4208,6 +4312,20 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
+				fullscreen = !fullscreen;
+				if (fullscreen) {
+					oldPos = window.getPosition();
+					oldSize = window.getSize();
+				}
+				window.close();
+				if (fullscreen) {
+					window.create(VideoMode::getDesktopMode(), "Plants vs Zombies", Style::Fullscreen);
+				} else {
+					window.create(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+					window.setPosition(oldPos);
+					window.setSize(oldSize);
+				}
 			}
 		}
 
