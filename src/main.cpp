@@ -493,6 +493,8 @@ struct Level {
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
 
+	int lastRow = 0;
+
 	bool lawnmowersEnabled = false;
 	Lawnmower lawnmowers[gridRows]{};
 
@@ -2561,7 +2563,13 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		int zombie_type_index = rand() % currentLevel->zombie_types.size();
 		Entity newZombie = currentLevel->zombie_types[zombie_type_index];
 
-		newZombie.position = Vector2f(windowWidth, currentLevel->offsetY + (rand() % gridraws) * currentLevel->cellHeight);
+		int row = 0;
+		do {
+			row = rand() % gridraws;
+		} while (row == currentLevel->lastRow);
+		currentLevel->lastRow = row;
+
+		newZombie.position = Vector2f(windowWidth, currentLevel->offsetY + (row)*currentLevel->cellHeight);
 		auto [raw, column] = gridCell(newZombie.position);
 		newZombie.id = nextEntityId++; // for ra
 		newZombie.gridRow = raw, newZombie.gridCol = column;
@@ -3239,6 +3247,7 @@ void UpdateLevel(RenderWindow& window) {
 	// Drawing
 	window.clear(Color::Black);
 	// 
+	ground.setColor(Color::White);
 	screenAnimation(window);
 
 	zombieSprite.setColor(Color::White);
