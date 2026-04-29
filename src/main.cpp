@@ -1564,7 +1564,7 @@ Entity definePOTATO_MINE() {
 	mine.health = 200;
 	mine.attack = 1800;
 	mine.price = 25;
-	mine.scale = 0.8f;
+	mine.scale = 0.6f;
 	mine.num_animations = 2;
 	// Sleeping animation
 	mine.animations[0].frames = 1;
