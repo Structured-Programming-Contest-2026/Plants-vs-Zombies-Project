@@ -60,6 +60,7 @@ int sunsMoney = 3000;
 int coinsMoney = 0;
 
 // Clocks
+Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 
@@ -131,21 +132,32 @@ enum class ENTITY_TYPE : uint8_t {
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
 	LOGO,
+	GREEN_BUTTON,
+	WOOD_BUTTON,
+	MAINMENU_BACKGROUND,
+	STORE_WINDOW,
 	LEVEL_SELECTOR_BACKGROUND,
+	LEVEL_SELECTOR_BACKGROUND_BACK,
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
 	LEVEL_BACKGROUND_DIRT,
 	LEVEL_BACKGROUND_HOUSE,
 	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
+	LEVEL_ICON,
 	GRID_ROLL,
 	LUSTER,
 	SEED_CHOOSER,
 	SEED_CHOOSER_BUTTON,
 	SUN,
+	COIN,
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+
+	PROGRESS_EMPTY,
+	PROGRESS_FULL,
+	PROGRESS_HEAD,
 
 
 	ZOMBIE_NORMAL,
@@ -502,6 +514,8 @@ struct Level {
 	int bgRectHeight = 600;
 	//Reward rewards[10];
 	Reward coinReward, plantReward;
+
+	int lastRow = 0;
 
 	bool lawnmowersEnabled = false;
 	Lawnmower lawnmowers[gridRows]{};
@@ -1282,6 +1296,8 @@ Entity defineCherryBomb() {
 	cherry.width = 120;
 	cherry.height = 120;
 
+	cherry.seedCooldown = 20.0f;
+
 	cherry.num_animations = 2;
 
 	// animation 0 = النبتة العادية
@@ -1441,15 +1457,14 @@ Entity defineWallnut() {
 		};
 	return wallnut;
 }
-Entity defineChomperPlant() 
-{
+Entity defineChomperPlant() {
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
 	Chomper.health = 300;
 	Chomper.price = 150;
 	Chomper.scale = 0.85;
-	Chomper.attack = 10000; 
+	Chomper.attack = 10000;
 
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
@@ -1478,24 +1493,24 @@ Entity defineChomperPlant()
 	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 
 	Chomper.updateEntity = [](Entity& plant) {
-	
+
 		if (plant.currentAnimationIndex == 0) {
 			for (Entity& zombie : entities) {
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
 
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 
-				
+
 				bool inFront = zombie.position.x > plant.position.x &&
 					zombie.position.x < plant.position.x + plant.width * 0.55;
 
 				if (sameRow && inFront && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
 					plant.targetId = zombie.id;
-					zombie.x_vel = 0;          
+					zombie.x_vel = 0;
 
-					plant.DoAnimation(1, 1); 
+					plant.DoAnimation(1, 1);
 					plant.afterAnimation = [](Entity& p) {
-						p.DoAnimation(25, 2); 
+						p.DoAnimation(25, 2);
 						p.afterAnimation = [](Entity& e) {
 							e.DoAnimation(-1, 0);
 							e.afterAnimation = [](Entity&) {};
@@ -1523,7 +1538,7 @@ Entity defineChomperPlant()
 						}
 
 						if (currentF == 5) {
-							attackZombie(z, 10000, false); 
+							attackZombie(z, 10000, false);
 							plant.targetId = -1;
 						}
 
@@ -1827,10 +1842,10 @@ Entity defineBigZombie() {
 
 	return zombie;
 }
-Entity defineTorchlightZombie() {
-	Texture tex;
-	tex.loadFromFile("assets/torchlightzombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][Default_Texture_Index] = tex;
+Entity defineTorchlightZombie()
+{
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][0].loadFromFile("assets/torchlightzombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_TORCHLIGHT][1].loadFromFile("assets/TorchlightZombieDeath.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -1840,10 +1855,17 @@ Entity defineTorchlightZombie() {
 	zombie.attack = 20;
 	zombie.x_vel = 0.05f;
 	zombie.scale = 0.8f;
-	// Walk animation
-	zombie.num_animations = 1;
-	zombie.animations[0].frameTimer = 0.1f;
-	zombie.animations[0].frames = 8;
+
+	zombie.num_animations = 2;
+	Animation anim;
+	anim.frameTimer = 0.1f;
+	anim.frames = 8;
+	zombie.animations[0] = anim;
+
+	anim.frameTimer = 0.12f;
+	anim.frames = 8;
+	zombie.animations[1] = anim;
+
 	zombie.setCurrentAnimation(0);
 	return zombie;
 }
@@ -2478,7 +2500,7 @@ void DrawZombies(RenderWindow& window) {
 			float frameHeight = shellTex.getSize().y;
 
 			uiSprite.setTexture(shellTex);
-			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame* frameWidth, 0, frameWidth, shellTex.getSize().y));
+			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame * frameWidth, 0, frameWidth, shellTex.getSize().y));
 			// (x initial position for each frame, 0 is top of frame)
 
 			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
@@ -2603,7 +2625,13 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		int zombie_type_index = rand() % currentLevel->zombie_types.size();
 		Entity newZombie = currentLevel->zombie_types[zombie_type_index];
 
-		newZombie.position = Vector2f(windowWidth, currentLevel->offsetY + (rand() % gridraws) * currentLevel->cellHeight);
+		int row = 0;
+		do {
+			row = rand() % gridraws;
+		} while (row == currentLevel->lastRow);
+		currentLevel->lastRow = row;
+
+		newZombie.position = Vector2f(windowWidth, currentLevel->offsetY + (row)*currentLevel->cellHeight);
 		auto [raw, column] = gridCell(newZombie.position);
 		newZombie.id = nextEntityId++; // for ra
 		newZombie.gridRow = raw, newZombie.gridCol = column;
@@ -2631,7 +2659,7 @@ void CheckTimer_AddSun(RenderWindow& window) {
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
 
-Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float scale = 1.0f, Color color = Color::White) {
+Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, bool interactable = false, float scale = 1.0f, Color color = Color::White) {
 	Sprite sprite;
 	sprite.setPosition(pos);
 
@@ -2664,6 +2692,11 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float s
 	float scaleFactor = 74.0f / frameHeight;
 	plantSprite.setScale(Vector2f(scaleFactor, scaleFactor) * scale);
 
+	if (sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		sprite.setColor(color * Color(128, 128, 128, 255));
+		plantSprite.setColor(color * Color(128, 128, 128, 255));
+	}
+
 	window.draw(sprite);
 	window.draw(plantSprite);
 
@@ -2677,7 +2710,16 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, float s
 	return sprite;
 }
 void DrawSeeds(RenderWindow& window) {
-	const Vector2f pos = Vector2f(10.0f, 0);
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(0, -100) * (1 - easeInOut(animationProgress));
+	if (!currentLevel->arePlantsSelected) {
+		animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - 2.25f) / 1.0f;
+		if (animationProgress > 1) animationProgress = 1;
+		animationOffset = Vector2f(-750, 0) * (1 - easeInOut(animationProgress));
+	}
+
+	const Vector2f pos = Vector2f(10.0f, 0) + animationOffset;
 
 	Texture& seedBank = getTexture(TEXTURE_TYPE::SEEDBANK);
 
@@ -2711,7 +2753,7 @@ void DrawSeeds(RenderWindow& window) {
 			packetColor = Color(100, 100, 100, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, packetColor);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, packetColor);
 
 		if (plant.currentSeedCooldown > 0.0f && plant.seedCooldown > 0.0f) {
 			float progress = plant.currentSeedCooldown / plant.seedCooldown;
@@ -2800,7 +2842,7 @@ void DrawSelectPlants(RenderWindow& window) {
 			color = Color(64, 64, 64, 255);
 		}
 
-		Sprite sprite = DrawSeedPacket(window, plant, spritePos, 0.75f, color);
+		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.75f, color);
 
 		if (!disabled && mouseJustClicked[0] && currentLevel->selectedPlants.size() < 5 && sprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			uiInteracted = true;
@@ -2835,6 +2877,8 @@ void DrawSelectPlants(RenderWindow& window) {
 	window.draw(text);
 }
 void DrawRewardsScreen(RenderWindow& window) {
+	bool unlockedPlant = currentLevel->plantReward.plantType != ENTITY_TYPE::NONE;
+
 	Text text;
 	text.setFont(*font);
 	text.setString("You unlocked a new plant!");
@@ -2843,7 +2887,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 	text.setCharacterSize(64);
 	text.setOrigin(text.getLocalBounds().getSize() / 2.0f);
 
-	window.draw(text);
+	if (unlockedPlant) window.draw(text);
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
@@ -2864,9 +2908,9 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	packetBg.setRotation(diff * 3.14f);
 
-	window.draw(packetBg);
+	if (unlockedPlant) window.draw(packetBg);
 
-	DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, scale);
+	if (unlockedPlant) DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, false, scale);
 
 	Sprite startButton;
 
@@ -3003,6 +3047,12 @@ void gameOverAnimation(RenderWindow& window) {
 		currentLevel = nullptr;
 		return;
 	}
+}
+
+void screenFade(RenderWindow& window, float v) {
+	sf::RectangleShape fade(Vector2f(windowWidth, windowHeight));
+	fade.setFillColor(Color(0, 0, 0, (Uint8)(255 * v)));
+	window.draw(fade);
 }
 
 // UI interaction parts
@@ -3174,11 +3224,92 @@ void UI_Interaction(RenderWindow& window) {
 
 }
 
+void DrawLevelStats(RenderWindow& window) {
+	float animationProgress = (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() - 4.0f) / 0.25f;
+	if (animationProgress > 1) animationProgress = 1;
+	Vector2f animationOffset = Vector2f(-200, 0) * (1 - easeInOut(animationProgress));
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	Sprite sprite;
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::COIN));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::COIN).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -20) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::COIN).getSize().y
+	);
+
+	text.setString(std::to_string(coinsMoney) + " Coins");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Yellow);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+	// Boosts
+
+	sprite.setTexture(getTexture(TEXTURE_TYPE::BOOSTER));
+	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::BOOSTER).getSize().y);
+	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset);
+	sprite.setScale(
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().x,
+		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().y
+	);
+
+	text.setString(std::to_string(-1) + " Boosts");
+	text.setOrigin(0, text.getLocalBounds().height);
+	text.setFillColor(Color::Green);
+	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
+
+	window.draw(sprite);
+	window.draw(text);
+
+
+	// Progress Bar
+
+	{
+		float progressValue = (float)deadZombieCount / currentLevel->targetZombie;
+		progressValue = 0.045f + (progressValue * (1 - 0.045f * 2));
+
+		Sprite progress;
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_EMPTY));
+		progress.setOrigin(progress.getLocalBounds().getSize());
+		progress.setPosition(Vector2f(windowWidth - 100, windowHeight - 5) + (Vector2f(0, 75) * (1 - easeInOut(animationProgress))));
+		progress.setScale(0.35f, 0.35f);
+
+		window.draw(progress);
+
+		Vector2u texSize = getTexture(TEXTURE_TYPE::PROGRESS_FULL).getSize();
+
+		progress.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_FULL));
+		progress.setTextureRect(IntRect{ 0, 0, int(texSize.x * progressValue), (int)texSize.y });
+
+		window.draw(progress);
+
+		sprite.setTexture(getTexture(TEXTURE_TYPE::PROGRESS_HEAD));
+		sprite.setOrigin(Vector2f(getTexture(TEXTURE_TYPE::PROGRESS_HEAD).getSize()) / 2.0f);
+		sprite.setScale(0.25f, 0.25f);
+		sprite.setPosition(Vector2f(progress.getGlobalBounds().left + progress.getGlobalBounds().width, progress.getPosition().y - 35));
+
+		window.draw(sprite);
+	}
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
 	window.clear(Color::Black);
 	// 
+	ground.setColor(Color::White);
 	screenAnimation(window);
 
 	zombieSprite.setColor(Color::White);
@@ -3192,6 +3323,8 @@ void UpdateLevel(RenderWindow& window) {
 	int level = currentLevel->lvlNum;
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
+
+	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f) UpdateLawnmowers(window);
 
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
 		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
@@ -3223,21 +3356,82 @@ void UpdateLevel(RenderWindow& window) {
 		ground.setPosition(Vector2f(0, 0));
 
 		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
-			Sprite roll;
-			Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
-			roll.setTexture(rollTex);
-			roll.setOrigin(rollTex.getSize().x / 2, 0);
-			roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
-			float scale = 1.0f;
-			scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
-			roll.setScale(Vector2f(scale, scale));
-			window.draw(roll);
+			if (level != 4) {
+				Sprite roll;
+				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
+				roll.setTexture(rollTex);
+				roll.setOrigin(rollTex.getSize().x / 2, 0);
+				roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
+				float scale = 1.0f;
+				scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
+				roll.setScale(Vector2f(scale, scale));
+				window.draw(roll);
+			}
 		}
 	}
 
 	if (isGameOver) {
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
 		window.draw(ground);
+	}
+
+	//fake zombies
+	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
+
+
+		float previewDiff = currentLevel->clock.getElapsedTime().asSeconds();
+		float camProgress = 0.0f;
+
+		if (previewDiff >= 1.0f && previewDiff < 2.0f) {
+			camProgress = easeInOut((previewDiff - 1.0f) / 1.0f);//حته بتاعت يوتيوبر كبير (:
+		} else if (previewDiff >= 2.0f && !currentLevel->arePlantsSelected) {
+			camProgress = 1.0f;
+		} else if (currentLevel->arePlantsSelected) {
+			float pan = (previewDiff - currentLevel->plantsSelectedTime.asSeconds()) / 0.75f;
+			camProgress = 1.0f - easeInOut(min(pan, 1.0f));
+		}
+
+
+
+		float targetX = 1250.0f;
+
+
+		float startX = (windowWidth + 200.0f) - (camProgress * ((windowWidth + 200.0f) - targetX));
+
+
+		if (currentLevel->zombie_types.size() > 0) {
+
+			float offsetX[5] = { 0, 90, 40, 130, 70 };
+
+			for (int raw = 0; raw < 4; raw++) {
+				for (int col = 0; col < 3; col++) {
+
+					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
+					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
+
+					Texture& zomTex = textures[getTextureType(dummyZombie.type)][0];
+					int frames = dummyZombie.animations[0].frames;
+
+					if (frames > 0) {
+						int frameWidth = zomTex.getSize().x / frames;
+
+						int frame = (int)(previewDiff * 15 + raw * 3 + col * 7) % frames;
+
+						zombieSprite.setTexture(zomTex);
+						zombieSprite.setTextureRect(IntRect(frame * frameWidth, 0, frameWidth, zomTex.getSize().y));
+						zombieSprite.setScale(Vector2f(dummyZombie.scale, dummyZombie.scale));
+						zombieSprite.setColor(Color::White);
+
+						float actualHeight = zomTex.getSize().y * dummyZombie.scale;
+						float zomY = currentLevel->offsetY + (raw * currentLevel->cellHeight) - (actualHeight - currentLevel->cellHeight);
+						float zomX = startX + offsetX[raw] + (col * 130);
+
+						zombieSprite.setPosition(zomX, zomY);
+						window.draw(zombieSprite);
+					}
+				}
+			}
+		}
 	}
 
 	DrawZombies(window);
@@ -3283,7 +3477,6 @@ void UpdateLevel(RenderWindow& window) {
 		}
 	}
 
-	UpdateLawnmowers(window);
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	UpdateBooster(window);
@@ -3301,6 +3494,8 @@ void UpdateLevel(RenderWindow& window) {
 
 	UI_DrawClick(window);
 	UI_Interaction(window);
+
+	DrawLevelStats(window);
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
@@ -3321,7 +3516,12 @@ void UpdateLevel(RenderWindow& window) {
 	}
 }
 
-void DrawMainMenu(RenderWindow& window) {
+bool selectingLevel = false;
+bool inStore = false;
+Time startMenuItemTime = Time::Zero;
+Time startMainMenuTime = Time::Zero;
+
+void DrawLevelSelector(RenderWindow& window) {
 	Vector2f windowSize = { windowWidth, windowHeight };
 
 	Sprite sprite;
@@ -3336,15 +3536,37 @@ void DrawMainMenu(RenderWindow& window) {
 
 	window.draw(sprite);
 
+	FloatRect backRc;
+	backRc.left = 714;
+	backRc.top = 934;
+	backRc.width = 370;
+	backRc.height = 100;
+
+	if (backRc.contains(Vector2f(mousePos))) {
+		sprite.setTexture(getTexture(TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK));
+		window.draw(sprite);
+
+		if (mouseJustClicked[0]) {
+			selectingLevel = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
 	{
-		Sprite logoSprite;
+		Text title;
 
-		Texture logoTex = getTexture(TEXTURE_TYPE::LOGO);
-		logoSprite.setTexture(logoTex);
-		logoSprite.setOrigin(Vector2f(logoTex.getSize()) / 2.0f);
-		logoSprite.setPosition(windowSize.x / 2.0f, 100.0f);
+		title.setFont(*font);
+		title.setFillColor(Color::White);
+		title.setOutlineColor(Color::Black);
+		title.setOutlineThickness(4);
+		title.setCharacterSize(86);
 
-		window.draw(logoSprite);
+		title.setString("Select Level");
+
+		title.setOrigin(title.getLocalBounds().width / 2.0f, title.getLocalBounds().height / 2.0f);
+		title.setPosition(windowWidth / 2.0f, 100.0f);
+
+		window.draw(title);
 	}
 
 	Text text;
@@ -3368,7 +3590,7 @@ void DrawMainMenu(RenderWindow& window) {
 
 	float offset = selectedLevel * animationProgress + std::max(previousSelectedLevel, 0) * (1 - animationProgress);
 
-	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
+	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 75.0f);
 
 	for (int i = 0; i < number_levels; i++) {
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
@@ -3404,9 +3626,12 @@ void DrawMainMenu(RenderWindow& window) {
 			sprite.setColor(Color::White);
 		}
 
-		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][i + 1]);
-		sprite.setTextureRect({ 0, 200, 370, 320 });
-		sprite.setScale(scale / 1.5f);
+		Texture& iconTex = textures[TEXTURE_TYPE::LEVEL_ICON][i + 1];
+		sprite.setTexture(iconTex);
+		sprite.setTextureRect({ 0, 0, (int)iconTex.getSize().x, (int)iconTex.getSize().y });
+		float fitScaleX = 370.0f / iconTex.getSize().x;
+		float fitScaleY = 320.0f / iconTex.getSize().y;
+		sprite.setScale(Vector2f(fitScaleX * (scale.x / 1.5f), fitScaleY * (scale.y / 1.5f)));
 		sprite.setPosition(pos + Vector2f(0, -32));
 		window.draw(sprite);
 
@@ -3438,7 +3663,7 @@ void DrawMainMenu(RenderWindow& window) {
 
 		playButton.setOrigin(playTexSize / 2.0f);
 		playButton.setPosition(pos);
-		playButton.setScale(Vector2f(0.5f, 0.5f));
+		playButton.setScale(Vector2f(0.6f, 0.6f));
 		playButton.setColor(Color::White);
 
 		if (playButton.getGlobalBounds().contains(Vector2f(mousePos))) {
@@ -3450,6 +3675,222 @@ void DrawMainMenu(RenderWindow& window) {
 		}
 
 		window.draw(playButton);
+	}
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
+}
+
+void DrawStore(RenderWindow& window) {
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::MAINMENU_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	Texture storeTex = getTexture(TEXTURE_TYPE::STORE_WINDOW);
+	sprite.setTexture(storeTex);
+	sprite.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f);
+	sprite.setScale(Vector2f(
+		windowWidth / (float)storeTex.getSize().x,
+		windowHeight / (float)storeTex.getSize().y
+	));
+	sprite.setOrigin(Vector2f(storeTex.getSize()) / 2.0f);
+
+	window.draw(sprite);
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	text.setString("Shop");
+	text.setCharacterSize(64);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setFillColor(Color::Yellow);
+	text.setPosition(Vector2f(windowWidth / 2.0f, 200));
+
+	window.draw(text);
+	text.setCharacterSize(48);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth / 2.0f, windowHeight) + Vector2f(0, -70));
+	text.setString(std::string("Back"));
+	text.setFillColor(Color::Red);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			inStore = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
+}
+
+void DrawMainMenu(RenderWindow& window) {
+	if ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() > 0.25f) {
+		if (selectingLevel) {
+			DrawLevelSelector(window);
+			return;
+		}
+
+		if (inStore) {
+			DrawStore(window);
+			return;
+		}
+	}
+
+	bool buttonsEnabled = true;
+	if (selectingLevel || inStore) buttonsEnabled = false;
+
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::MAINMENU_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	{
+		Sprite logoSprite;
+
+		Texture logoTex = getTexture(TEXTURE_TYPE::LOGO);
+		logoSprite.setTexture(logoTex);
+		logoSprite.setOrigin(Vector2f(logoTex.getSize()) / 2.0f);
+		logoSprite.setPosition(windowWidth / 2.0f, 225.0f);
+		logoSprite.setScale(0.5f, 0.5f);
+
+		window.draw(logoSprite);
+	}
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, -50));
+	text.setString(std::string("Play"));
+	text.setFillColor(Color::Green);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			selectingLevel = true;
+			startMenuItemTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 50));
+	text.setString(std::string("Store"));
+	text.setFillColor(Color::Yellow);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			inStore = true;
+			startMenuItemTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 150));
+	text.setString(std::string("Quit Game"));
+	text.setFillColor(Color::Red);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			window.close();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	if (selectingLevel || inStore) {
+		float progress = (gameClock.getElapsedTime() - startMenuItemTime).asSeconds() / 0.25f;
+		if (progress > 1) progress = 1;
+		screenFade(window, progress);
+	}
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMainMenuTime).asSeconds()) / 0.5f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
 	}
 }
 
@@ -3527,12 +3968,181 @@ int select_levels_background_music(Music& music) {
 	return 0;
 }
 
+int level_1_music(Music& music) {
+	if (!music.openFromFile("assets/audio/06. Main Music 00.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_2_music(Music& music) {
+	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_3_music(Music& music) {
+	if (!music.openFromFile("assets/audio/14. Main Music 08.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_4_music(Music& music) {
+	if (!music.openFromFile("assets/audio/15. Main Music 09.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_5_music(Music& music) {
+	if (!music.openFromFile("assets/audio/17. Main Music 11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_6_music(Music& music) {
+	if (!music.openFromFile("assets/audio/18. Main Music 12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int after_huge_wave_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX siren.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int pause_music(Music& music) {
+	if (!music.openFromFile("assets/audio/24. pause.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int win_music(Music& music) {
+	if (!music.openFromFile("assets/audio/26. winmusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int eating_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX chomp.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+
+	int playCount = 0;
+	const int maxPlays = 3;
+
+	music.play();
+
+	while (playCount < maxPlays) {
+		if (music.getStatus() == sf::SoundSource::Stopped) {
+			playCount++;
+			if (playCount < maxPlays) {
+				music.play();
+			}
+		}
+	}
+
+	return 0;
+}
+
+int small_red_car_music(Music& music) {
+	if (!music.openFromFile("assets/audio/SFX lawnmower.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int zombies_are_coming_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices awooga.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int before_lose_music_music(Music& music) {
+	if (!music.openFromFile("assets/audio/Voices scream.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+int lose_music(Music& music) {
+	if (!music.openFromFile("assets/audio/05. losemusic.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(false);
+	music.play();
+	return 0;
+}
+
+
 int main() {
+	srand(time(0));
+
 	screenFlashOverlay.setPosition(0, 0);
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+	bool fullscreen = false;
+	Vector2i oldPos;
+	Vector2u oldSize;
 
 	window.setSize(Vector2u(1280, 720));
 	Event event;
@@ -3573,19 +4183,28 @@ int main() {
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
-	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
-	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
+	textures[TEXTURE_TYPE::GREEN_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/green_button.png");
+	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
+	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
+	textures[TEXTURE_TYPE::STORE_WINDOW][Default_Texture_Index].loadFromFile("assets/mainmenu/store_window.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER_BUTTON][Default_Texture_Index].loadFromFile("assets/seedchooser_button.png");
 	textures[TEXTURE_TYPE::SUN][Default_Texture_Index].loadFromFile("assets/sun.png");
+	textures[TEXTURE_TYPE::COIN][Default_Texture_Index].loadFromFile("assets/coin.png");
 	textures[TEXTURE_TYPE::SEEDBANK][Default_Texture_Index].loadFromFile("assets/seedbank.png");
 	textures[TEXTURE_TYPE::SEEDPACKET][Default_Texture_Index].loadFromFile("assets/seedpacket.png");
 	textures[TEXTURE_TYPE::SHOVEL][Default_Texture_Index].loadFromFile("assets/shovel.png");
 	textures[TEXTURE_TYPE::MAGIC_SHOVEL][Default_Texture_Index].loadFromFile("assets/relocate.png");
 	textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index].loadFromFile("assets/booster.png");
+	textures[TEXTURE_TYPE::PROGRESS_EMPTY][Default_Texture_Index].loadFromFile("assets/progress_empty.png");
+	textures[TEXTURE_TYPE::PROGRESS_FULL][Default_Texture_Index].loadFromFile("assets/progress_full.png");
+	textures[TEXTURE_TYPE::PROGRESS_HEAD][Default_Texture_Index].loadFromFile("assets/progress_head.png");
 
 	// Font
 	font = new Font();
@@ -3627,39 +4246,75 @@ int main() {
 	levels[1].cellHeight = 170;
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
-	// Level 2: Egypt
+//---------------------------------------
+	// Level 2: Night
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
-	levels[2].plant_types.push_back(shroom);
-	levels[2].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
+	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
 	levels[2].targetZombie = 25;
-	//levels[2].targetZombie = 2;
-	levels[2].addReward(500);
-	levels[2].addReward(wallnut);
-
+	levels[2].startingSuns = 100;
 	levels[2].offsetX = 450;
 	levels[2].offsetY = 135;
 	levels[2].cellWidth = 150;
 	levels[2].cellHeight = 170;
+	levels[2].plantReward = shroom;
+	levels[2].coinReward = 200;
 	setupLevelLawnmowers(levels[2]);
 
-
-
 	//------------------------------------------
-	// Level 3: Night
+	// Level 3: Egypt
 	levels[3].lvlNum = 3;
 	levels[3].plant_types = mainPlantTypes;
-	levels[3].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
-	levels[3].startingSuns = 100;
+	levels[3].plant_types.push_back(shroom);
+	levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
+	levels[3].targetZombie = 30;
+	levels[3].addReward(500);
+	levels[3].addReward(wallnut);
 	levels[3].offsetX = 450;
 	levels[3].offsetY = 135;
 	levels[3].cellWidth = 150;
 	levels[3].cellHeight = 170;
+	levels[3].plantReward = wallnut;
+	levels[3].coinReward = 300;
 	setupLevelLawnmowers(levels[3]);
 
+	//------------------------------------------
+	// Level 4: Wild West
+	levels[4].lvlNum = 4;
+	levels[4].plant_types = mainPlantTypes;
+	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+	levels[4].targetZombie = 30;
+	levels[4].waveLimit = 12;
+	levels[4].waveTimer = 15;
+	levels[4].startingSuns = 3000;
+	levels[4].isUnlocked = true;
+	levels[4].offsetX = 450;
+	levels[4].offsetY = 135;
+	levels[4].cellWidth = 150;
+	levels[4].cellHeight = 170;
+	levels[4].plantReward = repeaterPlant;
+	levels[4].coinReward = 400;
+	setupLevelLawnmowers(levels[4]);
+	//------------------------------------------
+
+	// Level 5: Squaid Game
+	levels[5].lvlNum = 5;
+	levels[5].plant_types = mainPlantTypes;
+	levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
+	levels[5].targetZombie = 40;
+	levels[5].waveLimit = 15;
+	levels[5].waveTimer = 18;
+	levels[5].startingSuns = 50;
+	levels[5].isUnlocked = true;
+	levels[5].offsetX = 450;
+	levels[5].offsetY = 135;
+	levels[5].cellWidth = 150;
+	levels[5].cellHeight = 170;
+	setupLevelLawnmowers(levels[5]);
 
 
-	// setting levels background textures
+
+	// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	for (int lvl = 1; lvl <= number_levels; lvl++) {
@@ -3670,6 +4325,7 @@ int main() {
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_house.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
+		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
 
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
@@ -3697,8 +4353,10 @@ int main() {
 
 	// Game Loop
 
+
 	Clock DeltaTimeClock;
 
+	gameClock.restart();
 	while (window.isOpen()) {
 		sf::Time dtTime = DeltaTimeClock.restart();
 		delta_time = dtTime.asSeconds();
@@ -3724,6 +4382,20 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
+				fullscreen = !fullscreen;
+				if (fullscreen) {
+					oldPos = window.getPosition();
+					oldSize = window.getSize();
+				}
+				window.close();
+				if (fullscreen) {
+					window.create(VideoMode::getDesktopMode(), "Plants vs Zombies", Style::Fullscreen);
+				} else {
+					window.create(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+					window.setPosition(oldPos);
+					window.setSize(oldSize);
+				}
 			}
 		}
 
