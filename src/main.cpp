@@ -59,6 +59,7 @@ int sunsMoney = 3000;
 int coinsMoney = 0;
 
 // Clocks
+Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 
@@ -130,7 +131,11 @@ enum class ENTITY_TYPE : uint8_t {
 enum class TEXTURE_TYPE : uint8_t {
 	NONE = 0,
 	LOGO,
+	GREEN_BUTTON,
+	WOOD_BUTTON,
+	MAINMENU_BACKGROUND,
 	LEVEL_SELECTOR_BACKGROUND,
+	LEVEL_SELECTOR_BACKGROUND_BACK,
 	LEVEL_OPTION_BACKGROUND,
 	LEVEL_BACKGROUND,
 	LEVEL_BACKGROUND_DIRT,
@@ -1392,15 +1397,14 @@ Entity defineWallnut() {
 		};
 	return wallnut;
 }
-Entity defineChomperPlant() 
-{
+Entity defineChomperPlant() {
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
 	Chomper.health = 300;
 	Chomper.price = 150;
 	Chomper.scale = 0.85;
-	Chomper.attack = 10000; 
+	Chomper.attack = 10000;
 
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].loadFromFile("assets/Chomper.png"); // IDLE
 	textures[TEXTURE_TYPE::PLANT_CHOMPER][0].setSmooth(false);
@@ -1429,24 +1433,24 @@ Entity defineChomperPlant()
 	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 
 	Chomper.updateEntity = [](Entity& plant) {
-	
+
 		if (plant.currentAnimationIndex == 0) {
 			for (Entity& zombie : entities) {
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
 
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 
-				
+
 				bool inFront = zombie.position.x > plant.position.x &&
 					zombie.position.x < plant.position.x + plant.width * 0.55;
 
 				if (sameRow && inFront && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
 					plant.targetId = zombie.id;
-					zombie.x_vel = 0;          
+					zombie.x_vel = 0;
 
-					plant.DoAnimation(1, 1); 
+					plant.DoAnimation(1, 1);
 					plant.afterAnimation = [](Entity& p) {
-						p.DoAnimation(25, 2); 
+						p.DoAnimation(25, 2);
 						p.afterAnimation = [](Entity& e) {
 							e.DoAnimation(-1, 0);
 							e.afterAnimation = [](Entity&) {};
@@ -1474,7 +1478,7 @@ Entity defineChomperPlant()
 						}
 
 						if (currentF == 5) {
-							attackZombie(z, 10000, false); 
+							attackZombie(z, 10000, false);
 							plant.targetId = -1;
 						}
 
@@ -2423,7 +2427,7 @@ void DrawZombies(RenderWindow& window) {
 			float frameHeight = shellTex.getSize().y;
 
 			uiSprite.setTexture(shellTex);
-			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame* frameWidth, 0, frameWidth, shellTex.getSize().y));
+			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame * frameWidth, 0, frameWidth, shellTex.getSize().y));
 			// (x initial position for each frame, 0 is top of frame)
 
 			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
@@ -2950,6 +2954,12 @@ void gameOverAnimation(RenderWindow& window) {
 	}
 }
 
+void screenFade(RenderWindow& window, float v) {
+	sf::RectangleShape fade(Vector2f(windowWidth, windowHeight));
+	fade.setFillColor(Color(0, 0, 0, (Uint8)(255 * v)));
+	window.draw(fade);
+}
+
 // UI interaction parts
 void uiNormalShovel(RenderWindow& window, Entity& clickedEntity) {
 	if (clickedEntity.category == ENTITY_CATEGORY::PLANT) {
@@ -3266,7 +3276,11 @@ void UpdateLevel(RenderWindow& window) {
 	}
 }
 
-void DrawMainMenu(RenderWindow& window) {
+bool selectingLevel = false;
+Time startSelectingLevelTime = Time::Zero;
+Time startMainMenuTime = Time::Zero;
+
+void DrawLevelSelector(RenderWindow& window) {
 	Vector2f windowSize = { windowWidth, windowHeight };
 
 	Sprite sprite;
@@ -3281,15 +3295,37 @@ void DrawMainMenu(RenderWindow& window) {
 
 	window.draw(sprite);
 
+	FloatRect backRc;
+	backRc.left = 714;
+	backRc.top = 934;
+	backRc.width = 370;
+	backRc.height = 100;
+
+	if (backRc.contains(Vector2f(mousePos))) {
+		sprite.setTexture(getTexture(TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK));
+		window.draw(sprite);
+
+		if (mouseJustClicked[0]) {
+			selectingLevel = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
 	{
-		Sprite logoSprite;
+		Text title;
 
-		Texture logoTex = getTexture(TEXTURE_TYPE::LOGO);
-		logoSprite.setTexture(logoTex);
-		logoSprite.setOrigin(Vector2f(logoTex.getSize()) / 2.0f);
-		logoSprite.setPosition(windowSize.x / 2.0f, 100.0f);
+		title.setFont(*font);
+		title.setFillColor(Color::White);
+		title.setOutlineColor(Color::Black);
+		title.setOutlineThickness(4);
+		title.setCharacterSize(86);
 
-		window.draw(logoSprite);
+		title.setString("Select Level");
+
+		title.setOrigin(title.getLocalBounds().width / 2.0f, title.getLocalBounds().height / 2.0f);
+		title.setPosition(windowWidth / 2.0f, 100.0f);
+
+		window.draw(title);
 	}
 
 	Text text;
@@ -3313,7 +3349,7 @@ void DrawMainMenu(RenderWindow& window) {
 
 	float offset = selectedLevel * animationProgress + std::max(previousSelectedLevel, 0) * (1 - animationProgress);
 
-	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 100.0f);
+	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 75.0f);
 
 	for (int i = 0; i < number_levels; i++) {
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
@@ -3383,7 +3419,7 @@ void DrawMainMenu(RenderWindow& window) {
 
 		playButton.setOrigin(playTexSize / 2.0f);
 		playButton.setPosition(pos);
-		playButton.setScale(Vector2f(0.5f, 0.5f));
+		playButton.setScale(Vector2f(0.6f, 0.6f));
 		playButton.setColor(Color::White);
 
 		if (playButton.getGlobalBounds().contains(Vector2f(mousePos))) {
@@ -3395,6 +3431,133 @@ void DrawMainMenu(RenderWindow& window) {
 		}
 
 		window.draw(playButton);
+	}
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
+}
+
+void DrawMainMenu(RenderWindow& window) {
+	if (selectingLevel && (gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() > 0.25f) {
+		DrawLevelSelector(window);
+		return;
+	}
+
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::MAINMENU_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	{
+		Sprite logoSprite;
+
+		Texture logoTex = getTexture(TEXTURE_TYPE::LOGO);
+		logoSprite.setTexture(logoTex);
+		logoSprite.setOrigin(Vector2f(logoTex.getSize()) / 2.0f);
+		logoSprite.setPosition(windowWidth / 2.0f, 225.0f);
+		logoSprite.setScale(0.5f, 0.5f);
+
+		window.draw(logoSprite);
+	}
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, -50));
+	text.setString(std::string("Play"));
+	text.setFillColor(Color::Green);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			selectingLevel = true;
+			startSelectingLevelTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 50));
+	text.setString(std::string("Store"));
+	text.setFillColor(Color::Yellow);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			// TOOD: open store
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 150));
+	text.setString(std::string("Quit Game"));
+	text.setFillColor(Color::Red);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			window.close();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	if (selectingLevel) {
+		float progress = (gameClock.getElapsedTime() - startSelectingLevelTime).asSeconds() / 0.25f;
+		if (progress > 1) progress = 1;
+		screenFade(window, progress);
+	}
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMainMenuTime).asSeconds()) / 0.5f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
 	}
 }
 
@@ -3682,9 +3845,13 @@ int main() {
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
-	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_selector_background.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/level_option_background.png");
-	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/play_button.png");
+	textures[TEXTURE_TYPE::GREEN_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/green_button.png");
+	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
+	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
 	textures[TEXTURE_TYPE::SEED_CHOOSER][Default_Texture_Index].loadFromFile("assets/seedchooser.png");
@@ -3808,6 +3975,7 @@ int main() {
 
 	Clock DeltaTimeClock;
 
+	gameClock.restart();
 	while (window.isOpen()) {
 		sf::Time dtTime = DeltaTimeClock.restart();
 		delta_time = dtTime.asSeconds();
