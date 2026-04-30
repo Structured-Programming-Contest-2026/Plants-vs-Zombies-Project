@@ -3257,36 +3257,14 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (wc.getElapsedTime().asSeconds() < 5.0f) {
+	} else if (currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
+		// Huge Wave
+
 		diff = wc.getElapsedTime().asSeconds();
 		showProgress = diff / 0.25f;
 		hideProgress = (diff - 4.75f) / 0.25f;
-		// Waves
-		int waveNum = currentWave - currentLevel->waves.data() + 1;
-		string waveName = std::to_string(waveNum);
-		switch (waveNum) {
-		case 1:
-			waveName = "FIRST";
-			break;
-		case 2:
-			waveName = "SECOND";
-			break;
-		case 3:
-			waveName = "THIRD";
-			break;
-		case 4:
-			waveName = "FOURTH";
-			break;
-		case 5:
-			waveName = "FIFTH";
-			break;
-		}
-		text.setString(waveName + " WAVE");
-
-		if (currentWave->isHuge) {
-			text.setCharacterSize(80);
-			text.setString("A HUGE WAVE OF ZOMBIES\n            ARE APPROACHING");
-		}
+		text.setCharacterSize(80);
+		text.setString("A HUGE WAVE OF ZOMBIES\n            ARE APPROACHING");
 	}
 
 	if (showProgress < 0) showProgress = 0;
