@@ -165,6 +165,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+	LAWNMOWER,
 
 	PROGRESS_EMPTY,
 	PROGRESS_FULL,
@@ -522,11 +523,11 @@ struct Wave {
 	float length = 0; // in seconds
 	vector<Entity> zombieTypes;
 	bool isHuge = false;
-	Wave(int zombieCount=0, float length=0, vector<Entity> zombieTypes={}, bool isHuge = false) {
+	Wave(int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, bool isHuge = false) {
 		this->zombieCount = zombieCount;
 		this->length = length; // in seconds
 		this->zombieTypes = zombieTypes;
-		this-> isHuge = isHuge;
+		this->isHuge = isHuge;
 	}
 	//Wave(float every = 1.f, vector<Entity> zombieTypes, bool isHuge = false) {
 	//	this->zombieCount = zombieCount;
@@ -544,6 +545,7 @@ struct Level {
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
 	vector<Wave> waves;
+	Clock waveClock;
 	int lvlNum = 0;
 	int targetZombie = 20,	// total zombies in a level 
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
@@ -658,18 +660,18 @@ int curMagicShovelCnt = 1;
 //float boosterSpawnDuration = 10.0f;
 //float boosterSpawnDuration = 1.0f;
 //float boosterLifeDuration = 3.0f;
-struct ShopItem{
+struct ShopItem {
 	int cost = 0;
 	string title;
 	TEXTURE_TYPE textureType;
-	int* counter=nullptr;	// reference to the item counter (ex: booster count, magic shovel count, etc ..)
+	int* counter = nullptr;	// reference to the item counter (ex: booster count, magic shovel count, etc ..)
 	int maxCount = -1;	// 0 for infinite
 	bool isUnlocked = true;
 	void buy(int amnt) {
 		while (amnt--) {
-			if (coinsMoney >= cost && (counter==nullptr || *counter < maxCount || maxCount == -1)) {
+			if (coinsMoney >= cost && (counter == nullptr || *counter < maxCount || maxCount == -1)) {
 				coinsMoney -= cost;
-				if(counter != nullptr) (*counter)++;
+				if (counter != nullptr) (*counter)++;
 				cout << "Purchased " << title << "! Remaining coins: " << coinsMoney << endl;
 			} else {
 				// message 
@@ -679,7 +681,7 @@ struct ShopItem{
 		}
 	}
 };
-struct Booster: ShopItem {
+struct Booster : ShopItem {
 	Clock spawnClock;
 	Clock lifeClock;
 	float minSpawnDuration = boosterSpawnDuration;
@@ -742,7 +744,7 @@ void CheckTimer_AddBooster(bool zombieJustDead = false, Vector2f position = { 0,
 }
 
 // Shop items
-ShopItem shopItems[2] = { 
+ShopItem shopItems[2] = {
 	booster,
 	{100, "Magic Shovel", TEXTURE_TYPE::MAGIC_SHOVEL, &curMagicShovelCnt}
 };
@@ -900,6 +902,11 @@ void startLevel(int level) {
 			(float)windowWidth / (float)groundTex.getSize().x,
 			(float)windowHeight / (float)groundTex.getSize().y
 		);
+
+		//For different independent Lawnmower
+		Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][level];
+		lawnmowerSprite.setTexture(mowerTex);
+		lawnmowerSprite.setTextureRect(IntRect(0, 0, (int)mowerTex.getSize().x, (int)mowerTex.getSize().y));
 
 		currentLevel->clock.restart();
 	}
@@ -1349,7 +1356,7 @@ Entity defineIcePeaShooter() {
 	icePea.health = 100;
 	icePea.attack = 15;
 	icePea.price = 75;
-	icePea.scale = 0.75;
+	icePea.scale = 0.65;
 
 	icePea.num_animations = 1;
 
@@ -1743,7 +1750,7 @@ Entity defineDOOM_SHROOM() {
 	shroom.health = 300;
 	shroom.attack = 9999;
 	shroom.price = 125;
-	shroom.scale = 1.2f;
+	shroom.scale = 0.8f;
 	shroom.width = 120;
 	shroom.height = 120;
 
@@ -2829,6 +2836,7 @@ void screenFade(RenderWindow& window, float v) {
 // There is a bug in SFML that causes the program to crash when exiting
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
+Font* loudFont;
 
 Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, bool interactable = false, float scale = 1.0f, Color color = Color::White) {
 	Sprite sprite;
@@ -3224,6 +3232,90 @@ bool isClicked(Vector2f pos, Vector2f size, Vector2f offset = { 0, 0 }) {
 	return mousePos.x >= pos.x && mousePos.x <= pos.x + size.x &&
 		mousePos.y >= pos.y && mousePos.y <= pos.y + size.y;
 }
+
+void DrawPopupText(RenderWindow& window) {
+	float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
+	if (!currentLevel->arePlantsSelected || diff < 0.75f) return;
+
+	Text text;
+	text.setFont(*loudFont);
+	text.setPosition(Vector2f(windowWidth / 2.0f, windowHeight / 2.0f));
+	text.setFillColor(Color::Red);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(8);
+	text.setCharacterSize(96);
+
+	float showProgress = 1.0f;
+	float hideProgress = 0.0f;
+
+	if (diff < 1.75f) {
+		text.setString("READY");
+		showProgress = (diff - 0.75f) / 0.25f;
+	} else if (diff < 2.75f) {
+		text.setString("SET");
+		showProgress = (diff - 1.75f) / 0.25f;
+	} else if (diff < 4.75f) {
+		text.setString("GO");
+		showProgress = (diff - 2.75f) / 0.25f;
+		hideProgress = (diff - 4.5f) / 0.25f;
+	} else if (currentLevel->waveClock.getElapsedTime().asSeconds() < 5.0f) {
+		diff = currentLevel->waveClock.getElapsedTime().asSeconds();
+		showProgress = diff / 0.25f;
+		hideProgress = (diff - 4.75f) / 0.25f;
+		// Waves
+		int waveNum = currentWave - currentLevel->waves.data() + 1;
+		string waveName = std::to_string(waveNum);
+		switch (waveNum) {
+		case 1:
+			waveName = "FIRST";
+			break;
+		case 2:
+			waveName = "SECOND";
+			break;
+		case 3:
+			waveName = "THIRD";
+			break;
+		case 4:
+			waveName = "FOURTH";
+			break;
+		case 5:
+			waveName = "FIFTH";
+			break;
+		}
+		text.setString(waveName + " WAVE");
+
+		if (currentWave->isHuge) {
+			text.setCharacterSize(80);
+			text.setString("A HUGE WAVE OF ZOMBIES\n            ARE APPROACHING");
+		}
+	}
+
+	if (showProgress < 0) showProgress = 0;
+	if (showProgress > 1) showProgress = 1;
+
+	if (hideProgress < 0) hideProgress = 0;
+	if (hideProgress > 1) hideProgress = 1;
+
+	text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+
+	float scale = 1.0f;
+	Color newColor = text.getFillColor();
+
+	if (hideProgress > 0) {
+		scale = 1 - hideProgress;
+		newColor.a *= 1 - hideProgress;
+	} else if (showProgress > 0) {
+		scale = 1 + (1 - showProgress);
+		newColor.a *= showProgress;
+	}
+
+	text.setScale(scale, scale);
+	text.setFillColor(newColor);
+	text.setOutlineColor(Color{ 0, 0, 0, newColor.a });
+
+	window.draw(text);
+}
+
 // UI interaction parts
 void uiNormalShovel(RenderWindow& window, Entity& clickedEntity) {
 	if (clickedEntity.category == ENTITY_CATEGORY::PLANT) {
@@ -3341,22 +3433,20 @@ void uiCollectBooster(RenderWindow& window) {
 	}
 }
 void uiAddBooster(RenderWindow& window) {
-	if(isClicked(addBoosterBtnPos, { 100, 100 }, {0, -100})) {
+	if (isClicked(addBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
 		if (mouseJustClicked[0]) {
 			uiInteracted = true;
 			if (curBoosterCnt < maxBoosterCnt && coinsMoney >= booster.cost) {
 				curBoosterCnt++;
 				coinsMoney -= booster.cost;
-			}
-			else if (coinsMoney < booster.cost) {
+			} else if (coinsMoney < booster.cost) {
 				// message that you dont have enough coins
-			}
-			else if(curBoosterCnt >= maxBoosterCnt) {
+			} else if (curBoosterCnt >= maxBoosterCnt) {
 				// maybe show some message that you cant have more boosters
 			}
 		}
 	}
-	
+
 }
 
 //	UI interaction - Buttons click, Collect Items, Click plants ... etc
@@ -3366,7 +3456,7 @@ void UI_DrawClick(RenderWindow& window) {
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(700.0f, 20.0f);
+	uiSprite.setPosition(800.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -3393,8 +3483,7 @@ void UI_DrawClick(RenderWindow& window) {
 
 	if (curMagicShovelCnt <= 0) {
 		uiSprite.setColor(Color(100, 100, 100, 255));
-	}
-	else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos)) ) {
+	} else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 		if (mouseJustClicked[0]) {
 			isRelocateActive = !isRelocateActive;
 			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
@@ -3693,6 +3782,8 @@ void UpdateLevel(RenderWindow& window) {
 	DrawZombies(window);
 	DrawPlantsGrid(window);
 
+	DrawPopupText(window);
+
 	if (isGameOver) {
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
 		window.draw(ground);
@@ -3731,7 +3822,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	// Level Update
-	if(zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) zombieClock.restart(); // DEBUG
+	if (zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) zombieClock.restart(); // DEBUG
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
 	CheckTimer_AddBooster(false);
@@ -3750,7 +3841,7 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateBooster(window);
 	UpdateFallenItems(window);
 	DrawSeeds(window);
-	DrawDebugGrid(window);
+	//DrawDebugGrid(window);
 
 	if (screenFlashAlpha > 0) {
 		screenFlashAlpha -= delta_time * 600.0f;
@@ -4492,6 +4583,9 @@ int main() {
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
 
+	loudFont = new Font();
+	loudFont->loadFromFile("assets/loud.ttf");
+
 	// General Plants to any level
 
 	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom };//, shroom, sunshroom };
@@ -4634,6 +4728,7 @@ int main() {
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
 		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
+		textures[TEXTURE_TYPE::LAWNMOWER][lvl].loadFromFile("assets/levels/lawnmower" + to_string(lvl) + ".png");
 
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
@@ -4722,6 +4817,7 @@ int main() {
 	}
 
 	delete font;
+	delete loudFont;
 	textures.clear();
 	saveStorage();
 
