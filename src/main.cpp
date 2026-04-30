@@ -633,7 +633,7 @@ struct ShopItem{
 		while (amnt--) {
 			if (coinsMoney >= cost && (counter==nullptr || *counter < maxCount || maxCount == -1)) {
 				coinsMoney -= cost;
-				if(counter != nullptr) *counter++;
+				if(counter != nullptr) (*counter)++;
 				cout << "Purchased " << title << "! Remaining coins: " << coinsMoney << endl;
 			} else {
 				// message 
