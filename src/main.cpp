@@ -45,6 +45,7 @@ int nextEntityId = 0; // for ra
 bool isGameOver = false, isGameWon = false;
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
+int curWaveZombieCnt = 0;	// each wave zombie counter
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
@@ -511,6 +512,25 @@ struct Reward {
 	}
 };
 
+struct Wave {
+	int zombieCount = 0;
+	float length = 0; // in seconds
+	vector<Entity> zombieTypes;
+	bool isHuge = false;
+	Wave(int zombieCount=0, float length=0, vector<Entity> zombieTypes={}, bool isHuge = false) {
+		this->zombieCount = zombieCount;
+		this->length = length; // in seconds
+		this->zombieTypes = zombieTypes;
+		this-> isHuge = isHuge;
+	}
+	//Wave(float every = 1.f, vector<Entity> zombieTypes, bool isHuge = false) {
+	//	this->zombieCount = zombieCount;
+	//	this->length = length; // in seconds
+	//	this->zombieTypes = zombieTypes;
+	//	this->isHuge = isHuge;
+	//}
+};
+
 struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
@@ -518,6 +538,7 @@ struct Level {
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
+	vector<Wave> waves;
 	int lvlNum = 0;
 	int targetZombie = 20,	// total zombies in a level 
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
@@ -572,10 +593,20 @@ struct Level {
 			cout << "plant reward already claimed!" << endl;
 		}
 	}
+	// Sums waves zombies as targetZombie
+	void setTargetZombie() {
+		targetZombie = 0;
+		for (auto& w : waves) targetZombie += w.zombieCount;
+	}
+	void addWave(int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, bool isHuge = false) {
+		waves.push_back(Wave(zombieCount, length, zombieTypes, isHuge));
+		this->setTargetZombie();
+	}
 };
 const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
+Wave* currentWave = nullptr;
 
 
 // Zombie Clock - to add new zombie after some time interval
@@ -818,14 +849,16 @@ void resetLevel() {
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-	ZombieMinGapTime = 7,
-		ZombieMaxGapTime = ZombieMinGapTime + 3,
-		ZombieGap_dt = 0.1;	// Level Pace
+	//ZombieMinGapTime = 7,
+	//	ZombieMaxGapTime = ZombieMinGapTime + 3,
+	//	ZombieGap_dt = 0.1;	// Level Pace
+	curWaveZombieCnt = 0;
+
 	selectedPlant = 0;
 
 	sunsMoney = currentLevel->startingSuns;
 
-	curBoosterCnt = 0;
+	//curBoosterCnt = 0;
 	isBoostActive = false;
 
 	for (int i = 0; i < gridRows; i++) {
@@ -847,6 +880,8 @@ void startLevel(int level) {
 	if (level < levels.size()) {
 		cout << "selecting lvl " << level << " who whas " << levels[level].zombie_types.size() << endl;
 		currentLevel = new Level(levels[level]);	// Note: level is 1 indexed
+		currentWave = currentLevel->waves.data();
+
 		sunsMoney = currentLevel->startingSuns;
 		isGameOver = false, isGameWon = false;
 		Texture& groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
@@ -867,8 +902,10 @@ void startLevel(int level) {
 void nextLevel() {
 	if (currentLevel == nullptr) {
 		currentLevel = &levels[1];
+		currentWave = currentLevel->waves.data();
 	} else if (currentLevel->lvlNum < number_levels) {
 		currentLevel = &levels[currentLevel->lvlNum + 1];
+		currentWave = currentLevel->waves.data();
 	} else {
 		cout << "No more levels!" << endl;
 		return;
@@ -2704,31 +2741,41 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 
 	if (createdZombiesCount >= currentLevel->targetZombie) return;
 
-	// waves
-	if (dz >= currentLevel->waveLimit && t == 0) {
-		// in to bet
-		t = 1, waveClockX.restart();
-		ZombieMinGapTime = zmn, ZombieMaxGapTime = zmx, currentLevel->waveLimit += currentLevel->waveLimitChange;
-		cout << "switch to bet----------------------------\n";
-	} else if (t == 1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
-		// bet to in
-		t = 0, waveClockX.restart();
-		dz = 0, zmn = ZombieMinGapTime, zmx = ZombieMaxGapTime;
-		ZombieMinGapTime /= 2, ZombieMaxGapTime /= 2;
-		cout << "switch to in a wave---------\n";
-	}
+	//// waves
+	//if (dz >= currentLevel->waveLimit && t == 0) {
+	//	// in to bet
+	//	t = 1, waveClockX.restart();
+	//	ZombieMinGapTime = zmn, ZombieMaxGapTime = zmx, currentLevel->waveLimit += currentLevel->waveLimitChange;
+	//	cout << "switch to bet----------------------------\n";
+	//} else if (t == 1 && waveClockX.getElapsedTime().asSeconds() >= currentLevel->waveTimer) {
+	//	// bet to in
+	//	t = 0, waveClockX.restart();
+	//	dz = 0, zmn = ZombieMinGapTime, zmx = ZombieMaxGapTime;
+	//	ZombieMinGapTime /= 2, ZombieMaxGapTime /= 2;
+	//	cout << "switch to in a wave---------\n";
+	//}
 
 	// single zombie
 	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
+		if (currentWave == currentLevel->waves.data() + currentLevel->waves.size()) return;	// should be covered above
+
+		// Next wave if required
+		if (curWaveZombieCnt == currentWave->zombieCount) currentWave++, curWaveZombieCnt=0;
+
+		if (currentWave->isHuge) {
+			// message huge wave
+			cout << "HUGE WAVE\n";
+		}
+
 		cout << "New Zombie\n";
 		zombieClock.restart();
-		nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
-		if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
+		//nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
+		//if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
+		nextZombieTimer = currentWave->length / currentWave->zombieCount;
 
 		// get random zombie type
-		cout << "Current Level Zombies: " << currentLevel->zombie_types.size() << endl;
-		int zombie_type_index = rand() % currentLevel->zombie_types.size();
-		Entity newZombie = currentLevel->zombie_types[zombie_type_index];
+		int zombie_type_index = rand() % currentWave->zombieTypes.size();
+		Entity newZombie = currentWave->zombieTypes[zombie_type_index];
 
 		int row = 0;
 		do {
@@ -2742,6 +2789,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		newZombie.gridRow = raw, newZombie.gridCol = column;
 		entities.push_back(newZombie);
 		createdZombiesCount++;
+		curWaveZombieCnt++;
 		dz++;
 	}
 
@@ -3663,6 +3711,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	// Level Update
+	if(zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) zombieClock.restart(); // DEBUG
 	CheckTimer_AddZombie(window);
 	CheckTimer_AddSun(window);
 	CheckTimer_AddBooster(false);
@@ -4457,6 +4506,11 @@ int main() {
 	levels[1].offsetY = 135;
 	levels[1].cellWidth = 150;
 	levels[1].cellHeight = 170;
+	// Wave Design
+	levels[1].addWave(3, 15, { zombie });
+	levels[1].addWave(5, 10, { zombie }, true);
+	levels[1].addWave(10, 3, { zombie, zombieConehead }, true);
+
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
 //---------------------------------------
@@ -4472,6 +4526,10 @@ int main() {
 	levels[2].cellHeight = 170;
 	levels[2].plantReward = shroom;
 	levels[2].coinReward = 200;
+	// Wave Design
+	levels[2].addWave(3, 15, { zombieConehead });
+	levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
+	levels[2].addWave(10, 5, { zombieAllStar }, true);
 	setupLevelLawnmowers(levels[2]);
 
 	//------------------------------------------
@@ -4489,6 +4547,12 @@ int main() {
 	levels[3].cellHeight = 170;
 	levels[3].plantReward = wallnut;
 	levels[3].coinReward = 300;
+	// Wave Design
+	levels[3].addWave(2, 15, { zombieMummy });
+	levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
+	levels[3].addWave(3, 5, { zombieRa, zombieMummy });
+	levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+	levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);
 	setupLevelLawnmowers(levels[3]);
 
 	//------------------------------------------
@@ -4507,6 +4571,12 @@ int main() {
 	levels[4].cellHeight = 170;
 	levels[4].plantReward = repeaterPlant;
 	levels[4].coinReward = 400;
+	// Wave Design
+	levels[4].addWave(10, 20, { zombie });
+	/*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
+	levels[4].addWave(3, 5, { zombieRa, zombieMummy });
+	levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+	levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
 	setupLevelLawnmowers(levels[4]);
 	//------------------------------------------
 
@@ -4523,6 +4593,8 @@ int main() {
 	levels[5].offsetY = 135;
 	levels[5].cellWidth = 150;
 	levels[5].cellHeight = 170;
+	// Wave Design
+	levels[4].addWave(10, 20, { zombie });
 	setupLevelLawnmowers(levels[5]);
 
 
