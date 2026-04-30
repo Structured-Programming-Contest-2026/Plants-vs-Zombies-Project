@@ -117,6 +117,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 	ZOMBIE_PHARAOH,
 	ZOMBIE_SHIELDGUARD,
+	ZOMBIE_POGO,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -186,6 +187,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_ALLSTAR,
 	ZOMBIE_PHARAOH,
 	ZOMBIE_SHIELDGUARD,
+	ZOMBIE_POGO,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -253,6 +255,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_SHIELDGUARD:
 		textureType = TEXTURE_TYPE::ZOMBIE_SHIELDGUARD;
+		break;
+	case ENTITY_TYPE::ZOMBIE_POGO:
+		textureType = TEXTURE_TYPE::ZOMBIE_POGO;
 		break;
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -2190,6 +2195,67 @@ void UpdateSuns(RenderWindow& window) {
 	}
 	uiSprite.setColor(Color(255, 255, 255)); // for ra
 }
+Entity definePogoZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][0].loadFromFile("assets/PogoZombieWalk.png");      // Walk (45 frames)
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][1].loadFromFile("assets/PogoZombieEat.png");       // Eat (26 frames)
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][2].loadFromFile("assets/PogoZombieDeath.png");     // Death Walk (24 frames)
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][3].loadFromFile("assets/PogoZombieJump.png");      // Jump (16 frames)
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][4].loadFromFile("assets/PogoZombieLosePogo.png");  // Lose Pogo (23 frames)
+	textures[TEXTURE_TYPE::ZOMBIE_POGO][5].loadFromFile("assets/PogoZombieDeathJump.png"); // Death Jump (19 frames)
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_POGO;
+	zombie.health = 350;
+	zombie.attack = 10;
+	zombie.x_vel = 0.12f;
+	zombie.scale = 1.0f;
+	zombie.num_animations = 6;
+
+	Animation anim;
+
+	anim.frames = 45;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+
+	anim.frames = 26;
+	anim.frameTimer = 0.07f;
+	zombie.animations[1] = anim;
+
+	anim.frames = 24;
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
+
+	anim.frames = 16;
+	anim.frameTimer = 0.05f;
+	zombie.animations[3] = anim;
+
+	anim.frames = 23;
+	anim.frameTimer = 0.08f;
+	zombie.animations[4] = anim;
+
+	anim.frames = 19;
+	anim.frameTimer = 0.07f;
+	zombie.animations[5] = anim;
+
+	zombie.setCurrentAnimation(3);
+
+	zombie.updateEntity = [](Entity& z) 
+		{
+		if (z.health <= 150 && z.health > 0 && z.currentAnimationIndex == 3) 
+		{
+			z.x_vel = 0.0f;
+			z.DoAnimation(1, 4); 
+
+			z.afterAnimation = [](Entity& entity) {
+				entity.setCurrentAnimation(0); 
+				entity.x_vel = 0.05f;  
+				};
+		}
+		};
+
+	return zombie;
+}
 void UpdateBooster(RenderWindow& window) {
 	if (!booster.isAlive) return;
 	ariseSprite.setPosition(booster.position);
@@ -2285,7 +2351,16 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			}
 
 			// [1.1] play dying animation once
+			if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) 
+			{
+			if (zombie.currentAnimationIndex == 3) {
+			zombie.DoAnimation(1, 5);
+			} else {
+			zombie.DoAnimation(1, 2);
+			}
+			} else {
 			zombie.DoAnimation(1, 1);
+			}
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 				zombie.scale = 1.3f;
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
@@ -2521,18 +2596,29 @@ void updatePharaohZombie(Entity& zombie) {
 }
 
 void zombieEatPlant(Entity& zombie, Entity& plant) {
-	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
-		// close enough - not just touch
+	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0)
+	{
 		zombie.x_vel = 0;
+
+	
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0)
+		{
+			zombie.setCurrentAnimation(1);
+		}
+
 		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
-			plant.lastDamaged = currentLevel->clock.getElapsedTime();
-			if (plant.health <= 0) {
-				if (zombie.health > 0) zombie.x_vel = .05;
+
+			if (plant.health <= 0) 
+			{
+				if (zombie.health > 0) 
+				{
+					zombie.x_vel = 0.05f;
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
+				}
 				plant.category = ENTITY_CATEGORY::NONE;
 				plant.isDead = true;
-				cout << "Plant Killed\n";
 			}
 		}
 	}
@@ -2566,7 +2652,7 @@ void DrawZombies(RenderWindow& window) {
 		// call update function if exists
 		if (zombie.updateEntity != nullptr) {
 			zombie.updateEntity(zombie);
-			continue;
+			//continue;
 		}
 
 		// no internal update function
@@ -2594,24 +2680,44 @@ void DrawZombies(RenderWindow& window) {
 
 		// touch plant
 		auto [r, c] = gridCell(zombie.position);
-		if (zombie.position.x > 0 + edgeSpace) {
+		if (zombie.position.x > 0 + edgeSpace) 
+		{
 			// Eat
 			Entity& plant = getEntity({ r, c });
-			if (plant.category == ENTITY_CATEGORY::PLANT) {	// touching a plant
-				zombieEatPlant(zombie, plant);
+			if (plant.category == ENTITY_CATEGORY::PLANT)
+			{ // touching a plant
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 3)
+				{
+					zombie.x_vel = 0.12f; //plants don't stop him
+				} else {
+					zombieEatPlant(zombie, plant);
+				}
 			} else if (zombie.health > 0) {
-				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) { // for ra
-					if (zombie.isSuperFrozen) {
+				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) 
+				{ 
+					if (zombie.isSuperFrozen)
+					{
 						zombie.x_vel = 0.002f;
-					} else if (zombie.freezeTimer > 0) {
+					} else if (zombie.freezeTimer > 0)
+					{
 						zombie.x_vel = 0.02f;
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) { // for newspaper
+					} 
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO)
+					{
+						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 0.12f;
+						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 0.05f;
+						else zombie.x_vel = 0.0f;
+					} 
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) {
 						zombie.x_vel = 0.12f;
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
 						zombie.x_vel = 0.18f;
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
 						zombie.x_vel = 0.08f;
-					} else {
+					} 
+					else {
 						zombie.x_vel = .05; // no plant - has health - move normally
 					}
 				}
@@ -3731,8 +3837,14 @@ void UpdateLevel(RenderWindow& window) {
 					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
 					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
 
-					Texture& zomTex = textures[getTextureType(dummyZombie.type)][0];
-					int frames = dummyZombie.animations[0].frames;
+					int previewAnimIdx = 0;
+					if (dummyZombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+						previewAnimIdx = 3;
+					}
+
+					Texture& zomTex = textures[getTextureType(dummyZombie.type)][previewAnimIdx];
+					int frames = dummyZombie.animations[previewAnimIdx].frames;
+
 
 					if (frames > 0) {
 						int frameWidth = zomTex.getSize().x / frames;
@@ -4526,6 +4638,7 @@ int main() {
 	Entity zombieAllStar = defineAllStarZombie();
 	Entity zombiePharaoh = definePharaohZombie();
 	Entity zombieShieldGuard = defineShieldGuardZombie();
+	Entity zombiePogo = definePogoZombie();
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -4584,7 +4697,7 @@ int main() {
 // Level 1: Day
 	levels[1].lvlNum = 1;
 	levels[1].plant_types = mainPlantTypes;
-	levels[1].zombie_types = { zombie, zombieConehead };
+	levels[1].zombie_types = { zombie, zombieConehead ,zombiePogo };
 	levels[1].targetZombie = 20;
 	//levels[1].targetZombie = 2;
 	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
@@ -4609,10 +4722,10 @@ int main() {
 	levels[1].addWave(1, 5, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-	levels[1].addWave(5, 15, { zombie }, 10);
-	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
-	levels[1].addWave(5, 15, { zombie }, 5);
-	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+	levels[1].addWave(5, 15, { zombie , zombieConehead }, 10);
+	levels[1].addWave(7, 20, {  zombiePogo ,zombieConehead ,zombie }, 15, true);
+	levels[1].addWave(5, 15, { zombie ,zombieConehead ,zombiePogo}, 5);
+	levels[1].addWave(9, 20, { zombie, zombieConehead, zombiePogo, }, 0, true);
 
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
@@ -4620,7 +4733,7 @@ int main() {
 	// Level 2: Night
 	levels[2].lvlNum = 2;
 	levels[2].plant_types = mainPlantTypes;
-	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
+	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard ,zombiePogo };
 	levels[2].targetZombie = 25;
 	levels[2].startingSuns = 100;
 	levels[2].offsetX = 450;
@@ -4635,13 +4748,13 @@ int main() {
 	levels[2].addWave(10, 5, { zombieAllStar }, true);*/
 	levels[2].addWave(1, 5, { zombie }, 5);
 	levels[2].addWave(3, 9, { zombie }, 10);
-	levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[2].addWave(3, 9, { zombie,zombiePogo, zombieNewspaper }, 5);
 	levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[2].addWave(3, 12, { zombie, zombieAllStar,zombiePogo }, 10);
 	levels[2].addWave(3, 12, { zombie }, 0);
 	levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
 	levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar ,zombiePogo }, 10, true);
 	levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
 	setupLevelLawnmowers(levels[2]);
 
