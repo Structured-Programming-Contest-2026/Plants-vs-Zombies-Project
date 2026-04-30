@@ -160,6 +160,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+	LAWNMOWER,
 
 	PROGRESS_EMPTY,
 	PROGRESS_FULL,
@@ -896,6 +897,11 @@ void startLevel(int level) {
 			(float)windowHeight / (float)groundTex.getSize().y
 		);
 
+		//For different independent Lawnmower
+		Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][level];
+		lawnmowerSprite.setTexture(mowerTex);
+		lawnmowerSprite.setTextureRect(IntRect(0, 0, (int)mowerTex.getSize().x, (int)mowerTex.getSize().y));
+
 		currentLevel->clock.restart();
 	}
 }
@@ -1344,7 +1350,7 @@ Entity defineIcePeaShooter() {
 	icePea.health = 100;
 	icePea.attack = 15;
 	icePea.price = 75;
-	icePea.scale = 0.75;
+	icePea.scale = 0.65;
 
 	icePea.num_animations = 1;
 
@@ -1738,7 +1744,7 @@ Entity defineDOOM_SHROOM() {
 	shroom.health = 300;
 	shroom.attack = 9999;
 	shroom.price = 125;
-	shroom.scale = 1.2f;
+	shroom.scale = 0.8f;
 	shroom.width = 120;
 	shroom.height = 120;
 
@@ -3437,7 +3443,7 @@ void UI_DrawClick(RenderWindow& window) {
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(700.0f, 20.0f);
+	uiSprite.setPosition(800.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -4698,6 +4704,7 @@ int main() {
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
 		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
+		textures[TEXTURE_TYPE::LAWNMOWER][lvl].loadFromFile("assets/levels/lawnmower" + to_string(lvl) + ".png");
 
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
