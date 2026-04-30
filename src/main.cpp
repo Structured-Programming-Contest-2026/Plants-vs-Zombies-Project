@@ -1349,7 +1349,7 @@ Entity defineIcePeaShooter() {
 	icePea.health = 100;
 	icePea.attack = 15;
 	icePea.price = 75;
-	icePea.scale = 0.75;
+	icePea.scale = 0.65;
 
 	icePea.num_animations = 1;
 
@@ -1743,7 +1743,7 @@ Entity defineDOOM_SHROOM() {
 	shroom.health = 300;
 	shroom.attack = 9999;
 	shroom.price = 125;
-	shroom.scale = 1.2f;
+	shroom.scale = 0.8f;
 	shroom.width = 120;
 	shroom.height = 120;
 
@@ -3360,7 +3360,7 @@ void UI_DrawClick(RenderWindow& window) {
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(700.0f, 20.0f);
+	uiSprite.setPosition(800.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -3736,7 +3736,7 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateBooster(window);
 	UpdateFallenItems(window);
 	DrawSeeds(window);
-	DrawDebugGrid(window);
+	//DrawDebugGrid(window);
 
 	if (screenFlashAlpha > 0) {
 		screenFlashAlpha -= delta_time * 600.0f;
