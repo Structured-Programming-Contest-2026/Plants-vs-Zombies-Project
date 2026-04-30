@@ -545,7 +545,6 @@ struct Level {
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
 	vector<Wave> waves;
-	Clock waveClock;
 	int lvlNum = 0;
 	int targetZombie = 20,	// total zombies in a level 
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
@@ -2790,8 +2789,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		//if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
 		if (!currentWave->zombieCount) {
 			nextZombieTimer = currentWave->length; return;
-		}
-		else nextZombieTimer = currentWave->length / currentWave->zombieCount;
+		} else nextZombieTimer = currentWave->length / currentWave->zombieCount;
 
 		// get random zombie type
 		int zombie_type_index = rand() % currentWave->zombieTypes.size();
@@ -3259,8 +3257,8 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (currentLevel->waveClock.getElapsedTime().asSeconds() < 5.0f) {
-		diff = currentLevel->waveClock.getElapsedTime().asSeconds();
+	} else if (wc.getElapsedTime().asSeconds() < 5.0f) {
+		diff = wc.getElapsedTime().asSeconds();
 		showProgress = diff / 0.25f;
 		hideProgress = (diff - 4.75f) / 0.25f;
 		// Waves
@@ -3804,8 +3802,7 @@ void UpdateLevel(RenderWindow& window) {
 			//cout << "(((((( game won cooling down )))))))" << endl;
 			winCoolDown.restart();
 			isGameWonCoolDownStarted = true;
-		}
-		else if (winCoolDown.getElapsedTime().asSeconds() >= wincooldowntimer) {
+		} else if (winCoolDown.getElapsedTime().asSeconds() >= wincooldowntimer) {
 			//cout << "------ DrawWinScreen 000000" << endl;
 			DrawWinScreen(window);
 			return;
