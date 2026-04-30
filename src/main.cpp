@@ -160,6 +160,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SEEDBANK,
 	SEEDPACKET,
 	BOOSTER,
+	LAWNMOWER,
 
 	PROGRESS_EMPTY,
 	PROGRESS_FULL,
@@ -894,6 +895,11 @@ void startLevel(int level) {
 			(float)windowWidth / (float)groundTex.getSize().x,
 			(float)windowHeight / (float)groundTex.getSize().y
 		);
+
+		//For different independent Lawnmower
+		Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][level];
+		lawnmowerSprite.setTexture(mowerTex);
+		lawnmowerSprite.setTextureRect(IntRect(0, 0, (int)mowerTex.getSize().x, (int)mowerTex.getSize().y));
 
 		currentLevel->clock.restart();
 	}
@@ -4611,6 +4617,7 @@ int main() {
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
 		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
 		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
+		textures[TEXTURE_TYPE::LAWNMOWER][lvl].loadFromFile("assets/levels/lawnmower" + to_string(lvl) + ".png");
 
 		cout << "Loaded level " << lvl << " files" << endl;
 	}
