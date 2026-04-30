@@ -60,10 +60,15 @@ int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
 
+float wincooldowntimer = 3.f;
+bool isGameWonCoolDownStarted = false;
+
 // Clocks
 Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
+Clock wc;
+Clock winCoolDown;
 
 //shovel
 bool isShovelActive = false;
@@ -848,6 +853,7 @@ void resetLevel() {
 	uiInteracted = false;
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
+	isGameWonCoolDownStarted = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -2767,17 +2773,24 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		if (currentWave == currentLevel->waves.data() + currentLevel->waves.size()) return;	// should be covered above
 
 		// Next wave if required
-		if (curWaveZombieCnt == currentWave->zombieCount) {
-			currentWave++;
-			curWaveZombieCnt = 0;
-			currentLevel->waveClock.restart();
+		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
+			currentWave++, curWaveZombieCnt = 0;
+			wc.restart();
+		}
+
+		if (currentWave->isHuge) {
+			// message huge wave
+			cout << "HUGE WAVE\n";
 		}
 
 		cout << "New Zombie\n";
 		zombieClock.restart();
 		//nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
 		//if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
-		nextZombieTimer = currentWave->length / currentWave->zombieCount;
+		if (!currentWave->zombieCount) {
+			nextZombieTimer = currentWave->length; return;
+		}
+		else nextZombieTimer = currentWave->length / currentWave->zombieCount;
 
 		// get random zombie type
 		int zombie_type_index = rand() % currentWave->zombieTypes.size();
@@ -3786,8 +3799,16 @@ void UpdateLevel(RenderWindow& window) {
 	if (isGameWon == true) {
 		// rewards (debug)
 		//cout << "You win!\n";
-		DrawWinScreen(window);
-		return;
+		if (!isGameWonCoolDownStarted) {
+			//cout << "(((((( game won cooling down )))))))" << endl;
+			winCoolDown.restart();
+			isGameWonCoolDownStarted = true;
+		}
+		else if (winCoolDown.getElapsedTime().asSeconds() >= wincooldowntimer) {
+			//cout << "------ DrawWinScreen 000000" << endl;
+			DrawWinScreen(window);
+			return;
+		}
 	}
 	if (currentLevel == nullptr) return;
 
@@ -4600,9 +4621,12 @@ int main() {
 	levels[1].cellWidth = 150;
 	levels[1].cellHeight = 170;
 	// Wave Design
-	levels[1].addWave(3, 15, { zombie });
-	levels[1].addWave(5, 10, { zombie });
-	levels[1].addWave(10, 3, { zombie, zombieConehead }, true);
+	//levels[1].addWave(10, 30, { zombie });	// 
+	levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
+	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
+	//levels[1].addWave(0, 5, { });
+	//levels[1].addWave(5, 10, { zombie }, true);
+	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
 
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
