@@ -164,6 +164,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	PROGRESS_FULL,
 	PROGRESS_HEAD,
 
+	ITEM_CONE,
+	ITEM_NEWSPAPER,
+	ITEM_PHAROAH_CASKET,
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -475,11 +478,18 @@ struct Entity {
 	void (*updateEntity)(Entity& entity) = nullptr; // This function should not have problems with Global variables .. but local variables (on its definition) are probably not captured
 };
 
+struct FallenItem {
+	TEXTURE_TYPE texture;
+	Clock clock;
+	Vector2f fallPosition;
+};
+
 map<ENTITY_TYPE, Entity> plants;
 
 vector<Entity> entities;
 vector<Entity> newBullets;	// test
 vector<Entity> bullets;
+vector<FallenItem> fallenItems;
 
 struct Reward {
 	enum {
@@ -820,6 +830,7 @@ void resetLevel() {
 	zombieClock.restart();
 	waveClockX.restart();
 	sunSpawnClock.restart();
+	fallenItems.clear();
 
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
@@ -1625,12 +1636,11 @@ Entity definePOTATO_MINE() {
 		if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE && plant.currentAnimationIndex == 0) {
 			// ready to exp
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 1.0f) {
-				plant.setCurrentAnimation(1); // تتحول للحالة الجاهزة
+				plant.setCurrentAnimation(1);
 			}
 			return; //cant exp under ground
 		}
 
-		// ثانياً: تشيك لو في زومبي قريب عشان يحصل انفجار
 		for (Entity& zombie : entities) {
 			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
 
@@ -1641,17 +1651,10 @@ Entity definePOTATO_MINE() {
 			float triggerRange = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 200.0f : 50.0f;
 
 			if (diffY < 60.0f && diffX < triggerRange) {
-				// 1. شغل أنميشن الانفجار (افترضنا إنه رقم 1 في الدوم ورقم 2 في البطاطس)
 				int blastAnimIdx = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 1 : 2;
 				plant.DoAnimation(1, blastAnimIdx);
 
-				// 2. حدد اللي هيحصل لما الأنميشن يخلص (الضرر)
 				plant.afterAnimation = [&](Entity& p) {
-					// Replace the lambda capture [this] with a capture of the entities vector by reference.
-					// Find this code (inside DrawPlantsGrid or similar):
-					// plant.afterAnimation = [this](Entity& p) { ... }
-
-					// Replace with:
 					plant.afterAnimation = [&](Entity& p) {
 						float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
 
@@ -1699,11 +1702,11 @@ Entity defineDOOM_SHROOM() {
 	shroom.num_animations = 2;
 
 	// animation 0 = النبتة العادية
-	shroom.animations[0].frames = 41;   // ← غير الرقم ده لعدد الفريمات
+	shroom.animations[0].frames = 41;
 	shroom.animations[0].frameTimer = 0.1f;
 
 	// animation 1 = الانفجار
-	shroom.animations[1].frames = 14;  // ← غير الرقم ده لعدد الفريمات
+	shroom.animations[1].frames = 14;
 	shroom.animations[1].frameTimer = 0.05f;
 
 	shroom.setCurrentAnimation(0);
@@ -1721,17 +1724,10 @@ Entity defineDOOM_SHROOM() {
 			float triggerRange = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 200.0f : 50.0f;
 
 			if (diffY < 60.0f && diffX < triggerRange) {
-				// 1. شغل أنميشن الانفجار (افترضنا إنه رقم 1 في الدوم ورقم 2 في البطاطس)
 				int blastAnimIdx = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 1 : 2;
 				plant.DoAnimation(1, blastAnimIdx);
 
-				// 2. حدد اللي هيحصل لما الأنميشن يخلص (الضرر)
 				plant.afterAnimation = [&](Entity& p) {
-					// Replace the lambda capture [this] with a capture of the entities vector by reference.
-					// Find this code (inside DrawPlantsGrid or similar):
-					// plant.afterAnimation = [this](Entity& p) { ... }
-
-					// Replace with:
 					plant.afterAnimation = [&](Entity& p) {
 						float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
 
@@ -2424,14 +2420,29 @@ void updateZombieAllStars(Entity& zombie) {
 }
 void updateNewspaperZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		zombie.setCurrentAnimation(2);
+		if (zombie.currentAnimationIndex != 2) {
+			zombie.setCurrentAnimation(2);
+			FallenItem item;
+			item.texture = TEXTURE_TYPE::ITEM_NEWSPAPER;
+			item.clock.restart();
+			item.fallPosition = zombie.position + Vector2f(100, 0);
+			fallenItems.push_back(item);
+		}
+
 		zombie.x_vel = 0.12f;
 		zombie.attackTimer = 0.4f;
 	}
 }
 void updateConeheadZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		zombie.setCurrentAnimation(2);
+		if (zombie.currentAnimationIndex != 2) {
+			zombie.setCurrentAnimation(2);
+			FallenItem item;
+			item.texture = TEXTURE_TYPE::ITEM_CONE;
+			item.clock.restart();
+			item.fallPosition = zombie.position + Vector2f(100, 0);
+			fallenItems.push_back(item);
+		}
 	}
 }
 
@@ -2442,7 +2453,14 @@ void updatePharaohZombie(Entity& zombie) {
 		zombie.shellAnim = zombie.animations[3];
 		zombie.shellAnim.currentFrame = 0;
 		zombie.shellAnim.clock.restart();
-		zombie.setCurrentAnimation(2);
+		if (zombie.currentAnimationIndex != 2) {
+			zombie.setCurrentAnimation(2);
+			FallenItem item;
+			item.texture = TEXTURE_TYPE::ITEM_PHAROAH_CASKET;
+			item.clock.restart();
+			item.fallPosition = zombie.position + Vector2f(100, 0);
+			fallenItems.push_back(item);
+		}
 		zombie.x_vel = 0.08f;
 	}
 }
@@ -2613,7 +2631,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 					bullet.category = ENTITY_CATEGORY::NONE; // bullet disappears and doesnt do damage
 					break;   // bullet is gone so stop loop from checking other zombies
 				}
-				
+
 				attackZombie(zombie, bullet.attack, true);
 
 				if (bullet.type == ENTITY_TYPE::IceBullet) {
@@ -2739,7 +2757,7 @@ void CheckTimer_AddSun(RenderWindow& window) {
 
 void screenFade(RenderWindow& window, float v) {
 	sf::RectangleShape fade(Vector2f(windowWidth, windowHeight));
-	fade.setFillColor(Color(0, 0, 0, (Uint8)(255 * v)));
+	fade.setFillColor(Color(0, 0, 0, 255 * v));
 	window.draw(fade);
 }
 
@@ -3448,6 +3466,39 @@ void DrawLevelStats(RenderWindow& window) {
 	}
 }
 
+void UpdateFallenItems(RenderWindow& window) {
+	int i = 0;
+	for (auto& item : fallenItems) {
+		float time = item.clock.getElapsedTime().asSeconds();
+		if (time > 3.5f) continue;
+
+		Vector2f offsetPos;
+
+		offsetPos.x = 75 * time;
+		offsetPos.y = -100 * time + 0.5f * 500 * time * time;
+
+		if (offsetPos.x > 75.0f) offsetPos.x = 75.0f;
+		if (offsetPos.y > 150.0f) offsetPos.y = 150.0f;
+
+		Sprite sprite;
+
+		sprite.setTexture(textures[item.texture][0]);
+		sprite.setPosition(item.fallPosition + offsetPos);
+		sprite.setOrigin(sprite.getGlobalBounds().getSize() / 2.0f);
+
+		sprite.setRotation(std::min(time, 1.0f) * 270);
+
+		if (time > 2.5f) {
+			float progress = (time - 2.5f) / 1.0f;
+			if (progress > 1) progress = 1;
+			sprite.setColor(Color(255, 255, 255, (int)(255 * (1 - progress))));
+		}
+
+		window.draw(sprite);
+		i++;
+	}
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
@@ -3623,6 +3674,7 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateAndDrawBullets(window);
 	UpdateSuns(window);
 	UpdateBooster(window);
+	UpdateFallenItems(window);
 	DrawSeeds(window);
 	DrawDebugGrid(window);
 
@@ -4358,6 +4410,9 @@ int main() {
 	textures[TEXTURE_TYPE::PROGRESS_EMPTY][Default_Texture_Index].loadFromFile("assets/progress_empty.png");
 	textures[TEXTURE_TYPE::PROGRESS_FULL][Default_Texture_Index].loadFromFile("assets/progress_full.png");
 	textures[TEXTURE_TYPE::PROGRESS_HEAD][Default_Texture_Index].loadFromFile("assets/progress_head.png");
+	textures[TEXTURE_TYPE::ITEM_CONE][Default_Texture_Index].loadFromFile("assets/item_cone.png");
+	textures[TEXTURE_TYPE::ITEM_NEWSPAPER][Default_Texture_Index].loadFromFile("assets/item_newspaper.png");
+	textures[TEXTURE_TYPE::ITEM_PHAROAH_CASKET][Default_Texture_Index].loadFromFile("assets/item_pharoah_casket.png");
 
 	// Font
 	font = new Font();
