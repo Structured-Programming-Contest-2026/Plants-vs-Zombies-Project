@@ -72,6 +72,10 @@ bool isRelocateActive = false;
 bool isRelocating = false;
 int selectedPlantIndex = -1;
 
+// buttons positions
+Vector2f addBoosterBtnPos = { 0,0 };	// updated after loading textures
+Vector2f activateBoosterBtnPos = { 0,0 };	// updated after loading textures
+
 // lawnmower - cars
 struct Lawnmower {
 	bool isUsed = false, isMoving = false;
@@ -603,7 +607,7 @@ Sun suns[MAX_SUNS];
 // Booster
 int curBoosterCnt = 10;
 bool isBoostActive = false;
-int maxBoosterCnt = 2;
+int maxBoosterCnt = 20;
 float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
 //float boosterSpawnDuration = 10.0f;
@@ -613,6 +617,8 @@ struct Booster {
 	Clock lifeClock;
 	float minSpawnDuration = boosterSpawnDuration;
 	float maxLifeDuration = boosterLifeDuration;
+	int cost = 50;
+	Vector2f scale = { 0.5f, 0.5f };
 	//float minDuration = 10.0f;
 	bool isAlive = false;
 	Vector2f position;
@@ -2094,7 +2100,7 @@ void UpdateBooster(RenderWindow& window) {
 	if (!booster.isAlive) return;
 	ariseSprite.setPosition(booster.position);
 	ariseSprite.setTexture(textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index]);
-	ariseSprite.setScale(1.0f, 1.0f);
+	ariseSprite.setScale(booster.scale);
 	window.draw(ariseSprite);
 }
 //we will remove it later
@@ -3109,6 +3115,11 @@ void gameOverAnimation(RenderWindow& window) {
 	}
 }
 
+bool isClicked(Vector2f pos, Vector2f size, Vector2f offset = { 0, 0 }) {
+	pos += offset;
+	return mousePos.x >= pos.x && mousePos.x <= pos.x + size.x &&
+		mousePos.y >= pos.y && mousePos.y <= pos.y + size.y;
+}
 // UI interaction parts
 void uiNormalShovel(RenderWindow& window, Entity& clickedEntity) {
 	if (clickedEntity.category == ENTITY_CATEGORY::PLANT) {
@@ -3149,15 +3160,6 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 		}
 	}
 }
-void uiBoostPlant(RenderWindow& window, Entity& clickedEntity) {
-	//curBoosterCnt--;
-	isBoostActive = false;
-	booster.activate(clickedEntity);
-	cout << "======== Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
-	/*clickedEntity.boosted = true;
-	clickedEntity.boostStartTime = currentLevel->clock.getElapsedTime();
-					isBoostActive = false;*/
-}
 void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col) {
 	Entity plant;
 	if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price && currentLevel->selectedPlants[selectedPlant].currentSeedCooldown <= 0) {
@@ -3183,7 +3185,7 @@ void uiCollectSuns(RenderWindow& window) {
 		if (!isSunAlive(sun)) continue;
 
 		// check mouse pos in sun rect (200x200)
-		if (mousePos.x >= sun.position.x && mousePos.x <= sun.position.x + 200 && mousePos.y >= sun.position.y && mousePos.y <= sun.position.y + 200) {
+		if (isClicked(sun.position, { 200,200 })) {
 			sunsMoney += suns[i].sunValue;
 
 			cout << "You now have " << sunsMoney << endl;
@@ -3194,6 +3196,56 @@ void uiCollectSuns(RenderWindow& window) {
 			break;
 		}
 	}
+}
+// boost ui
+void uiBoostActive(RenderWindow& window) {
+	if (isClicked(activateBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
+		if (mouseJustClicked[0]) {
+			uiInteracted = true;
+			if (curBoosterCnt > 0) {
+				isBoostActive = true;
+			} else {
+				// maybe show some message that you cant have more boosters
+			}
+		}
+	}
+
+}
+void uiBoostPlant(RenderWindow& window, Entity& clickedEntity) {
+	// Uses the boost on the selected plant
+	isBoostActive = false;
+	booster.activate(clickedEntity);
+	cout << "======== Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
+	/*clickedEntity.boosted = true;
+	clickedEntity.boostStartTime = currentLevel->clock.getElapsedTime();
+					isBoostActive = false;*/
+}
+void uiCollectBooster(RenderWindow& window) {
+	if (booster.isAlive && !uiInteracted) {
+		if (isClicked(booster.position, { 200, 200 })) {
+			//if (mousePos.x >= booster.position.x && mousePos.x <= booster.position.x + 200 && mousePos.y >= booster.position.y && mousePos.y <= booster.position.y + 200) {
+			booster.collect();
+			uiInteracted = true;
+		}
+	}
+}
+void uiAddBooster(RenderWindow& window) {
+	if(isClicked(addBoosterBtnPos, { 100, 100 }, {0, -100})) {
+		if (mouseJustClicked[0]) {
+			uiInteracted = true;
+			if (curBoosterCnt < maxBoosterCnt && coinsMoney >= booster.cost) {
+				curBoosterCnt++;
+				coinsMoney -= booster.cost;
+			}
+			else if (coinsMoney < booster.cost) {
+				// message that you dont have enough coins
+			}
+			else if(curBoosterCnt >= maxBoosterCnt) {
+				// maybe show some message that you cant have more boosters
+			}
+		}
+	}
+	
 }
 
 //	UI interaction - Buttons click, Collect Items, Click plants ... etc
@@ -3243,18 +3295,23 @@ void UI_DrawClick(RenderWindow& window) {
 	window.draw(uiSprite);
 	uiSprite.setColor(Color::White);
 	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
+
+
 }
+
+
 void UI_Interaction(RenderWindow& window) {
 	if (!uiInteracted && mouseJustClicked[0]) {
 		// Collect Suns
 		uiCollectSuns(window);
 		// Collect booster
-		if (booster.isAlive && !uiInteracted) {
-			if (mousePos.x >= booster.position.x && mousePos.x <= booster.position.x + 200 && mousePos.y >= booster.position.y && mousePos.y <= booster.position.y + 200) {
-				booster.collect();
-				uiInteracted = true;
-			}
-		}
+		uiCollectBooster(window);
+		// Active boost
+		uiBoostActive(window);
+		// Add booster
+		uiAddBooster(window);
+
+		// Other
 		if (!uiInteracted) {
 			// clicked item on grid
 			auto [row, col] = gridCell(mousePos);
@@ -3313,13 +3370,15 @@ void DrawLevelStats(RenderWindow& window) {
 
 	sprite.setTexture(getTexture(TEXTURE_TYPE::BOOSTER));
 	sprite.setOrigin(0, getTexture(TEXTURE_TYPE::BOOSTER).getSize().y);
-	sprite.setPosition(Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset);
+	addBoosterBtnPos = Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset;	// update the position of the add booster button
+	activateBoosterBtnPos = Vector2f(0, windowHeight) + Vector2f(20, -120) + animationOffset;	// Temporary
+	sprite.setPosition(addBoosterBtnPos);
 	sprite.setScale(
 		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().x,
 		100.0 / getTexture(TEXTURE_TYPE::BOOSTER).getSize().y
 	);
 
-	text.setString(std::to_string(-1) + " Boosts");
+	text.setString(std::to_string(curBoosterCnt) + "/" + to_string(maxBoosterCnt) + " Boosts");
 	text.setOrigin(0, text.getLocalBounds().height);
 	text.setFillColor(Color::Green);
 	text.setPosition(sprite.getPosition() + Vector2f(108, -28));
@@ -4045,6 +4104,8 @@ void saveStorage() {
 	file.close();
 }
 
+
+// Music
 int select_levels_background_music(Music& music) {
 	if (!music.openFromFile("assets/audio/select-levels-music.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4054,7 +4115,6 @@ int select_levels_background_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_1_music(Music& music) {
 	if (!music.openFromFile("assets/audio/06. Main Music 00.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4064,7 +4124,6 @@ int level_1_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_2_music(Music& music) {
 	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4074,7 +4133,6 @@ int level_2_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_3_music(Music& music) {
 	if (!music.openFromFile("assets/audio/14. Main Music 08.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4084,7 +4142,6 @@ int level_3_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_4_music(Music& music) {
 	if (!music.openFromFile("assets/audio/15. Main Music 09.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4094,7 +4151,6 @@ int level_4_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_5_music(Music& music) {
 	if (!music.openFromFile("assets/audio/17. Main Music 11.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4104,7 +4160,6 @@ int level_5_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int level_6_music(Music& music) {
 	if (!music.openFromFile("assets/audio/18. Main Music 12.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4114,7 +4169,6 @@ int level_6_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int huge_wave_music(Music& music) {
 	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4124,7 +4178,6 @@ int huge_wave_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int after_huge_wave_music(Music& music) {
 	if (!music.openFromFile("assets/audio/SFX siren.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4134,7 +4187,6 @@ int after_huge_wave_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int pause_music(Music& music) {
 	if (!music.openFromFile("assets/audio/24. pause.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4144,7 +4196,6 @@ int pause_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int win_music(Music& music) {
 	if (!music.openFromFile("assets/audio/26. winmusic.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4154,7 +4205,6 @@ int win_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int eating_music(Music& music) {
 	if (!music.openFromFile("assets/audio/SFX chomp.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4177,7 +4227,6 @@ int eating_music(Music& music) {
 
 	return 0;
 }
-
 int small_red_car_music(Music& music) {
 	if (!music.openFromFile("assets/audio/SFX lawnmower.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4187,7 +4236,6 @@ int small_red_car_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int zombies_are_coming_music(Music& music) {
 	if (!music.openFromFile("assets/audio/Voices awooga.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4197,7 +4245,6 @@ int zombies_are_coming_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int before_lose_music_music(Music& music) {
 	if (!music.openFromFile("assets/audio/Voices scream.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4207,7 +4254,6 @@ int before_lose_music_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 int lose_music(Music& music) {
 	if (!music.openFromFile("assets/audio/05. losemusic.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4217,7 +4263,6 @@ int lose_music(Music& music) {
 	music.play();
 	return 0;
 }
-
 
 int main() {
 	srand(time(0));
@@ -4487,6 +4532,8 @@ int main() {
 					window.setPosition(oldPos);
 					window.setSize(oldSize);
 				}
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+				window.close();
 			}
 		}
 
