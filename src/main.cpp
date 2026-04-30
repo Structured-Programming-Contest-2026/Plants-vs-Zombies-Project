@@ -598,16 +598,52 @@ Sun suns[MAX_SUNS];
 int curBoosterCnt = 10;
 bool isBoostActive = false;
 int maxBoosterCnt = 20;
-float boosterSpawnDuration = 1.0f;
+float boosterSpawnDuration = 10.0f;
+//float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
 //float boosterSpawnDuration = 10.0f;
 //float boosterLifeDuration = 5.0f;
-struct Booster {
+
+// Magic Shovel
+int curMagicShovelCnt = 1;
+
+//bool isBoostActive = false;
+//int maxMagicShovelCnt = 20;
+//float boosterSpawnDuration = 10.0f;
+//float boosterSpawnDuration = 1.0f;
+//float boosterLifeDuration = 3.0f;
+struct ShopItem{
+	int cost = 0;
+	string title;
+	TEXTURE_TYPE textureType;
+	int* counter=nullptr;	// reference to the item counter (ex: booster count, magic shovel count, etc ..)
+	int maxCount = -1;	// 0 for infinite
+	bool isUnlocked = true;
+	void buy(int amnt) {
+		while (amnt--) {
+			if (coinsMoney >= cost && (counter==nullptr || *counter < maxCount || maxCount == -1)) {
+				coinsMoney -= cost, *counter++;
+				cout << "Purchased " << title << "! Remaining coins: " << coinsMoney << endl;
+			} else {
+				// message 
+				cout << "Not enough coins to purchase " << title << "! Required: " << cost << ", Available: " << coinsMoney << endl;
+				break;
+			}
+		}
+	}
+};
+struct Booster: ShopItem {
 	Clock spawnClock;
 	Clock lifeClock;
 	float minSpawnDuration = boosterSpawnDuration;
 	float maxLifeDuration = boosterLifeDuration;
+	// Shop
 	int cost = 50;
+	string title = "Booster";
+	TEXTURE_TYPE textureType = TEXTURE_TYPE::BOOSTER;
+	int* counter = &curBoosterCnt;
+	int maxCount = maxBoosterCnt;
+
 	Vector2f scale = { 0.5f, 0.5f };
 	//float minDuration = 10.0f;
 	bool isAlive = false;
@@ -657,6 +693,9 @@ void CheckTimer_AddBooster(bool zombieJustDead = false, Vector2f position = { 0,
 		//cout << "----------Booster disappeared!" << endl;
 	}
 }
+
+// Shop items
+ShopItem shopItems[2] = { booster, {100, "Magic Shovel", TEXTURE_TYPE::MAGIC_SHOVEL, &curMagicShovelCnt}};	// 0 for booster, 1 for magic shovel
 
 bool isSunAlive(const Sun& sun) {
 	return !sun.clicked && sun.lifeClock.getElapsedTime().asSeconds() <= 10; //cool trick   
@@ -3111,6 +3150,11 @@ void uiNormalShovel(RenderWindow& window, Entity& clickedEntity) {
 	}
 }
 void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col) {
+	if (curMagicShovelCnt <= 0) {
+		// message that you dont have any magic shovels
+		cout << "Not enough magic shovels!" << endl;
+		return;
+	}
 	if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT) {
 		for (int i = 0; i < entities.size(); i++) {
 			if (entities[i].category == ENTITY_CATEGORY::PLANT &&
@@ -3136,6 +3180,8 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 			isRelocating = false;
 			selectedPlantIndex = -1;
 			isRelocateActive = false;
+
+			curMagicShovelCnt--;
 		} else {
 			isRelocating = false;
 			selectedPlantIndex = -1;
@@ -3262,7 +3308,10 @@ void UI_DrawClick(RenderWindow& window) {
 	if (isRelocateActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
 
-	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (curMagicShovelCnt <= 0) {
+		uiSprite.setColor(Color(100, 100, 100, 255));
+	}
+	else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos)) ) {
 		if (mouseJustClicked[0]) {
 			isRelocateActive = !isRelocateActive;
 			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
@@ -3854,6 +3903,17 @@ void DrawStore(RenderWindow& window) {
 		if (progress < 0) progress = 0;
 		screenFade(window, progress);
 	}
+
+	/*
+	for (auto& item : shopItems) {
+		if(!item.isUnlocked) continue;
+		sprite.setTexture(getTexture(item.textureType));
+		item.cost;
+	}
+	// Buying
+	shopItems[1].buy(5);
+	booster.buy(2);
+	*/
 }
 
 void DrawMainMenu(RenderWindow& window) {
@@ -4022,6 +4082,14 @@ void loadStorage() {
 		if (line.find("Current Coins:") == 0) {
 			coinsMoney = stoi(line.substr(msg.size()));
 		}
+		msg = "Booster Count:";
+		if (line.find(msg) == 0) {
+			curBoosterCnt = stoi(line.substr(msg.size()));
+		}
+		msg = "Magic Shovel Count:";
+		if (line.find(msg) == 0) {
+			curMagicShovelCnt = stoi(line.substr(msg.size()));
+		}
 	}
 	file.close();
 }
@@ -4049,6 +4117,10 @@ void saveStorage() {
 		file << "CoinRewardClaimed:" << (levels[lvl].coinReward.isClaimed ? "1" : "0") << "\n";
 		file << "\n";
 	}
+	file << "\n";
+	file << "Booster Count:" << curBoosterCnt << "\n";
+	file << "Magic Shovel Count:" << curMagicShovelCnt << "\n";
+	file << "\n";
 	file.close();
 }
 
