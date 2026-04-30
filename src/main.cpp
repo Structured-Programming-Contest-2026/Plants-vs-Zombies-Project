@@ -49,7 +49,7 @@ int curWaveZombieCnt = 0;	// each wave zombie counter
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
-float nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float nextZombieTimer = 10; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 float ZombieMinGapTime = 7,
 //float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 //float ZombieMinGapTime = 1,
@@ -389,7 +389,7 @@ struct Entity {
 
 	Bullet bullet;
 
-	float x_vel = 0.05f;
+	float x_vel = 0.04f;
 	Clock attackClock;
 	int attackTimer = 1;
 	Vector2f position;
@@ -605,8 +605,9 @@ struct Level {
 		targetZombie = 0;
 		for (auto& w : waves) targetZombie += w.zombieCount;
 	}
-	void addWave(int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, bool isHuge = false) {
+	void addWave(int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, float rest = 0, bool isHuge = false) {
 		waves.push_back(Wave(zombieCount, length, zombieTypes, isHuge));
+		if (rest) waves.push_back(Wave(0, rest, {}, false));	// rest wave
 		this->setTargetZombie();
 	}
 };
@@ -977,7 +978,7 @@ Entity defineNormalBullet() {
 	Entity bullet{};
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::NormalBullet;
-	bullet.attack = 20;
+	bullet.attack = 30;
 	bullet.x_vel = -0.4f;
 
 
@@ -4615,6 +4616,7 @@ int main() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 100;
 	levels[1].isUnlocked = true;
+	levels[1].startingSuns = 50;
 
 	levels[1].offsetX = 450;
 	levels[1].offsetY = 135;
@@ -4622,11 +4624,20 @@ int main() {
 	levels[1].cellHeight = 170;
 	// Wave Design
 	//levels[1].addWave(10, 30, { zombie });	// 
-	levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
+	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
 	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
 	//levels[1].addWave(0, 5, { });
 	//levels[1].addWave(5, 10, { zombie }, true);
+	//levels[1].addWave(5, 2, { zombie }, true);
 	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
+
+	levels[1].addWave(1, 5, { zombie }, 5);
+	levels[1].addWave(3, 9, { zombie }, 5);
+	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
+	levels[1].addWave(5, 15, { zombie }, 10);
+	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	levels[1].addWave(5, 15, { zombie }, 5);
+	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
 
 	setupLevelLawnmowers(levels[1]);
 	//---------------------------------------
@@ -4644,9 +4655,19 @@ int main() {
 	levels[2].plantReward = shroom;
 	levels[2].coinReward = 200;
 	// Wave Design
-	levels[2].addWave(3, 15, { zombieConehead });
+	/*levels[2].addWave(3, 15, {zombieConehead});
 	levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
-	levels[2].addWave(10, 5, { zombieAllStar }, true);
+	levels[2].addWave(10, 5, { zombieAllStar }, true);*/
+	levels[2].addWave(1, 5, { zombie }, 5);
+	levels[2].addWave(3, 9, { zombie }, 10);
+	levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[2].addWave(3, 12, { zombie }, 0);
+	levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
 	setupLevelLawnmowers(levels[2]);
 
 	//------------------------------------------
@@ -4665,11 +4686,22 @@ int main() {
 	levels[3].plantReward = wallnut;
 	levels[3].coinReward = 300;
 	// Wave Design
-	levels[3].addWave(2, 15, { zombieMummy });
+	/*levels[3].addWave(2, 15, { zombieMummy });
 	levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
 	levels[3].addWave(3, 5, { zombieRa, zombieMummy });
 	levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-	levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);
+	levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+	// 2 2 4 5 8 10
+	levels[3].addWave(2, 5, { zombieMummy }, 5);
+	levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+	levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+	levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[3].addWave(4, 12, { zombieMummy }, 5);
+	levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+	levels[3].addWave(4, 12, { zombieMummy }, 5);
+	levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[3].addWave(4, 16, { zombieMummy }, 5);
+	levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
 	setupLevelLawnmowers(levels[3]);
 
 	//------------------------------------------
