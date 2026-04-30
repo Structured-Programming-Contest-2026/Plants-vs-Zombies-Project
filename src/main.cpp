@@ -2675,7 +2675,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 		for (Entity& zombie : entities) {
 
-			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;// skip non-zombie or dead ones
+			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;// skip non-zombie or dead ones
 
 			if (abs(bullet.position.y - zombie.position.y) < 100.0f && // same row
 				bullet.position.x >= zombie.position.x &&
