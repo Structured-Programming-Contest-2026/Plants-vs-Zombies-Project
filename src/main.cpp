@@ -46,6 +46,73 @@ bool mouseJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
 bool isGameOver = false, isGameWon = false;
+
+// Game-won action hook
+bool gameWonActionExecuted = false;
+std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
+
+// Huge-wave hook: called once when a huge wave starts.
+// Assignable by user code (example: assign in main()).
+bool hugeWaveTriggered = false;
+std::function<void()> onHugeWave = []() {};
+
+void TriggerHugeWave() {
+	if (hugeWaveTriggered) return; // ensure runs once per huge wave
+	hugeWaveTriggered = true;
+
+	// keep original message
+	std::cout << "HUGE WAVE\n";
+
+	// run user callback
+	if (onHugeWave) onHugeWave();
+
+	// optional: play huge wave sound (short-lived Music as in ExecuteGameWonAction)
+	sf::Music* hw = new sf::Music();
+	if (hw->openFromFile("assets/audio/03. hugewave.ogg")) {
+		hw->setLoop(false);
+		hw->play();
+		// note: left intentionally not deleted to keep it alive while playing
+	}
+}
+
+// --- ADD: one-shot first-zombie hook (place below TriggerHugeWave)
+bool firstZombieTriggered = false;
+std::function<void()> onFirstZombie = []() {};
+
+void TriggerFirstZombie() {
+	if (firstZombieTriggered) return;
+	firstZombieTriggered = true;
+
+	// keep existing terminal message opportunity (optional)
+	std::cout << "FIRST ZOMBIE HOOK\n";
+
+	// Play the "zombies are coming" sound using the existing helper.
+	// Use a heap-allocated sf::Music so it lives while playing (matches project pattern).
+	sf::Music* sfx = new sf::Music();
+	if (sfx->openFromFile("assets/audio/Voices awooga.ogg")) {
+		sfx->setLoop(false);
+		sfx->play();
+	}
+	// run user callback if assigned
+	if (onFirstZombie) onFirstZombie();
+}
+
+void ExecuteGameWonAction() {
+	// Run the user-configurable callback first
+	if (onGameWonAction) onGameWonAction();
+
+	// Example: play the existing win music immediately (optional).
+	// This creates a short-lived Music instance to play the sound.
+	sf::Music* winMusic = new sf::Music();
+	if (winMusic->openFromFile("assets/audio/26. winmusic.ogg")) {
+		winMusic->setLoop(false);
+		winMusic->play();
+		// intentionally not deleted here to avoid lifetime issues while sound plays;
+		// if you want clean lifetime management, store Music pointer globally and delete after finished.
+	}
+	std::cout << "ExecuteGameWonAction called\n";
+}
+
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
 int curWaveZombieCnt = 0;	// each wave zombie counter
@@ -64,7 +131,10 @@ int sunsMoney = 3000;
 int coinsMoney = 0;
 
 
-int requestedLevelMusic = -1;
+// music request states
+const int REQUEST_NONE = -1;
+const int REQUEST_SELECT_MUSIC = -2; // ask main loop to play select-levels background
+int requestedLevelMusic = REQUEST_NONE;
 
 float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
@@ -929,7 +999,9 @@ void resetLevel() {
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
 	isGameWonCoolDownStarted = false;
+	gameWonActionExecuted = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
+	firstZombieTriggered = false;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 	//ZombieMinGapTime = 7,
@@ -3161,11 +3233,17 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
 			currentWave++, curWaveZombieCnt = 0;
 			wc.restart();
+			// allow huge-wave handler to run for the upcoming wave if it's huge
+			hugeWaveTriggered = false;
 		}
 
 		if (currentWave->isHuge) {
-			// message huge wave
-			cout << "HUGE WAVE\n";
+			TriggerHugeWave();
+		}
+
+		// If this is the very first zombie spawned this level, run the one-shot hook.
+		if (createdZombiesCount == 0) {
+			TriggerFirstZombie();
 		}
 
 		cout << "New Zombie\n";
@@ -4192,6 +4270,8 @@ void DrawPauseMenu(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
+			requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
 			resetLevel();
 			int lvlNum = currentLevel->lvlNum;
 			delete currentLevel;
@@ -4214,6 +4294,8 @@ void DrawPauseMenu(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
+			requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
 			resetLevel();
 			delete currentLevel;
 			currentLevel = nullptr;
@@ -4390,13 +4472,16 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	if (isGameWon == true) {
 		// rewards (debug)
-		//cout << "You win!\n";
 		if (!isGameWonCoolDownStarted) {
-			//cout << "(((((( game won cooling down )))))))" << endl;
 			currentLevel->winClock.restart();
 			isGameWonCoolDownStarted = true;
 		} else if (currentLevel->winClock.getElapsedTime().asSeconds() >= wincooldowntimer) {
-			//cout << "------ DrawWinScreen 000000" << endl;
+			// run the one-time action when the win screen appears
+			if (!gameWonActionExecuted) {
+				ExecuteGameWonAction();
+				gameWonActionExecuted = true;
+			}
+
 			DrawWinScreen(window);
 			return;
 		}
@@ -4456,6 +4541,8 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
+		// request switching back to normal (select-levels) music
+		requestedLevelMusic = REQUEST_SELECT_MUSIC;
 	}
 
 	for (Entity& zombie : entities) {
@@ -4467,6 +4554,8 @@ void UpdateLevel(RenderWindow& window) {
 				isGameOver = true;
 				zombie.enteredHome = true;
 				cout << "Zombies ate your brains!\n";
+				// request switching back to normal (select-levels) music
+				requestedLevelMusic = REQUEST_SELECT_MUSIC;
 				break;
 			}
 		}
@@ -5370,6 +5459,7 @@ int main() {
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
+
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -5674,6 +5764,12 @@ int main() {
 	// Load storage
 	loadStorage();
 
+	// in main(), after creating resources:
+	onHugeWave = []() {
+		std::cout << "Custom huge-wave handler executed\n";
+		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
+		// e.g. you could toggle a game-state boolean or request a special sound
+		};
 
 	// Game Loop
 
@@ -5733,13 +5829,19 @@ int main() {
 		}
 
 		// Separate UI -> Main Menu and Level
-		if (currentLevel != nullptr) {
-			// If UI queued a level music start (e.g. user clicked "Start Game"), handle it here
-			if (requestedLevelMusic != -1) {
-				if (music.getStatus() == Music::Playing) music.stop();
-				playMusicForLevel(int(levels[requestedLevelMusic].theme), music);
-				requestedLevelMusic = -1;
+		// First, handle any queued music request (stop current music, play requested)
+		if (requestedLevelMusic != REQUEST_NONE) {
+			if (music.getStatus() == Music::Playing) music.stop();
+
+			if (requestedLevelMusic == REQUEST_SELECT_MUSIC) {
+				select_levels_background_music(music);
+			} else {
+				playMusicForLevel(requestedLevelMusic, music);
 			}
+			requestedLevelMusic = REQUEST_NONE;
+		}
+
+		if (currentLevel != nullptr) {
 			UpdateLevel(window);
 		} else {
 			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
