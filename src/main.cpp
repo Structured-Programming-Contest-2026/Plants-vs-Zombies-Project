@@ -175,11 +175,13 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_CHEERY_BOMB,
 	PLANT_ICESHROOM,
 	PLANT_SNAPDRAGON,
+	PLANT_LIGHTNING_REED,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
 	FireDragonBullet,
+	LightningBullet,
 
 
 
@@ -235,6 +237,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_PROSPECTOR,
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
+	ZOMBIE_ELECTROCUTED,//only death not real zombie
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -250,11 +253,13 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_CHEERY_BOMB,
 	PLANT_ICESHROOM,
 	PLANT_SNAPDRAGON,
+	PLANT_LIGHTNING_REED,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
 	FireDragonBullet,
+	LightningBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -372,6 +377,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_SNAPDRAGON:
 		textureType = TEXTURE_TYPE::PLANT_SNAPDRAGON;
 		break;
+	case ENTITY_TYPE::PLANT_LIGHTNING_REED:
+		textureType = TEXTURE_TYPE::PLANT_LIGHTNING_REED;
+		break;
 
 		//other
 	case ENTITY_TYPE::NormalBullet:
@@ -383,7 +391,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::FireDragonBullet:
 		textureType = TEXTURE_TYPE::FireDragonBullet;
 		break;
-
+	case ENTITY_TYPE::LightningBullet:
+		textureType = TEXTURE_TYPE::LightningBullet;
+		break;
 
 	case ENTITY_TYPE::ShroomBullet:
 		textureType = TEXTURE_TYPE::ShroomBullet;
@@ -509,13 +519,26 @@ struct Entity {
 	bool isDead = false;
 	function<void(Entity& entity)> afterAnimation = [](Entity&) {};	// called after animation finish (if animationForCycles != -1)
 
+	bool diedByElectrocution = false;//for death by lightning or fire
+
 	// Updates width and height whenever Animation is changed - ex: To calculate zombie position properly
 	void updateDimensions() {
-		if (currentAnimation.frames == 0) {
-			cout << "ERROR: Switching To Animation with 0 frames .. which is probably unexisting animation or you forgot to set frames .. Check whether you put animation.frames or check the animation index";
+		if (currentAnimation.frames == 0) 
+		{
+			cout << "ERROR: Switching To Animation with 0 frames...";
 			return;
 		}
-		Texture tex = getTexture(getTextureType(type), currentAnimationIndex);
+
+		TEXTURE_TYPE tType = getTextureType(type);
+		int tIndex = currentAnimationIndex;
+
+		if (category == ENTITY_CATEGORY::ZOMBIE && diedByElectrocution && currentAnimationIndex == 9)
+		{
+			tType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
+			tIndex = 0;
+		}
+
+		Texture tex = getTexture(tType, tIndex);
 		int w = (tex.getSize().x / currentAnimation.frames) * scale;
 		int h = tex.getSize().y * scale;
 
@@ -861,10 +884,21 @@ bool addSun(Sun sun) {
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
-IntRect getFrameRect(Entity& entity) {
-	// Smart Crop
-	// auto frame dimensions
-	Texture& tex = textures[getTextureType(entity.type)][entity.currentAnimationIndex]; //must be num%10=0 if not resize it
+IntRect getFrameRect(Entity& entity)
+{
+	
+	TEXTURE_TYPE texType = getTextureType(entity.type);
+	int texIndex = entity.currentAnimationIndex;
+
+	if (entity.category == ENTITY_CATEGORY::ZOMBIE && entity.diedByElectrocution && texIndex == 9) 
+	{
+		texType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
+		texIndex = 0;
+	}
+
+	Texture& tex = textures[texType][texIndex];
+
+
 	float frameWidthF = float(tex.getSize().x) / float(entity.currentAnimation.frames);
 	int frameWidth = round(frameWidthF);
 	int frameHeight = tex.getSize().y;
@@ -881,7 +915,6 @@ IntRect getFrameRect(Entity& entity) {
 	};
 	return textureRect;
 }
-
 // Helping - Functions
 
 bool anySunAlive() { // for ra
@@ -1219,6 +1252,22 @@ Entity defineNormalPlant() {
 		};
 	return plant;
 
+}
+
+Entity defineLightningBullet() 
+{
+	Texture tex;
+	tex.loadFromFile("assets/LightningBullet.png");
+	textures[TEXTURE_TYPE::LightningBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::LightningBullet;
+	bullet.attack = 15000;
+	bullet.x_vel = -1500.0f;
+	bullet.scale = 0.2f;
+
+	return bullet;
 }
 Entity defineRepeaterPlant() {
 	Texture tex;
@@ -1559,7 +1608,8 @@ Entity defineCherryBomb() {
 			plant.DoAnimation(1, 1);
 
 
-			plant.afterAnimation = [&](Entity& p) {
+			plant.afterAnimation = [&](Entity& p) 
+				{
 				// RANGE OF EXPLOSION 
 				float explosionRange = 150.0f;
 
@@ -2033,6 +2083,59 @@ Entity defineSnapdragon() {
 						}
 					}
 				}
+			}
+		}
+		};
+
+	return plant;
+}
+Entity defineLightningReed()
+{
+	Texture tex;
+	tex.loadFromFile("assets/LightningReed.png");
+	textures[TEXTURE_TYPE::PLANT_LIGHTNING_REED][Default_Texture_Index] = tex;
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_LIGHTNING_REED;
+	plant.health = 300;
+	plant.attack = 50;
+	plant.price = 125;
+	plant.seedCooldown = 7.5f;
+	plant.scale = 0.2f;
+	plant.attackTimer = 2.0f;
+
+	plant.num_animations = 1;
+	plant.animations[0].frames = 18;
+	plant.animations[0].frameTimer = 0.08f;
+
+	plant.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_LIGHTNING_REED] = plant;
+
+	//it will be developed
+	plant.updateEntity = [](Entity& p)
+		{
+		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+			bool zombieInLane = false;
+
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break; 
+					}
+				}
+			}
+
+			if (zombieInLane) {
+				p.attackClock.restart();
+				Entity newBullet = defineLightningBullet();
+				newBullet.attack = p.attack;
+				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+				bullets.push_back(newBullet);
 			}
 		}
 		};
@@ -2617,7 +2720,16 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			}
 
 			// [1.1] play dying animation once
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+			if (zombie.diedByElectrocution) 
+			{
+				Animation electroAnim;
+				electroAnim.frames = 18;
+				electroAnim.frameTimer = 0.08f; 
+				zombie.animations[9] = electroAnim;
+				zombie.DoAnimation(1, 9);
+				zombie.scale = 0.40f;
+			}
+			else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 				if (zombie.currentAnimationIndex == 3) {
 					zombie.DoAnimation(1, 5);
 				} else {
@@ -2989,7 +3101,15 @@ void DrawZombies(RenderWindow& window) {
 		adjustedPosition.y -= (actualHeight - currentLevel->cellHeight);
 
 		zombieSprite.setPosition(adjustedPosition);
-		zombieSprite.setTexture(textures[getTextureType(zombie.type)][zombie.currentAnimationIndex]);
+		TEXTURE_TYPE texType = getTextureType(zombie.type);
+		int texIndex = zombie.currentAnimationIndex;
+
+		if (zombie.diedByElectrocution && texIndex == 9)
+		{
+			texType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
+			texIndex = 0;
+		}
+		zombieSprite.setTexture(textures[texType][texIndex]);
 		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
 
 		if (!isGameOver) {
@@ -3051,6 +3171,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				}
 
 				attackZombie(zombie, bullet.attack, true);
+				if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0)
+				{
+					zombie.diedByElectrocution = true;
+				}
 
 				if (bullet.type == ENTITY_TYPE::IceBullet) {
 					zombie.freezeTimer = 3.0f;
@@ -5101,7 +5225,7 @@ void playMusicForLevel(int level, Music& music) {
 }
 
 
-Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon;
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed;
 Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo;
 vector<Entity> allPlantTypes;
 
@@ -5375,6 +5499,7 @@ int main() {
 	wallnut = defineWallnut();
 	POTATOMINE = definePOTATO_MINE();
 	sunflower = defineSunflower();
+	lightningReed = defineLightningReed();
 
 	chomper = defineChomperPlant();
 	shroom = defineShroomPlant();
@@ -5385,6 +5510,7 @@ int main() {
 	CHEERY_BOMB = defineCherryBomb();
 	iceShroom = defineIceShroom();
 	snapdragon = defineSnapdragon();
+	lightningReed = defineLightningReed();
 
 	// Zombies
 	zombie = defineNormalZombie();
@@ -5404,7 +5530,7 @@ int main() {
 	zombiePogo = definePogoZombie();
 	;
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon };
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -5444,6 +5570,7 @@ int main() {
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][0].loadFromFile("assets/cowboy_walk.png");
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][1].loadFromFile("assets/cowboy_die.png");
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][2].loadFromFile("assets/cowboy_eat.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ELECTROCUTED][0].loadFromFile("assets/ZombieElectrocuted.png");
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
@@ -5467,6 +5594,7 @@ int main() {
 		isEntityUnlocked[CHEERY_BOMB.type] =
 		isEntityUnlocked[iceShroom.type] =
 		isEntityUnlocked[snapdragon.type] =
+		isEntityUnlocked[lightningReed.type] =
 		true;
 
 	// Levels
@@ -5696,7 +5824,8 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
-			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11){
 				fullscreen = !fullscreen;
 				if (fullscreen) {
 					oldPos = window.getPosition();
