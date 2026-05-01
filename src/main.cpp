@@ -2418,7 +2418,11 @@ void UpdateSuns(RenderWindow& window) {
 		uiSprite.setPosition(sun.position);
 		uiSprite.setTexture(tex);
 		uiSprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
-		uiSprite.setScale(Vector2f(1.0f, 1.0f));
+		uiSprite.setOrigin(uiSprite.getGlobalBounds().getSize() / 2.0f);
+		uiSprite.rotate(sun.lifeClock.getElapsedTime().asSeconds() * 22.5f);
+		float scale = 1.0f + 0.1f * sin(sun.lifeClock.getElapsedTime().asSeconds() * 1.57f);
+
+		uiSprite.setScale(scale, scale);
 
 		if (sun.targeted) { // for ra
 			uiSprite.setColor(Color(255, 80, 80));
@@ -2427,6 +2431,9 @@ void UpdateSuns(RenderWindow& window) {
 		}
 
 		window.draw(uiSprite);
+
+		uiSprite.setRotation(0);
+		uiSprite.setOrigin(0, 0);
 	}
 	uiSprite.setColor(Color(255, 255, 255)); // for ra
 }
@@ -3145,7 +3152,7 @@ void CheckTimer_AddSun(RenderWindow& window) {
 		sunSpawnClock.restart();
 
 		Sun sun{};
-		sun.position = Vector2f(rand() % (windowWidth - 200), -215);
+		sun.position = Vector2f(rand() % (windowWidth - 200) + 100, -215);
 		sun.distance = rand() % 750;
 		sun.clicked = false;
 
@@ -3704,7 +3711,7 @@ void uiCollectSuns(RenderWindow& window) {
 		if (!isSunAlive(sun)) continue;
 
 		// check mouse pos in sun rect (200x200)
-		if (isClicked(sun.position, { 200,200 })) {
+		if (isClicked(sun.position - Vector2f(100, 100), { 200,200 })) {
 			sunsMoney += suns[i].sunValue;
 
 			cout << "You now have " << sunsMoney << endl;
