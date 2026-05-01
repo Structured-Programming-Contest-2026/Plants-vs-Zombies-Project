@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <vector>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
@@ -60,7 +60,10 @@ int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
 
-float wincooldowntimer = 2.0f;
+
+int requestedLevelMusic = -1;
+
+float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
 
 // Clocks
@@ -231,7 +234,15 @@ enum class TEXTURE_TYPE : uint8_t {
 	RAIL,
 	CART,
 };
+enum class THEME : uint8_t {
+	NONE = 0,
+	DAY,
+	NIGHT,
+	ANCIENT,
+	WILDWEST,
 
+	COUNT	// keep it last
+};
 
 map<ENTITY_TYPE, bool> isEntityUnlocked;
 
@@ -582,6 +593,7 @@ struct Wave {
 };
 
 struct Level {
+	THEME theme = THEME::NONE;
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 3000;
@@ -664,7 +676,7 @@ struct Level {
 	}
 
 };
-const int number_levels = 6;
+const int number_levels = 20;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 Wave* currentWave = nullptr;
@@ -947,9 +959,12 @@ void startLevel(int level) {
 
 		sunsMoney = currentLevel->startingSuns;
 		isGameOver = false, isGameWon = false;
-		Texture& groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level];
+		Texture& groundTex = textures[TEXTURE_TYPE::LEVEL_BACKGROUND][int(levels[level].theme)];
 		//cout << "txt size " << groundTex.getSize().x << endl;
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][(currentLevel ? currentLevel->lvlNum : 0)]);
+		// 
+		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][(currentLevel ? currentLevel->lvlNum : 0)]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][(currentLevel ? int(currentLevel->theme) : 0)]);
+
 		//ground.setTextureRect({ 0, 0, windowWidth, windowHeight });	// PROBLEM - Doesnt take the whole texture size, but only the part of it that corresponds to the window size, so if texture is smaller than window, it will be repeated, if it's bigger, it will be cropped
 		ground.setTextureRect({ 0, 0, (int)groundTex.getSize().x, (int)groundTex.getSize().y });
 		ground.setScale
@@ -959,7 +974,8 @@ void startLevel(int level) {
 		);
 
 		//For different independent Lawnmower
-		Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][level];
+		Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][int(levels[level].theme)];
+		//Texture& mowerTex = textures[TEXTURE_TYPE::LAWNMOWER][level];
 		lawnmowerSprite.setTexture(mowerTex);
 		lawnmowerSprite.setTextureRect(IntRect(0, 0, (int)mowerTex.getSize().x, (int)mowerTex.getSize().y));
 
@@ -3341,13 +3357,18 @@ void DrawSelectPlants(RenderWindow& window) {
 	startButton.setScale(Vector2f(1.5f, 1.5f));
 	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
-	if (currentLevel->selectedPlants.size() == 0) {
-		startButton.setColor(Color(64, 64, 64, 255));
-	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->arePlantsSelected = true;
 			currentLevel->plantsSelectedTime = currentLevel->clock.getElapsedTime();
+
+			// Queue level music to be started by the main loop.
+			// For level two explicitly use the level 2 music.
+			if (currentLevel != nullptr) {
+				if (currentLevel->lvlNum == 2) requestedLevelMusic = 2;
+				else requestedLevelMusic = currentLevel->lvlNum;
+			}
 		}
 	}
 
@@ -3996,7 +4017,10 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (currentLevel == nullptr) return;
 	int level = currentLevel->lvlNum;
-	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
+
+	//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
+	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][int(levels[level].theme)]);
+
 	window.draw(ground);
 
 	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f) {
@@ -4011,7 +4035,8 @@ void UpdateLevel(RenderWindow& window) {
 
 		if (!currentLevel->arePlantsSelected) progress = 0;
 
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][level]);
+		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][level]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][int(levels[level].theme)]);
 
 		bool rolling = currentLevel->arePlantsSelected && diff >= 0.75f;
 
@@ -4049,7 +4074,8 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	if (isGameOver) {
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
+		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][int(levels[level].theme)]);
 		window.draw(ground);
 	}
 
@@ -4124,7 +4150,8 @@ void UpdateLevel(RenderWindow& window) {
 	DrawPopupText(window);
 
 	if (isGameOver) {
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
+		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][int(levels[level].theme)]);
 		window.draw(ground);
 
 		gameOverAnimation(window);
@@ -4387,7 +4414,8 @@ void DrawLevelSelector(RenderWindow& window) {
 			sprite.setColor(Color::White);
 		}
 
-		Texture& iconTex = textures[TEXTURE_TYPE::LEVEL_ICON][i + 1];
+		Texture& iconTex = textures[TEXTURE_TYPE::LEVEL_ICON][int(levels[i + 1].theme)];
+		//Texture& iconTex = textures[TEXTURE_TYPE::LEVEL_ICON][i + 1];
 		sprite.setTexture(iconTex);
 		sprite.setTextureRect({ 0, 0, (int)iconTex.getSize().x, (int)iconTex.getSize().y });
 		float fitScaleX = 370.0f / iconTex.getSize().x;
@@ -4762,6 +4790,7 @@ int level_1_music(Music& music) {
 	music.play();
 	return 0;
 }
+
 int level_2_music(Music& music) {
 	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4901,6 +4930,197 @@ int lose_music(Music& music) {
 	music.play();
 	return 0;
 }
+void playMusicForLevel(int level, Music& music) {
+	switch (level) {
+	case 1: level_1_music(music); break;
+	case 2: level_2_music(music); break;
+	case 3: level_3_music(music); break;
+	case 4: level_4_music(music); break;
+	case 5: level_5_music(music); break;
+	case 6: level_6_music(music); break;
+	default: /* fallback */ select_levels_background_music(music); break;
+	}
+}
+
+
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon;
+Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo;
+vector<Entity> allPlantTypes;
+
+void defineDayLevels() {
+	vector<Entity> mainDayPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon };
+	for (int lvl = 1; lvl <= 3; lvl++) {
+		levels[lvl].theme = THEME::DAY;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainDayPlantTypes;
+		levels[lvl].zombie_types = { zombie, zombieConehead };
+		levels[lvl].targetZombie = 20;
+		//levels[1].targetZombie = 2;
+		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
+		levels[lvl].startingSuns = 50;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+	// Level 1
+	levels[1].isUnlocked = true;
+	levels[1].plantReward = chomper;
+	levels[1].coinReward = 200;
+	levels[1].addWave(1, 5, { zombieRedhair }, 5);
+	levels[1].addWave(1, 5, { zombieProspector }, 5);
+	levels[1].addWave(1, 5, { zombiePogo }, 5);
+	levels[1].addWave(1, 5, { zombieCowboy }, 5);
+	levels[1].addWave(1, 5, { zombieCowboy }, 5);
+	//levels[1].addWave(1, 5, { zombie }, 5);
+	levels[1].addWave(3, 9, { zombie }, 5);
+	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
+	levels[1].addWave(5, 15, { zombie }, 10);
+	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	levels[1].addWave(5, 15, { zombie }, 5);
+	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+	// Level 2
+	levels[2].plantReward = iceShroom;
+	levels[2].coinReward = 300;
+	levels[2].addWave(1, 5, { zombie }, 5);
+	levels[2].addWave(3, 9, { zombie }, 5);
+	levels[2].addWave(3, 9, { zombie, zombieConehead }, 7);
+	levels[2].addWave(5, 15, { zombie }, 10);
+	levels[2].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	levels[2].addWave(5, 15, { zombie }, 5);
+	levels[2].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+	// Level 3
+	levels[3].plantReward = sunshroom;
+	levels[3].coinReward = 400;
+	levels[3].addWave(1, 5, { zombie }, 5);
+	levels[3].addWave(3, 9, { zombie }, 5);
+	levels[3].addWave(3, 9, { zombie, zombieConehead }, 7);
+	levels[3].addWave(5, 15, { zombie }, 10);
+	levels[3].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	levels[3].addWave(5, 15, { zombie }, 5);
+	levels[3].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+}
+
+void defineNightLevels() {
+	vector<Entity> mainNightPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	// Level 4: Night
+	for (int lvl = 4; lvl <= 6; lvl++) {
+		levels[lvl].theme = THEME::NIGHT;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainNightPlantTypes;
+		levels[lvl].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
+		levels[lvl].targetZombie = 25;
+		levels[lvl].startingSuns = 100;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+	// Level 4
+	levels[4].plantReward = doomShroom;
+	levels[4].coinReward = 200;
+	levels[4].addWave(1, 5, { zombie }, 5);
+	levels[4].addWave(3, 9, { zombie }, 10);
+	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[4].addWave(3, 12, { zombie }, 0);
+	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+
+	// Level 5
+	levels[4].plantReward = miniShroom;
+	levels[4].coinReward = 300;
+	levels[4].addWave(1, 5, { zombie }, 5);
+	levels[4].addWave(3, 9, { zombie }, 10);
+	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[4].addWave(3, 12, { zombie }, 0);
+	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+
+	// Level 6
+	levels[4].plantReward = chomper;
+	levels[4].coinReward = 400;
+	levels[4].addWave(1, 5, { zombie }, 5);
+	levels[4].addWave(3, 9, { zombie }, 10);
+	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[4].addWave(3, 12, { zombie }, 0);
+	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+}
+
+void defineAncientLevels() {
+	vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	// Level 4: Night
+	for (int lvl = 7; lvl <= 9; lvl++) {
+		levels[lvl].theme = THEME::ANCIENT;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainAncientPlantTypes;
+		levels[lvl].zombie_types = { zombieMummy, zombieRa, zombieTorch, zombiePharaoh };
+		levels[lvl].targetZombie = 30;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+	// 2 2 4 5 8 10
+	levels[7].plantReward = CHEERY_BOMB;
+	levels[7].coinReward = 300;
+	levels[7].addWave(2, 5, { zombieMummy }, 5);
+	levels[7].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+	levels[7].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+	levels[7].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[7].addWave(4, 12, { zombieMummy }, 5);
+	levels[7].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+	levels[7].addWave(4, 12, { zombieMummy }, 5);
+	levels[7].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[7].addWave(4, 16, { zombieMummy }, 5);
+	levels[7].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
+	setupLevelLawnmowers(levels[7]);
+
+	// Level 8
+	levels[8].plantReward = icePeashooter;
+	levels[8].coinReward = 300;
+	levels[8].addWave(2, 5, { zombieMummy }, 5);
+	levels[8].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+	levels[8].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+	levels[8].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[8].addWave(4, 12, { zombieMummy }, 5);
+	levels[8].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+	levels[8].addWave(4, 12, { zombieMummy }, 5);
+	levels[8].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[8].addWave(4, 16, { zombieMummy }, 5);
+	levels[8].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
+	setupLevelLawnmowers(levels[8]);
+
+	// Level 9
+	//levels[9].plantReward ;
+	levels[9].coinReward = 300;
+	levels[9].addWave(2, 5, { zombieMummy }, 5);
+	levels[9].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+	levels[9].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+	levels[9].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[9].addWave(4, 12, { zombieMummy }, 5);
+	levels[9].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+	levels[9].addWave(4, 12, { zombieMummy }, 5);
+	levels[9].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[9].addWave(4, 16, { zombieMummy }, 5);
+	levels[9].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
+	setupLevelLawnmowers(levels[9]);
+}
 
 int main() {
 	srand(time(0));
@@ -4925,39 +5145,41 @@ int main() {
 	// Loading Textures + Defining entities
 
 	// Plants
-	Entity normalPlant = defineNormalPlant();
-	Entity repeaterPlant = defineRepeaterPlant();
-	Entity shroom = defineShroomPlant();
-	Entity sunflower = defineSunflower();
-	Entity wallnut = defineWallnut();
-	Entity chomper = defineChomperPlant();
-	Entity sunshroom = defineSunShroom();
-	Entity icePeashooter = defineIcePeaShooter();
-	Entity miniShroom = defineMiniShroom();
-	Entity POTATOMINE = definePOTATO_MINE();
-	Entity doomShroom = defineDOOM_SHROOM();
-	Entity CHEERY_BOMB = defineCherryBomb();
-	Entity iceShroom = defineIceShroom();
-	Entity snapdragon = defineSnapdragon();
-	Entity zombieProspector = defineProspectorZombie();
-	Entity zombieRedhair = defineRedhairZombie();
-	Entity zombieCowboy = defineCowboyZombie();
+	normalPlant = defineNormalPlant();
+	repeaterPlant = defineRepeaterPlant();
+	wallnut = defineWallnut();
+	POTATOMINE = definePOTATO_MINE();
+	sunflower = defineSunflower();
 
-
+	chomper = defineChomperPlant();
+	shroom = defineShroomPlant();
+	sunshroom = defineSunShroom();
+	icePeashooter = defineIcePeaShooter();
+	miniShroom = defineMiniShroom();
+	doomShroom = defineDOOM_SHROOM();
+	CHEERY_BOMB = defineCherryBomb();
+	iceShroom = defineIceShroom();
+	snapdragon = defineSnapdragon();
 
 	// Zombies
-	Entity zombie = defineNormalZombie();
-	Entity zombieJapanese = defineJapaneseZombie();
-	Entity zombieBig = defineBigZombie();
-	Entity zombieTorch = defineTorchlightZombie();
-	Entity zombieRa = defineRaZombie();
-	Entity zombieMummy = defineMummyZombie();
-	Entity zombieConehead = defineConeheadZombie();
-	Entity zombieNewspaper = defineNewspaperZombie();
-	Entity zombieAllStar = defineAllStarZombie();
-	Entity zombiePharaoh = definePharaohZombie();
-	Entity zombieShieldGuard = defineShieldGuardZombie();
-	Entity zombiePogo = definePogoZombie();
+	zombie = defineNormalZombie();
+	zombieJapanese = defineJapaneseZombie();
+	zombieBig = defineBigZombie();
+	zombieTorch = defineTorchlightZombie();
+	zombieRa = defineRaZombie();
+	zombieMummy = defineMummyZombie();
+	zombieConehead = defineConeheadZombie();
+	zombieNewspaper = defineNewspaperZombie();
+	zombieAllStar = defineAllStarZombie();
+	zombiePharaoh = definePharaohZombie();
+	zombieShieldGuard = defineShieldGuardZombie();
+	zombieCowboy = defineCowboyZombie();
+	zombieRedhair = defineRedhairZombie();
+	zombieProspector = defineProspectorZombie();
+	zombiePogo = definePogoZombie();
+	;
+
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -5023,167 +5245,170 @@ int main() {
 		true;
 
 	// Levels
-//---------------------------------------
-// Level 1: Day
-	levels[1].lvlNum = 1;
-	levels[1].plant_types = mainPlantTypes;
-	levels[1].zombie_types = { zombie, zombieConehead ,zombiePogo };
-	levels[1].targetZombie = 20;
-	//levels[1].targetZombie = 2;
-	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
-	levels[1].plantReward = chomper;
-	levels[1].coinReward = 100;
-	levels[1].isUnlocked = true;
-	levels[1].startingSuns = 50;
-
-	levels[1].offsetX = 450;
-	levels[1].offsetY = 135;
-	levels[1].cellWidth = 150;
-	levels[1].cellHeight = 170;
-	// Wave Design
-	//levels[1].addWave(10, 30, { zombie });	// 
-	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
-	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
-	//levels[1].addWave(0, 5, { });
-	//levels[1].addWave(5, 10, { zombie }, true);
-	//levels[1].addWave(5, 2, { zombie }, true);
-	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
-
-	levels[1].addWave(1, 5, { zombie }, 5);
-	levels[1].addWave(3, 9, { zombie }, 5);
-	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-	levels[1].addWave(5, 15, { zombie , zombieConehead }, 10);
-	levels[1].addWave(7, 20, { zombiePogo ,zombieConehead ,zombie }, 15, true);
-	levels[1].addWave(5, 15, { zombie ,zombieConehead ,zombiePogo }, 5);
-	levels[1].addWave(9, 20, { zombie, zombieConehead, zombiePogo, }, 0, true);
-
-	setupLevelLawnmowers(levels[1]);
+	defineDayLevels();
+	defineNightLevels();
+	defineAncientLevels();
 	//---------------------------------------
-//---------------------------------------
-	// Level 2: Night
-	levels[2].lvlNum = 2;
-	levels[2].plant_types = mainPlantTypes;
-	levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard ,zombiePogo };
-	levels[2].targetZombie = 25;
-	levels[2].startingSuns = 100;
-	levels[2].offsetX = 450;
-	levels[2].offsetY = 135;
-	levels[2].cellWidth = 150;
-	levels[2].cellHeight = 170;
-	levels[2].plantReward = shroom;
-	levels[2].coinReward = 200;
-	// Wave Design
-	/*levels[2].addWave(3, 15, {zombieConehead});
-	levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
-	levels[2].addWave(10, 5, { zombieAllStar }, true);*/
-	levels[2].addWave(1, 5, { zombie }, 5);
-	levels[2].addWave(3, 9, { zombie }, 10);
-	levels[2].addWave(3, 9, { zombie,zombiePogo, zombieNewspaper }, 5);
-	levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[2].addWave(3, 12, { zombie, zombieAllStar,zombiePogo }, 10);
-	levels[2].addWave(3, 12, { zombie }, 0);
-	levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar ,zombiePogo }, 10, true);
-	levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
-	setupLevelLawnmowers(levels[2]);
+	//// Level 1: Day
+	//	levels[1].lvlNum = 1;
+	//	levels[1].plant_types = mainPlantTypes;
+	//	levels[1].zombie_types = { zombie, zombieConehead };
+	//	levels[1].targetZombie = 20;
+	//	//levels[1].targetZombie = 2;
+	//	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
+	//	levels[1].plantReward = chomper;
+	//	levels[1].coinReward = 100;
+	//	levels[1].isUnlocked = true;
+	//	levels[1].startingSuns = 50;
+	//
+	//	levels[1].offsetX = 450;
+	//	levels[1].offsetY = 135;
+	//	levels[1].cellWidth = 150;
+	//	levels[1].cellHeight = 170;
+	//	// Wave Design
+	//	//levels[1].addWave(10, 30, { zombie });	// 
+	//	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
+	//	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
+	//	//levels[1].addWave(0, 5, { });
+	//	//levels[1].addWave(5, 10, { zombie }, true);
+	//	//levels[1].addWave(5, 2, { zombie }, true);
+	//	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
+	//
+	//	levels[1].addWave(1, 5, { zombie }, 5);
+	//	levels[1].addWave(3, 9, { zombie }, 5);
+	//	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
+	//	levels[1].addWave(5, 15, { zombie }, 10);
+	//	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	//	levels[1].addWave(5, 15, { zombie }, 5);
+	//	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+	//
+	//	setupLevelLawnmowers(levels[1]);
+		//---------------------------------------
+	//---------------------------------------
+		//// Level 2: Night
+		//levels[2].lvlNum = 2;
+		//levels[2].plant_types = mainPlantTypes;
+		//levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
+		//levels[2].targetZombie = 25;
+		//levels[2].startingSuns = 100;
+		//levels[2].offsetX = 450;
+		//levels[2].offsetY = 135;
+		//levels[2].cellWidth = 150;
+		//levels[2].cellHeight = 170;
+		//levels[2].plantReward = shroom;
+		//levels[2].coinReward = 200;
+		//// Wave Design
+		///*levels[2].addWave(3, 15, {zombieConehead});
+		//levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
+		//levels[2].addWave(10, 5, { zombieAllStar }, true);*/
+		//levels[2].addWave(1, 5, { zombie }, 5);
+		//levels[2].addWave(3, 9, { zombie }, 10);
+		//levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+		//levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
+		//levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
+		//levels[2].addWave(3, 12, { zombie }, 0);
+		//levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+		//levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+		//levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+		//levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
+		//setupLevelLawnmowers(levels[2]);
 
-	//------------------------------------------
-	// Level 3: Egypt
-	levels[3].lvlNum = 3;
-	levels[3].plant_types = mainPlantTypes;
-	levels[3].plant_types.push_back(shroom);
-	levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
-	levels[3].targetZombie = 30;
-	levels[3].addReward(500);
-	levels[3].addReward(wallnut);
-	levels[3].offsetX = 450;
-	levels[3].offsetY = 135;
-	levels[3].cellWidth = 150;
-	levels[3].cellHeight = 170;
-	levels[3].plantReward = wallnut;
-	levels[3].coinReward = 300;
-	// Wave Design
-	/*levels[3].addWave(2, 15, { zombieMummy });
-	levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
-	levels[3].addWave(3, 5, { zombieRa, zombieMummy });
-	levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-	levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
-	// 2 2 4 5 8 10
-	levels[3].addWave(2, 5, { zombieMummy }, 5);
-	levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
-	levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
-	levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
-	levels[3].addWave(4, 12, { zombieMummy }, 5);
-	levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
-	levels[3].addWave(4, 12, { zombieMummy }, 5);
-	levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
-	levels[3].addWave(4, 16, { zombieMummy }, 5);
-	levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
-	setupLevelLawnmowers(levels[3]);
-
-	//------------------------------------------
-	// Level 4: Wild West
-	levels[4].lvlNum = 4;
-	levels[4].plant_types = mainPlantTypes;
-	levels[4].plant_types.push_back(snapdragon);//it will be romoved later
-	levels[4].zombie_types = { zombieProspector, zombieRedhair, zombieCowboy };
-	levels[4].targetZombie = 30;
-	levels[4].waveLimit = 12;
-	levels[4].waveTimer = 15;
-	levels[4].startingSuns = 3000;
-	levels[4].isUnlocked = true;
-	levels[4].offsetX = 450;
-	levels[4].offsetY = 135;
-	levels[4].cellWidth = 150;
-	levels[4].cellHeight = 170;
-	levels[4].addRail(2, 1, 3);
-	levels[4].addRail(5, 0, 2);
-	levels[4].plantReward = repeaterPlant;
-	levels[4].coinReward = 400;
-	// Wave Design
-	levels[4].addWave(10, 20, { zombieProspector, zombieCowboy });
-	levels[4].addWave(3, 10, { zombieProspector, zombieRedhair });
-	levels[4].addWave(3, 5, { zombieRedhair, zombieCowboy });
-	levels[4].addWave(10, 5, { zombieProspector, zombieRedhair, zombieCowboy }, true);
-	levels[4].addWave(15, 10, { zombieProspector, zombieRedhair, zombieCowboy }, true);
-	setupLevelLawnmowers(levels[4]);
-	//------------------------------------------
-
-	// Level 5: Squaid Game
-	levels[5].lvlNum = 5;
-	levels[5].plant_types = mainPlantTypes;
-	levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
-	levels[5].targetZombie = 40;
-	levels[5].waveLimit = 15;
-	levels[5].waveTimer = 18;
-	levels[5].startingSuns = 50;
-	levels[5].isUnlocked = true;
-	levels[5].offsetX = 450;
-	levels[5].offsetY = 135;
-	levels[5].cellWidth = 150;
-	levels[5].cellHeight = 170;
-	// Wave Design
-	levels[4].addWave(10, 20, { zombie });
-	setupLevelLawnmowers(levels[5]);
+		//------------------------------------------
+		// Level 3: Egypt
+		//levels[3].lvlNum = 3;
+		//levels[3].plant_types = mainPlantTypes;
+		//levels[3].plant_types.push_back(shroom);
+		//levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
+		//levels[3].targetZombie = 30;
+		//levels[3].addReward(500);
+		//levels[3].addReward(wallnut);
+		//levels[3].offsetX = 450;
+		//levels[3].offsetY = 135;
+		//levels[3].cellWidth = 150;
+		//levels[3].cellHeight = 170;
+		//levels[3].plantReward = wallnut;
+		//levels[3].coinReward = 300;
+		//// Wave Design
+		///*levels[3].addWave(2, 15, { zombieMummy });
+		//levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
+		//levels[3].addWave(3, 5, { zombieRa, zombieMummy });
+		//levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+		//levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+		//// 2 2 4 5 8 10
+		//levels[3].addWave(2, 5, { zombieMummy }, 5);
+		//levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+		//levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+		//levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+		//levels[3].addWave(4, 12, { zombieMummy }, 5);
+		//levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+		//levels[3].addWave(4, 12, { zombieMummy }, 5);
+		//levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+		//levels[3].addWave(4, 16, { zombieMummy }, 5);
+		//levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
+		//setupLevelLawnmowers(levels[3]);
 
 
 
-	// setting levels background textures //bravooo
+		//------------------------------------------
+		// Level 4: Wild West
+		//levels[4].lvlNum = 4;
+		//levels[4].plant_types = mainPlantTypes;
+		//levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+		//levels[4].targetZombie = 30;
+		//levels[4].waveLimit = 12;
+		//levels[4].waveTimer = 15;
+		//levels[4].startingSuns = 3000;
+		//levels[4].isUnlocked = true;
+		//levels[4].offsetX = 450;
+		//levels[4].offsetY = 135;
+		//levels[4].cellWidth = 150;
+		//levels[4].cellHeight = 170;
+		//levels[4].plantReward = repeaterPlant;
+		//levels[4].coinReward = 400;
+		//// Wave Design
+		//levels[4].addWave(10, 20, { zombie });
+		///*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
+		//levels[4].addWave(3, 5, { zombieRa, zombieMummy });
+		//levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+		//levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+		//setupLevelLawnmowers(levels[4]);
+		////------------------------------------------
+
+		//// Level 5: Squaid Game
+		//levels[5].lvlNum = 5;
+		//levels[5].plant_types = mainPlantTypes;
+		//levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
+		//levels[5].targetZombie = 40;
+		//levels[5].waveLimit = 15;
+		//levels[5].waveTimer = 18;
+		//levels[5].startingSuns = 50;
+		//levels[5].isUnlocked = true;
+		//levels[5].offsetX = 450;
+		//levels[5].offsetY = 135;
+		//levels[5].cellWidth = 150;
+		//levels[5].cellHeight = 170;
+		//// Wave Design
+		//levels[4].addWave(10, 20, { zombie });
+		//setupLevelLawnmowers(levels[5]);
+
+
+
+		// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
-	for (int lvl = 1; lvl <= number_levels; lvl++) {
-		cout << "Loading level " << lvl << " files" << endl;
-		levels[lvl].lvlNum = lvl;
+	//for (int lvl = 1; lvl <= number_levels; lvl++) {
+	for (int theme = 1; theme <= int(THEME::COUNT); theme++) {
+		cout << "Loading level " << theme << " files" << endl;
+		levels[theme].lvlNum = theme;
 
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + ".png");
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_house.png");
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_opendoor.png");
-		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_dirt.png");
-		textures[TEXTURE_TYPE::LEVEL_ICON][lvl].loadFromFile("assets/levels/level" + to_string(lvl) + "_icon.png");
-		textures[TEXTURE_TYPE::LAWNMOWER][lvl].loadFromFile("assets/levels/lawnmower" + to_string(lvl) + ".png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND][theme].loadFromFile("assets/levels/level" + to_string(theme) + ".png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][theme].loadFromFile("assets/levels/level" + to_string(theme) + "_house.png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][theme].loadFromFile("assets/levels/level" + to_string(theme) + "_opendoor.png");
+		textures[TEXTURE_TYPE::LEVEL_BACKGROUND_DIRT][theme].loadFromFile("assets/levels/level" + to_string(theme) + "_dirt.png");
+		textures[TEXTURE_TYPE::LEVEL_ICON][theme].loadFromFile("assets/levels/level" + to_string(theme) + "_icon.png");
+		textures[TEXTURE_TYPE::LAWNMOWER][theme].loadFromFile("assets/levels/lawnmower" + to_string(theme) + ".png");
 
-		cout << "Loaded level " << lvl << " files" << endl;
+		cout << "Loaded level " << theme << " files" << endl;
 	}
 
 
@@ -5259,13 +5484,17 @@ int main() {
 
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
-			if (music.getStatus() == Music::Playing) music.stop();
+			// If UI queued a level music start (e.g. user clicked "Start Game"), handle it here
+			if (requestedLevelMusic != -1) {
+				if (music.getStatus() == Music::Playing) music.stop();
+				playMusicForLevel(requestedLevelMusic, music);
+				requestedLevelMusic = -1;
+			}
 			UpdateLevel(window);
 		} else {
 			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
 		}
-
 		window.display();
 	}
 
