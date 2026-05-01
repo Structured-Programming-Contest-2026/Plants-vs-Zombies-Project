@@ -130,6 +130,9 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_PHARAOH,
 	ZOMBIE_SHIELDGUARD,
 	ZOMBIE_POGO,
+	ZOMBIE_PROSPECTOR,
+	ZOMBIE_REDHAIR,
+	ZOMBIE_COWBOY,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -202,6 +205,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_PHARAOH,
 	ZOMBIE_SHIELDGUARD,
 	ZOMBIE_POGO,
+	ZOMBIE_PROSPECTOR,
+	ZOMBIE_REDHAIR,
+	ZOMBIE_COWBOY,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -277,6 +283,15 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_POGO:
 		textureType = TEXTURE_TYPE::ZOMBIE_POGO;
+		break;
+	case ENTITY_TYPE::ZOMBIE_PROSPECTOR:
+		textureType = TEXTURE_TYPE::ZOMBIE_PROSPECTOR;
+		break;
+	case ENTITY_TYPE::ZOMBIE_REDHAIR:
+		textureType = TEXTURE_TYPE::ZOMBIE_REDHAIR;
+		break;
+	case ENTITY_TYPE::ZOMBIE_COWBOY:
+		textureType = TEXTURE_TYPE::ZOMBIE_COWBOY;
 		break;
 
 		//plantes
@@ -2306,6 +2321,86 @@ Entity defineShieldGuardZombie() {
 	return zombie;
 }
 
+Entity defineProspectorZombie()
+{
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
+	zombie.health = 150;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05f;
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 3;
+	Animation anim;
+
+	anim.frames = 22;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+
+	anim.frames = 25;
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+
+	anim.frames = 25;
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
+
+Entity defineRedhairZombie()
+{
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_REDHAIR };
+	zombie.health = 150;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05f;
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 3;
+	Animation anim;
+
+	anim.frames = 25;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+
+	anim.frames = 25; 
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+
+	anim.frames = 25; 
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
+
+Entity defineCowboyZombie() 
+{
+	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_COWBOY };
+	zombie.health = 150;
+	zombie.attack = 10;
+	zombie.x_vel = 0.05f;
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 3;
+	Animation anim;
+	
+	anim.frames = 25; 
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+
+	anim.frames = 24; 
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+
+	anim.frames = 25; 
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
 		Sun& sun = suns[i];
@@ -2473,7 +2568,9 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
-			|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility))) {
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)
+			|| ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR || zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR || zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 2)))
+		{
 
 			// for ra
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) {
@@ -2731,27 +2828,41 @@ void updatePharaohZombie(Entity& zombie) {
 	}
 }
 
-void zombieEatPlant(Entity& zombie, Entity& plant) {
-	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0)
+void zombieEatPlant(Entity& zombie, Entity& plant)
+{
+	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) 
 	{
 		zombie.x_vel = 0;
 
-	
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0)
+		if ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
+			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
+			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0)
+		{
+			zombie.setCurrentAnimation(2); 
+		}
+
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0) 
 		{
 			zombie.setCurrentAnimation(1);
 		}
 
-		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer)
+		{
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
 
-			if (plant.health <= 0) 
+			if (plant.health <= 0)
 			{
-				if (zombie.health > 0) 
+				if (zombie.health > 0)
 				{
 					zombie.x_vel = 0.05f;
+
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
+						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
+						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) {
+						zombie.setCurrentAnimation(0);
+					}
 				}
 				plant.category = ENTITY_CATEGORY::NONE;
 				plant.isDead = true;
@@ -2759,7 +2870,6 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 		}
 	}
 }
-
 void DrawZombies(RenderWindow& window) {
 	for (Entity& zombie : entities) {
 		if (zombie.category != ENTITY_CATEGORY::ZOMBIE)
@@ -4798,6 +4908,9 @@ int main() {
 	Entity CHEERY_BOMB = defineCherryBomb();
 	Entity iceShroom = defineIceShroom();
 	Entity snapdragon = defineSnapdragon();
+	Entity zombieProspector = defineProspectorZombie();
+	Entity zombieRedhair = defineRedhairZombie();
+	Entity zombieCowboy = defineCowboyZombie();
 
 	
 
@@ -4844,6 +4957,15 @@ int main() {
 	textures[TEXTURE_TYPE::ITEM_PHAROAH_CASKET][Default_Texture_Index].loadFromFile("assets/item_pharoah_casket.png");
 	textures[TEXTURE_TYPE::RAIL][Default_Texture_Index].loadFromFile("assets/rail.png");
 	textures[TEXTURE_TYPE::CART][Default_Texture_Index].loadFromFile("assets/cart.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][0].loadFromFile("assets/prospector_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][1].loadFromFile("assets/prospector_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][2].loadFromFile("assets/prospector_eat.png");
+	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][0].loadFromFile("assets/redhair_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][1].loadFromFile("assets/redhair_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][2].loadFromFile("assets/redhair_eat.png");
+	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][0].loadFromFile("assets/cowboy_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][1].loadFromFile("assets/cowboy_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][2].loadFromFile("assets/cowboy_eat.png");
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
@@ -4974,7 +5096,7 @@ int main() {
 	levels[4].lvlNum = 4;
 	levels[4].plant_types = mainPlantTypes;
 	levels[4].plant_types.push_back(snapdragon);//it will be romoved later
-	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+	levels[4].zombie_types = { zombieProspector, zombieRedhair, zombieCowboy };
 	levels[4].targetZombie = 30;
 	levels[4].waveLimit = 12;
 	levels[4].waveTimer = 15;
@@ -4989,11 +5111,11 @@ int main() {
 	levels[4].plantReward = repeaterPlant;
 	levels[4].coinReward = 400;
 	// Wave Design
-	levels[4].addWave(10, 20, { zombie });
-	/*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
-	levels[4].addWave(3, 5, { zombieRa, zombieMummy });
-	levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-	levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+	levels[4].addWave(10, 20, { zombieProspector, zombieCowboy });
+	levels[4].addWave(3, 10, { zombieProspector, zombieRedhair });
+	levels[4].addWave(3, 5, { zombieRedhair, zombieCowboy });
+	levels[4].addWave(10, 5, { zombieProspector, zombieRedhair, zombieCowboy }, true);
+	levels[4].addWave(15, 10, { zombieProspector, zombieRedhair, zombieCowboy }, true);
 	setupLevelLawnmowers(levels[4]);
 	//------------------------------------------
 
