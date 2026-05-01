@@ -60,7 +60,7 @@ int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
 
-float wincooldowntimer = 3.f;
+float wincooldowntimer = 2.0f;
 bool isGameWonCoolDownStarted = false;
 
 // Clocks
@@ -68,7 +68,6 @@ Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 Clock wc;
-Clock winCoolDown;
 
 //shovel
 bool isShovelActive = false;
@@ -614,7 +613,7 @@ struct Level {
 	Clock clock;
 	Time plantsSelectedTime;
 	Time gameOverTime;
-	Time winTime;
+	Clock winClock;
 
 	void addReward(Reward r) {
 		/*for(auto &reward : rewards) {
@@ -831,7 +830,7 @@ IntRect getFrameRect(Entity& entity) {
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
-	if ((!isGameOver && !isGameWon) || entity.enteredHome) entity.nextFrame();
+	if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -928,6 +927,7 @@ void resetLevel() {
 		currentLevel->lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
 	}
 	entities.clear();
+	bullets.clear();
 	zombieClock.restart();
 	waveClockX.restart();
 	sunSpawnClock.restart();
@@ -2495,7 +2495,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
 
 		// Animation
-		if (!isGameOver && !isGameWon) plant.nextFrame(); // next frame
+		if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) plant.nextFrame(); // next frame
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop textures
 
 		// Update plant - plant attacking system
@@ -2863,7 +2863,7 @@ void DrawZombies(RenderWindow& window) {
 		if (disappearedDead) continue;
 
 		// zombie Animation
-		if ((!isGameOver && !isGameWon) || zombie.enteredHome) zombie.nextFrame(); // next frame
+		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
 
@@ -3189,7 +3189,7 @@ Sprite DrawSeedPacket(RenderWindow& window, Entity& plant, Vector2f pos, bool in
 	text.setString(std::to_string(plant.price));
 	text.setPosition(pos + Vector2f(13, 103) * scale);
 	text.setCharacterSize(32 * scale);
-	window.draw(text);
+	if (scale >= 0.1f) window.draw(text);
 
 	return sprite;
 }
@@ -3365,51 +3365,70 @@ void DrawRewardsScreen(RenderWindow& window) {
 	bool unlockedPlant = currentLevel->plantReward.plantType != ENTITY_TYPE::NONE;
 
 	Text text;
-	text.setFont(*font);
-	text.setString("You unlocked a new plant!");
+	text.setFont(*loudFont);
+	text.setString("Level Rewards");
 	text.setFillColor(Color(255, 255, 255, 255));
 	text.setPosition(Vector2f(960, 130.0f));
 	text.setCharacterSize(64);
 	text.setOrigin(text.getLocalBounds().getSize() / 2.0f);
-
-	if (unlockedPlant) window.draw(text);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(6);
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
-	float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->winTime.asSeconds();
+	float diff = currentLevel->winClock.getElapsedTime().asSeconds() - wincooldowntimer;
 
-	screenFade(window, 0.5f * std::min(diff / 1.0f, 1.0f));
+	screenFade(window, 0.5f * std::min((diff - 4.5f) / 1.0f, 1.0f));
 
-	float progress = (diff - 1) / 0.5f;
+	if (unlockedPlant) window.draw(text);
+
+	float progress = (diff - 5.0f) / 0.5f;
+	if (progress < 0) progress = 0;
 	if (progress > 1) progress = 1;
 	float scale = 2.0f * progress;
 
 	Sprite packetBg;
 	Texture& packetBgTex = getTexture(TEXTURE_TYPE::LUSTER);
 	packetBg.setTexture(packetBgTex);
-	packetBg.setPosition(Vector2f(960, 540));
+	packetBg.setPosition(Vector2f(960 - 200, 540));
 	packetBg.setScale(Vector2f(scale, scale));
 	packetBg.setOrigin(Vector2f(packetBgTex.getSize()) / 2.0f);
 	Vector2f texSize = Vector2f(packetBgTex.getSize());
-	Vector2f size = Vector2f(512, 512) * progress + Vector2f(32, 32) * sin(diff * 1.57f);
+	Vector2f size = Vector2f(512, 512) + Vector2f(32, 32) * sin(diff * 1.57f);
+	size *= progress;
 	packetBg.setScale(Vector2f(size.x / texSize.x, size.y / texSize.y));
 
 	packetBg.setRotation(diff * 3.14f);
 
-	if (unlockedPlant) window.draw(packetBg);
+	if (unlockedPlant) {
+		window.draw(packetBg);
+		DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], packetBg.getPosition() - Vector2f(seedPacketSize) * scale / 2.0f, false, scale);
+	}
 
-	if (unlockedPlant) DrawSeedPacket(window, plants[currentLevel->plantReward.plantType], Vector2f(960, 540) - Vector2f(seedPacketSize) * scale / 2.0f, false, scale);
+	packetBg.setPosition(Vector2f(960 + 200, 540));
+	window.draw(packetBg);
+
+	// TODO: add coins rewards
 
 	Sprite startButton;
 
-	startButton.setTexture(getTexture(TEXTURE_TYPE::SEED_CHOOSER_BUTTON));
-	startButton.setScale(Vector2f(1.5f, 1.5f));
-	startButton.setPosition(Vector2f(843, 900));
+	startButton.setTexture(getTexture(TEXTURE_TYPE::WOOD_BUTTON));
+	startButton.setOrigin(startButton.getGlobalBounds().getSize() / 2.0f);
+	startButton.setScale(Vector2f(.25f, .25f));
+	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900));
 
-	if (currentLevel->selectedPlants.size() == 0) {
-		startButton.setColor(Color(64, 64, 64, 255));
-	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	text.setFont(*font);
+	text.setString("Next Level");
+	text.setCharacterSize(44);
+	text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+	text.setPosition(startButton.getPosition() + Vector2f(0, -8));
+	text.setFillColor(Color(255, 255, 255, 255));
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(6);
+
+	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->claimRewards();
 			if (currentLevel->lvlNum < number_levels - 1)
@@ -3428,31 +3447,11 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	window.draw(startButton);
 
-	text.setString("Next Level");
-	text.setPosition(startButton.getPosition() + Vector2f(40, 8.0f));
-	text.setScale(Vector2f(1.5f, 1.5f));
-	text.setFillColor(Color(255, 255, 255, 128));
-	text.setCharacterSize(24);
-	text.setOrigin({ 0, 0 });
-
 	window.draw(text);
 }
 void DrawWinScreen(RenderWindow& window) {
-	if (currentLevel->winTime == Time::Zero) {
-		currentLevel->winTime = currentLevel->clock.getElapsedTime();
-	}
-
-	float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->winTime.asSeconds();
-	if (diff < 1) {
-		float progress = diff / 1.0f;
-		if (progress < 0) progress = 0;
-		if (progress > 1) progress = 1;
-
-		int c = 255 - (int)(128 * progress);
-		ground.setColor(Color(c, c, c, 255));
-		zombieSprite.setColor(Color(c, c, c, 255));
-		plantSprite.setColor(Color(c, c, c, 255));
-	} else {
+	float diff = currentLevel->winClock.getElapsedTime().asSeconds() - wincooldowntimer;
+	if (diff >= 4.5f) {
 		DrawRewardsScreen(window);
 	}
 
@@ -3571,6 +3570,14 @@ void DrawPopupText(RenderWindow& window) {
 		hideProgress = (diff - 4.75f) / 0.25f;
 		text.setCharacterSize(80);
 		text.setString("A HUGE WAVE OF ZOMBIES\n            ARE APPROACHING");
+	} else if (isGameWon && currentLevel->winClock.getElapsedTime().asSeconds() >= wincooldowntimer + 1) {
+		diff = currentLevel->winClock.getElapsedTime().asSeconds() - (wincooldowntimer + 1);
+
+		showProgress = diff / 0.25f;
+		hideProgress = (diff - 2.75f) / 0.25f;
+
+		text.setFillColor(Color::Green);
+		text.setString("Level Complete");
 	}
 
 	if (showProgress < 0) showProgress = 0;
@@ -4201,9 +4208,9 @@ void UpdateLevel(RenderWindow& window) {
 		//cout << "You win!\n";
 		if (!isGameWonCoolDownStarted) {
 			//cout << "(((((( game won cooling down )))))))" << endl;
-			winCoolDown.restart();
+			currentLevel->winClock.restart();
 			isGameWonCoolDownStarted = true;
-		} else if (winCoolDown.getElapsedTime().asSeconds() >= wincooldowntimer) {
+		} else if (currentLevel->winClock.getElapsedTime().asSeconds() >= wincooldowntimer) {
 			//cout << "------ DrawWinScreen 000000" << endl;
 			DrawWinScreen(window);
 			return;
