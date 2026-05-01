@@ -984,6 +984,7 @@ void startLevel(int level) {
 		lawnmowerSprite.setTextureRect(IntRect(0, 0, (int)mowerTex.getSize().x, (int)mowerTex.getSize().y));
 
 		currentLevel->clock.restart();
+		currentLevel->lvlNum = level;
 	}
 }
 
@@ -1053,7 +1054,7 @@ Entity defineNormalBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::NormalBullet;
 	bullet.attack = 30;
-	bullet.x_vel = -270.0f;
+	bullet.x_vel = -580.0f;
 
 
 	return bullet;
@@ -1068,7 +1069,7 @@ Entity defineIceBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::IceBullet;
 	bullet.attack = 10;
-	bullet.x_vel = -270.0f;
+	bullet.x_vel = -580.0f;
 
 	return bullet;
 }
@@ -1082,7 +1083,7 @@ Entity defineShroomBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::ShroomBullet;
 	bullet.attack = 5;
-	bullet.x_vel = -270.0f;
+	bullet.x_vel = -580.0f;
 
 	return bullet;
 }
@@ -1095,7 +1096,7 @@ Entity defineFireDragonBullet() {
 	dragon.category = ENTITY_CATEGORY::Bullet;
 	dragon.type = ENTITY_TYPE::FireDragonBullet;
 	dragon.attack = 500;
-	dragon.x_vel = -130.0f;
+	dragon.x_vel = -280.0f;
 	dragon.scale = 1.0f;
 
 	dragon.num_animations = 1;
@@ -2019,7 +2020,7 @@ Entity defineNormalZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][0].loadFromFile("assets/NormalZombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][1].loadFromFile("assets/NormalZombieDeath.png");
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL };
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 100;
@@ -2041,7 +2042,7 @@ Entity defineConeheadZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][1].loadFromFile("assets/NormalZombieDeath.png");
 	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][2].loadFromFile("assets/NormalZombie.png");
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_CONEHEAD };
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 200;
@@ -2069,7 +2070,7 @@ Entity defineJapaneseZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE };
 	zombie.health = 70;
 	zombie.attack = 50;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	// Walk animation
 	zombie.num_animations = 1;
 	zombie.animations[0].frames = 20;
@@ -2088,7 +2089,7 @@ Entity defineBigZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_BIG;
 	zombie.health = 100;
 	zombie.attack = 30;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.1f;
 
 	// Walk + Dying animations
@@ -2115,7 +2116,7 @@ Entity defineTorchlightZombie() {
 
 	zombie.health = 200;
 	zombie.attack = 20;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 0.8f;
 
 	zombie.num_animations = 2;
@@ -2142,7 +2143,7 @@ Entity defineRaZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_RA;
 	zombie.health = 200;
 	zombie.attack = 20;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	// Animations
 	zombie.num_animations = 3;
 	Animation anim;
@@ -2173,7 +2174,7 @@ Entity defineMummyZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_MUMMY;
 	zombie.health = 100;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	// Animations
 	zombie.num_animations = 2;
 	Animation anim;
@@ -2204,7 +2205,7 @@ Entity defineNewspaperZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_NEWSPAPER;
 	zombie.health = 250;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.2f;
 	// Animations
 	zombie.num_animations = 3;
@@ -2237,7 +2238,7 @@ Entity defineAllStarZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_ALLSTAR;
 	zombie.health = 400;
 	zombie.attack = 10;
-	zombie.x_vel = 70;
+	zombie.x_vel = 150;
 	// Animations
 	zombie.num_animations = 4;
 	Animation anim;
@@ -2274,7 +2275,7 @@ Entity definePharaohZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_PHARAOH;
 	zombie.health = 600;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	// Animations
 	zombie.num_animations = 4;
 	Animation anim;
@@ -2309,7 +2310,7 @@ Entity defineShieldGuardZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_SHIELDGUARD;
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	// Animations
 	zombie.num_animations = 2;
 	Animation anim;
@@ -2331,7 +2332,7 @@ Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2357,7 +2358,7 @@ Entity defineRedhairZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_REDHAIR };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2383,7 +2384,7 @@ Entity defineCowboyZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_COWBOY };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 50;
+	zombie.x_vel = 70;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2442,7 +2443,7 @@ Entity definePogoZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_POGO;
 	zombie.health = 350;
 	zombie.attack = 10;
-	zombie.x_vel = 80;
+	zombie.x_vel = 170;
 	zombie.scale = 1.0f;
 	zombie.num_animations = 6;
 
@@ -2481,7 +2482,7 @@ Entity definePogoZombie() {
 
 			z.afterAnimation = [](Entity& entity) {
 				entity.setCurrentAnimation(0);
-				entity.x_vel = 50;
+				entity.x_vel = 70;
 				};
 		}
 		};
@@ -2647,10 +2648,10 @@ void checkZombieHitByLawnmower(Entity& zombie) {
 void checkZombieEnteredHome(Entity& zombie) {
 	if (zombie.enteredHome) {
 		if (zombie.position.y < 525) {
-			zombie.position.y += 0.075;
+			zombie.position.y += 80 * delta_time;
 			if (zombie.position.y > 525) zombie.position.y = 525;
 		} else if (zombie.position.y > 525) {
-			zombie.position.y -= 0.075;
+			zombie.position.y -= 80 * delta_time;
 			if (zombie.position.y < 525) zombie.position.y = 525;
 		} else {
 			zombie.position.x -= zombie.x_vel * delta_time;
@@ -2727,7 +2728,7 @@ void updateZombieRa(Entity& zombie) {
 				}
 			}
 			zombie.isUsingAbility = false;
-			zombie.x_vel = 50.0f;
+			zombie.x_vel = 110.0f;
 			zombie.setCurrentAnimation(0);
 			zombie.scale = 1.0f;
 			zombie.abilityClock.restart();
@@ -2756,7 +2757,7 @@ void updateZombieAllStars(Entity& zombie) {
 			zombie.afterAnimation = [](Entity& entity) {
 				entity.isTackling = false;
 				entity.hasTackled = true;
-				entity.x_vel = 50.0f;
+				entity.x_vel = 110.0f;
 				entity.setCurrentAnimation(0);
 				};
 		}
@@ -2791,7 +2792,7 @@ void updateNewspaperZombie(Entity& zombie) {
 			fallenItems.push_back(item);
 		}
 
-		zombie.x_vel = 80.0f;
+		zombie.x_vel = 170.0f;
 		zombie.attackTimer = 0.4f;
 	}
 }
@@ -2823,7 +2824,7 @@ void updatePharaohZombie(Entity& zombie) {
 			item.fallPosition = zombie.position + Vector2f(100, 0);
 			fallenItems.push_back(item);
 		}
-		zombie.x_vel = 53.0f;
+		zombie.x_vel = 70;
 	}
 }
 
@@ -2847,7 +2848,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 
 			if (plant.health <= 0) {
 				if (zombie.health > 0) {
-					zombie.x_vel = 50;
+					zombie.x_vel = 70;
 
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
@@ -2923,28 +2924,28 @@ void DrawZombies(RenderWindow& window) {
 			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) { // touching a plant
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 3) {
-					zombie.x_vel = 80; //plants don't stop him
+					zombie.x_vel = 170; //plants don't stop him
 				} else {
 					zombieEatPlant(zombie, plant);
 				}
 			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) {
 					if (zombie.isSuperFrozen) {
-						zombie.x_vel = 1.3f;
+						zombie.x_vel = 2.8f;
 					} else if (zombie.freezeTimer > 0) {
-						zombie.x_vel = 13;
+						zombie.x_vel = 28;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
-						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 80;
-						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 50;
+						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 170;
+						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 70;
 						else zombie.x_vel = 0.0f;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) {
-						zombie.x_vel = 80;
+						zombie.x_vel = 170;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
-						zombie.x_vel = 120;
+						zombie.x_vel = 260;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
-						zombie.x_vel = 63.0f;
+						zombie.x_vel = 135;
 					} else {
-						zombie.x_vel = 50; // no plant - has health - move normally
+						zombie.x_vel = 70; // no plant - has health - move normally
 					}
 				}
 			}
@@ -3062,7 +3063,7 @@ void UpdateLawnmowers(RenderWindow& window) {
 			mwr.position.x = -1000.0f;
 		}
 		if (mwr.isMoving) {
-			mwr.move(130.0f);
+			mwr.move(200.0f * delta_time);
 		}
 	}
 }
@@ -4222,7 +4223,7 @@ void UpdateLevel(RenderWindow& window) {
 		ground.setPosition(Vector2f(0, 0));
 
 		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
-			if (level != 4) {
+			if (currentLevel->theme != THEME::WILDWEST) {
 				Sprite roll;
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
 				roll.setTexture(rollTex);
@@ -5310,7 +5311,7 @@ int main() {
 
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
-	window.setFramerateLimit(120);
+	//window.setFramerateLimit(120);
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -5634,6 +5635,10 @@ int main() {
 		uiInteracted = false;
 		mouseJustClicked[0] = false;
 		mouseJustClicked[1] = false;
+
+		if (Keyboard::isKeyPressed(Keyboard::LShift)) {
+			delta_time = 0.2;
+		}
 
 		while (window.pollEvent(event)) {
 			if (event.type == Event::Closed) {
