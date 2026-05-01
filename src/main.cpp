@@ -51,6 +51,30 @@ bool isGameOver = false, isGameWon = false;
 bool gameWonActionExecuted = false;
 std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
 
+// Huge-wave hook: called once when a huge wave starts.
+// Assignable by user code (example: assign in main()).
+bool hugeWaveTriggered = false;
+std::function<void()> onHugeWave = []() {};
+
+void TriggerHugeWave() {
+	if (hugeWaveTriggered) return; // ensure runs once per huge wave
+	hugeWaveTriggered = true;
+
+	// keep original message
+	std::cout << "HUGE WAVE\n";
+
+	// run user callback
+	if (onHugeWave) onHugeWave();
+
+	// optional: play huge wave sound (short-lived Music as in ExecuteGameWonAction)
+	sf::Music* hw = new sf::Music();
+	if (hw->openFromFile("assets/audio/03. hugewave.ogg")) {
+		hw->setLoop(false);
+		hw->play();
+		// note: left intentionally not deleted to keep it alive while playing
+	}
+}
+
 void ExecuteGameWonAction() {
 	// Run the user-configurable callback first
 	if (onGameWonAction) onGameWonAction();
@@ -3135,11 +3159,12 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
 			currentWave++, curWaveZombieCnt = 0;
 			wc.restart();
+			// allow huge-wave handler to run for the upcoming wave if it's huge
+			hugeWaveTriggered = false;
 		}
 
 		if (currentWave->isHuge) {
-			// message huge wave
-			cout << "HUGE WAVE\n";
+			TriggerHugeWave();
 		}
 
 		cout << "New Zombie\n";
@@ -5355,6 +5380,7 @@ int main() {
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
+
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -5658,6 +5684,12 @@ int main() {
 	// Load storage
 	loadStorage();
 
+	// in main(), after creating resources:
+	onHugeWave = []() {
+		std::cout << "Custom huge-wave handler executed\n";
+		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
+		// e.g. you could toggle a game-state boolean or request a special sound
+		};
 
 	// Game Loop
 
