@@ -19,6 +19,9 @@ using namespace sf;
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
 
+bool gamePaused = false;
+Clock gamePauseClock;
+
 // Global Variables
 // consts
 const int
@@ -511,6 +514,7 @@ struct Entity {
 		updateDimensions();
 	}
 	void nextFrame() {
+		if (gamePaused) return;
 		// next frame + check animation finish
 		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
 			currentAnimation.clock.restart();
@@ -3058,7 +3062,7 @@ void UpdateLawnmowers(RenderWindow& window) {
 			mwr.position.x = -1000.0f;
 		}
 		if (mwr.isMoving) {
-			mwr.move(0.2f);
+			mwr.move(130.0f);
 		}
 	}
 }
@@ -4004,6 +4008,165 @@ bool inStore = false;
 Time startMenuItemTime = Time::Zero;
 Time startMainMenuTime = Time::Zero;
 
+void DrawLevelDetails(RenderWindow& window) {
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.16875f, 0.16875f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(36);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, 0) + Vector2f(-85, 50));
+	text.setString("Level " + std::to_string(currentLevel->lvlNum));
+	text.setFillColor(Color::White);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, 0) + Vector2f(-85, 125));
+	text.setString(std::string("Pause"));
+	text.setFillColor(Color::White);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			gamePaused = true;
+			gamePauseClock.restart();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+}
+
+void DrawPauseMenu(RenderWindow& window) {
+	float progress = (gamePauseClock.getElapsedTime().asSeconds()) / 0.25f;
+	if (progress < 0) progress = 0;
+	if (progress > 1) progress = 1;
+	screenFade(window, 0.5f * progress);
+
+	Vector2f animationOffset;
+	animationOffset.x += 2000 - (2000 * progress);
+
+	{
+		Text title;
+
+		title.setFont(*font);
+		title.setFillColor(Color::White);
+		title.setOutlineColor(Color::Black);
+		title.setOutlineThickness(4);
+		title.setCharacterSize(86);
+
+		title.setString("Game Paused");
+
+		title.setOrigin(title.getLocalBounds().width / 2.0f, title.getLocalBounds().height / 2.0f);
+		title.setPosition(Vector2f(windowWidth / 2.0f, 250.0f) + animationOffset);
+
+		window.draw(title);
+	}
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*font);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, -50) - animationOffset);
+	text.setString(std::string("Resume"));
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			gamePaused = false;
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::Yellow);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 50) + animationOffset);
+	text.setString(std::string("Restart"));
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			resetLevel();
+			int lvlNum = currentLevel->lvlNum;
+			delete currentLevel;
+			startLevel(lvlNum);
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::Red);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 150) - animationOffset);
+	text.setString(std::string("Quit"));
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			resetLevel();
+			delete currentLevel;
+			currentLevel = nullptr;
+			selectingLevel = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
@@ -4071,6 +4234,8 @@ void UpdateLevel(RenderWindow& window) {
 				window.draw(roll);
 			}
 		}
+
+		gamePaused = false;
 	}
 
 	if (isGameOver) {
@@ -4158,73 +4323,7 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	if (currentLevel == nullptr) return;
 
-	{
-		Sprite button;
-		Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
-		Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
-
-		button.setTexture(buttonTex);
-		button.setScale(0.16875f, 0.16875f);
-
-		button.setOrigin(buttonTexSize / 2.0f);
-
-		Text text;
-
-		text.setFont(*font);
-		text.setFillColor(Color::White);
-		text.setOutlineColor(Color::Black);
-		text.setOutlineThickness(4);
-		text.setCharacterSize(36);
-
-		button.setColor(Color::White);
-		text.setFillColor(Color::White);
-		button.setPosition(Vector2f(windowWidth, 0) + Vector2f(-85, 50));
-		text.setString(std::string("Restart"));
-		text.setFillColor(Color::White);
-		text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
-		text.setPosition(button.getPosition());
-
-		if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
-			button.setColor(Color(128, 128, 128, 255));
-			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
-
-			if (mouseJustClicked[0]) {
-				resetLevel();
-				int lvlNum = currentLevel->lvlNum;
-				delete currentLevel;
-				startLevel(lvlNum);
-				return;
-			}
-		}
-
-		window.draw(button);
-		window.draw(text);
-
-		button.setColor(Color::White);
-		text.setFillColor(Color::White);
-		button.setPosition(Vector2f(windowWidth, 0) + Vector2f(-85, 125));
-		text.setString(std::string("Quit"));
-		text.setFillColor(Color::White);
-		text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
-		text.setPosition(button.getPosition());
-
-		if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
-			button.setColor(Color(128, 128, 128, 255));
-			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
-
-			if (mouseJustClicked[0]) {
-				resetLevel();
-				delete currentLevel;
-				currentLevel = nullptr;
-				selectingLevel = false;
-				startMainMenuTime = gameClock.getElapsedTime();
-				return;
-			}
-		}
-
-		window.draw(button);
-		window.draw(text);
-	}
+	if (!gamePaused) DrawLevelDetails(window);
 
 	if (isGameOver == true) {
 		window.draw(gameOverScreen);
@@ -4273,22 +4372,28 @@ void UpdateLevel(RenderWindow& window) {
 	UpdateSuns(window);
 	UpdateBooster(window);
 	UpdateFallenItems(window);
-	DrawSeeds(window);
-	//DrawDebugGrid(window);
 
-	if (screenFlashAlpha > 0) {
-		screenFlashAlpha -= delta_time * 600.0f;
-		if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+	if (!gamePaused) {
+		DrawSeeds(window);
+		//DrawDebugGrid(window);
 
-		screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
-		screenFlashOverlay.setFillColor(Color(200, 230, 255, (Uint8)screenFlashAlpha));
-		window.draw(screenFlashOverlay);
+		if (screenFlashAlpha > 0) {
+			screenFlashAlpha -= delta_time * 600.0f;
+			if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+
+			screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
+			screenFlashOverlay.setFillColor(Color(200, 230, 255, (Uint8)screenFlashAlpha));
+			window.draw(screenFlashOverlay);
+		}
+
+		UI_DrawClick(window);
+		UI_Interaction(window);
+
+		DrawLevelStats(window);
+	} else {
+		DrawPauseMenu(window);
 	}
-
-	UI_DrawClick(window);
-	UI_Interaction(window);
-
-	DrawLevelStats(window);
+	if (currentLevel == nullptr) return;
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
@@ -5521,6 +5626,8 @@ int main() {
 		delta_time = dtTime.asSeconds();
 		mousePos = Mouse::getPosition(window);
 
+		if (gamePaused) delta_time = 0;
+
 		mousePos.x *= (float)windowWidth / window.getSize().x;
 		mousePos.y *= (float)windowHeight / window.getSize().y;
 
@@ -5556,7 +5663,8 @@ int main() {
 					window.setSize(oldSize);
 				}
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-				window.close();
+				gamePaused = !gamePaused;
+				if (gamePaused) gamePauseClock.restart();
 			}
 		}
 
