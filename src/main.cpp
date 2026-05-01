@@ -43,6 +43,27 @@ bool mouseJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
 bool isGameOver = false, isGameWon = false;
+
+// Game-won action hook
+bool gameWonActionExecuted = false;
+std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
+
+void ExecuteGameWonAction() {
+	// Run the user-configurable callback first
+	if (onGameWonAction) onGameWonAction();
+
+	// Example: play the existing win music immediately (optional).
+	// This creates a short-lived Music instance to play the sound.
+	sf::Music* winMusic = new sf::Music();
+	if (winMusic->openFromFile("assets/audio/26. winmusic.ogg")) {
+		winMusic->setLoop(false);
+		winMusic->play();
+		// intentionally not deleted here to avoid lifetime issues while sound plays;
+		// if you want clean lifetime management, store Music pointer globally and delete after finished.
+	}
+	std::cout << "ExecuteGameWonAction called\n";
+}
+
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
 int deadZombieCount = 0, createdZombiesCount = 0;
 int curWaveZombieCnt = 0;	// each wave zombie counter
@@ -61,7 +82,10 @@ int sunsMoney = 3000;
 int coinsMoney = 0;
 
 
-int requestedLevelMusic = -1;
+// music request states
+const int REQUEST_NONE = -1;
+const int REQUEST_SELECT_MUSIC = -2; // ask main loop to play select-levels background
+int requestedLevelMusic = REQUEST_NONE;
 
 float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
@@ -920,6 +944,7 @@ void resetLevel() {
 	nextEntityId = 0; // for ra
 	isGameOver = false, isGameWon = false;
 	isGameWonCoolDownStarted = false;
+	gameWonActionExecuted = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -4189,10 +4214,14 @@ void UpdateLevel(RenderWindow& window) {
 			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
+				// Request the normal/select-levels music when quitting the level
+				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
 				resetLevel();
-				int lvlNum = currentLevel->lvlNum;
 				delete currentLevel;
-				startLevel(lvlNum);
+				currentLevel = nullptr;
+				selectingLevel = false;
+				startMainMenuTime = gameClock.getElapsedTime();
 				return;
 			}
 		}
@@ -4213,6 +4242,9 @@ void UpdateLevel(RenderWindow& window) {
 			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
+				// Request the normal/select-levels music when quitting the level
+				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
 				resetLevel();
 				delete currentLevel;
 				currentLevel = nullptr;
@@ -4232,13 +4264,16 @@ void UpdateLevel(RenderWindow& window) {
 	}
 	if (isGameWon == true) {
 		// rewards (debug)
-		//cout << "You win!\n";
 		if (!isGameWonCoolDownStarted) {
-			//cout << "(((((( game won cooling down )))))))" << endl;
 			currentLevel->winClock.restart();
 			isGameWonCoolDownStarted = true;
 		} else if (currentLevel->winClock.getElapsedTime().asSeconds() >= wincooldowntimer) {
-			//cout << "------ DrawWinScreen 000000" << endl;
+			// run the one-time action when the win screen appears
+			if (!gameWonActionExecuted) {
+				ExecuteGameWonAction();
+				gameWonActionExecuted = true;
+			}
+
 			DrawWinScreen(window);
 			return;
 		}
@@ -4292,6 +4327,8 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (deadZombieCount >= currentLevel->targetZombie) {
 		isGameWon = true;
+		// request switching back to normal (select-levels) music
+		requestedLevelMusic = REQUEST_SELECT_MUSIC;
 	}
 
 	for (Entity& zombie : entities) {
@@ -4303,6 +4340,8 @@ void UpdateLevel(RenderWindow& window) {
 				isGameOver = true;
 				zombie.enteredHome = true;
 				cout << "Zombies ate your brains!\n";
+				// request switching back to normal (select-levels) music
+				requestedLevelMusic = REQUEST_SELECT_MUSIC;
 				break;
 			}
 		}
@@ -5561,13 +5600,19 @@ int main() {
 		}
 
 		// Separate UI -> Main Menu and Level
-		if (currentLevel != nullptr) {
-			// If UI queued a level music start (e.g. user clicked "Start Game"), handle it here
-			if (requestedLevelMusic != -1) {
-				if (music.getStatus() == Music::Playing) music.stop();
-				playMusicForLevel(int(levels[requestedLevelMusic].theme), music);
-				requestedLevelMusic = -1;
+		// First, handle any queued music request (stop current music, play requested)
+		if (requestedLevelMusic != REQUEST_NONE) {
+			if (music.getStatus() == Music::Playing) music.stop();
+
+			if (requestedLevelMusic == REQUEST_SELECT_MUSIC) {
+				select_levels_background_music(music);
+			} else {
+				playMusicForLevel(requestedLevelMusic, music);
 			}
+			requestedLevelMusic = REQUEST_NONE;
+		}
+
+		if (currentLevel != nullptr) {
 			UpdateLevel(window);
 		} else {
 			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
