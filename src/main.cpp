@@ -51,6 +51,52 @@ bool isGameOver = false, isGameWon = false;
 bool gameWonActionExecuted = false;
 std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
 
+// Huge-wave hook: called once when a huge wave starts.
+// Assignable by user code (example: assign in main()).
+bool hugeWaveTriggered = false;
+std::function<void()> onHugeWave = []() {};
+
+void TriggerHugeWave() {
+	if (hugeWaveTriggered) return; // ensure runs once per huge wave
+	hugeWaveTriggered = true;
+
+	// keep original message
+	std::cout << "HUGE WAVE\n";
+
+	// run user callback
+	if (onHugeWave) onHugeWave();
+
+	// optional: play huge wave sound (short-lived Music as in ExecuteGameWonAction)
+	sf::Music* hw = new sf::Music();
+	if (hw->openFromFile("assets/audio/03. hugewave.ogg")) {
+		hw->setLoop(false);
+		hw->play();
+		// note: left intentionally not deleted to keep it alive while playing
+	}
+}
+
+// --- ADD: one-shot first-zombie hook (place below TriggerHugeWave)
+bool firstZombieTriggered = false;
+std::function<void()> onFirstZombie = []() {};
+
+void TriggerFirstZombie() {
+	if (firstZombieTriggered) return;
+	firstZombieTriggered = true;
+
+	// keep existing terminal message opportunity (optional)
+	std::cout << "FIRST ZOMBIE HOOK\n";
+
+	// Play the "zombies are coming" sound using the existing helper.
+	// Use a heap-allocated sf::Music so it lives while playing (matches project pattern).
+	sf::Music* sfx = new sf::Music();
+	if (sfx->openFromFile("assets/audio/Voices awooga.ogg")) {
+		sfx->setLoop(false);
+		sfx->play();
+	}
+	// run user callback if assigned
+	if (onFirstZombie) onFirstZombie();
+}
+
 void ExecuteGameWonAction() {
 	// Run the user-configurable callback first
 	if (onGameWonAction) onGameWonAction();
@@ -160,6 +206,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_PROSPECTOR,
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
+	ZOMBIE_PIANIST,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -238,6 +285,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
 	ZOMBIE_ELECTROCUTED,//only death not real zombie
+	ZOMBIE_PIANIST,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -332,6 +380,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_COWBOY:
 		textureType = TEXTURE_TYPE::ZOMBIE_COWBOY;
+		break;
+	case ENTITY_TYPE::ZOMBIE_PIANIST:
+		textureType = TEXTURE_TYPE::ZOMBIE_PIANIST;
 		break;
 
 		//plantes
@@ -983,6 +1034,7 @@ void resetLevel() {
 	isGameWonCoolDownStarted = false;
 	gameWonActionExecuted = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
+	firstZombieTriggered = false;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 	//ZombieMinGapTime = 7,
@@ -2456,6 +2508,38 @@ Entity defineShieldGuardZombie() {
 	return zombie;
 }
 
+Entity definePianistZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][0].loadFromFile("assets/PianistZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][1].loadFromFile("assets/PianistZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][2].loadFromFile("assets/PianistZombieDamaged.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_PIANIST;
+	zombie.health = 500;
+	zombie.attack = 20;
+	zombie.x_vel = 30;
+	// Animations
+	zombie.num_animations = 3;
+	Animation anim;
+	// walk
+	anim.frames = 30;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 53;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+	// damaged walk
+	anim.frames = 30;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	
+	return zombie;
+}
+
 Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
@@ -2701,6 +2785,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 		// [1] health done but not started dying animation yet
 		if (!zombie.isDead && (zombie.currentAnimationIndex == 0
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -2744,6 +2829,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				zombie.scale = 0.8f;
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD) // for shield guard
 				zombie.scale = 1.2f;
+			if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) // for pianist
+				zombie.scale = 1.3f;
 
 			// [1.2] After Death Animation
 			zombie.afterAnimation = [&zombie](Entity& entity) {
@@ -2972,6 +3059,14 @@ void updatePharaohZombie(Entity& zombie) {
 	}
 }
 
+void updatePianistZombie(Entity& zombie) {
+	if (zombie.health <= 250 && zombie.currentAnimationIndex == 0) {
+		if (zombie.currentAnimationIndex != 2) {
+			zombie.setCurrentAnimation(2);
+		}
+	}
+}
+
 void zombieEatPlant(Entity& zombie, Entity& plant) {
 	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		zombie.x_vel = 0;
@@ -3053,6 +3148,9 @@ void DrawZombies(RenderWindow& window) {
 		}
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.health > 0) { // for pharaoh
 			updatePharaohZombie(zombie);
+		}
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.health > 0) { // for pianist
+			updatePianistZombie(zombie);
 		}
 
 		// zombie move
@@ -3259,11 +3357,17 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
 			currentWave++, curWaveZombieCnt = 0;
 			wc.restart();
+			// allow huge-wave handler to run for the upcoming wave if it's huge
+			hugeWaveTriggered = false;
 		}
 
 		if (currentWave->isHuge) {
-			// message huge wave
-			cout << "HUGE WAVE\n";
+			TriggerHugeWave();
+		}
+
+		// If this is the very first zombie spawned this level, run the one-shot hook.
+		if (createdZombiesCount == 0) {
+			TriggerFirstZombie();
 		}
 
 		cout << "New Zombie\n";
@@ -3744,7 +3848,7 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
+	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
 		// Huge Wave
 
 		diff = wc.getElapsedTime().asSeconds();
@@ -5226,7 +5330,7 @@ void playMusicForLevel(int level, Music& music) {
 
 
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed;
-Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo;
+Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist;
 vector<Entity> allPlantTypes;
 
 void defineDayLevels() {
@@ -5312,32 +5416,32 @@ void defineNightLevels() {
 	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
 
 	// Level 5
-	levels[4].plantReward = miniShroom;
-	levels[4].coinReward = 300;
-	levels[4].addWave(1, 5, { zombie }, 5);
-	levels[4].addWave(3, 9, { zombie }, 10);
-	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
-	levels[4].addWave(3, 12, { zombie }, 0);
-	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+	levels[5].plantReward = miniShroom;
+	levels[5].coinReward = 300;
+	levels[5].addWave(1, 5, { zombie }, 5);
+	levels[5].addWave(3, 9, { zombie }, 10);
+	levels[5].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[5].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[5].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[5].addWave(3, 12, { zombie }, 0);
+	levels[5].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[5].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[5].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[5].addWave(6, 20, { zombieAllStar }, 0, true);
 
 	// Level 6
-	levels[4].plantReward = chomper;
-	levels[4].coinReward = 400;
-	levels[4].addWave(1, 5, { zombie }, 5);
-	levels[4].addWave(3, 9, { zombie }, 10);
-	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
-	levels[4].addWave(3, 12, { zombie }, 0);
-	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+	levels[6].plantReward = chomper;
+	levels[6].coinReward = 400;
+	levels[6].addWave(1, 5, { zombie }, 5);
+	levels[6].addWave(3, 9, { zombie }, 10);
+	levels[6].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[6].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[6].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[6].addWave(3, 12, { zombie }, 0);
+	levels[6].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[6].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[6].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[6].addWave(6, 20, { zombieAllStar }, 0, true);
 }
 
 void defineAncientLevels() {
@@ -5441,7 +5545,7 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
-	levels[11].addWave(2, 5, { zombieProspector }, 5);
+	levels[11].addWave(4, 5, { zombieProspector, zombiePianist }, 5);
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
@@ -5479,6 +5583,7 @@ int main() {
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
+
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -5528,6 +5633,7 @@ int main() {
 	zombieRedhair = defineRedhairZombie();
 	zombieProspector = defineProspectorZombie();
 	zombiePogo = definePogoZombie();
+	zombiePianist = definePianistZombie();
 	;
 
 	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed };
@@ -5786,6 +5892,12 @@ int main() {
 	// Load storage
 	loadStorage();
 
+	// in main(), after creating resources:
+	onHugeWave = []() {
+		std::cout << "Custom huge-wave handler executed\n";
+		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
+		// e.g. you could toggle a game-state boolean or request a special sound
+		};
 
 	// Game Loop
 
