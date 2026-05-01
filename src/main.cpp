@@ -75,6 +75,28 @@ void TriggerHugeWave() {
 	}
 }
 
+// --- ADD: one-shot first-zombie hook (place below TriggerHugeWave)
+bool firstZombieTriggered = false;
+std::function<void()> onFirstZombie = []() {};
+
+void TriggerFirstZombie() {
+	if (firstZombieTriggered) return;
+	firstZombieTriggered = true;
+
+	// keep existing terminal message opportunity (optional)
+	std::cout << "FIRST ZOMBIE HOOK\n";
+
+	// Play the "zombies are coming" sound using the existing helper.
+	// Use a heap-allocated sf::Music so it lives while playing (matches project pattern).
+	sf::Music* sfx = new sf::Music();
+	if (sfx->openFromFile("assets/audio/Voices awooga.ogg")) {
+		sfx->setLoop(false);
+		sfx->play();
+	}
+	// run user callback if assigned
+	if (onFirstZombie) onFirstZombie();
+}
+
 void ExecuteGameWonAction() {
 	// Run the user-configurable callback first
 	if (onGameWonAction) onGameWonAction();
@@ -974,6 +996,7 @@ void resetLevel() {
 	isGameWonCoolDownStarted = false;
 	gameWonActionExecuted = false;
 	deadZombieCount = 0, createdZombiesCount = 0;
+	firstZombieTriggered = false;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 	//ZombieMinGapTime = 7,
@@ -3165,6 +3188,11 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 
 		if (currentWave->isHuge) {
 			TriggerHugeWave();
+		}
+
+		// If this is the very first zombie spawned this level, run the one-shot hook.
+		if (createdZombiesCount == 0) {
+			TriggerFirstZombie();
 		}
 
 		cout << "New Zombie\n";
