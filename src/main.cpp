@@ -2415,7 +2415,7 @@ Entity definePianistZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_PIANIST;
 	zombie.health = 500;
 	zombie.attack = 20;
-	zombie.x_vel = 30;
+	zombie.x_vel = 20;
 	// Animations
 	zombie.num_animations = 3;
 	Animation anim;
@@ -2444,7 +2444,7 @@ Entity defineProspectorZombie() {
 	zombie.x_vel = 70;
 	zombie.scale = 1.0f;
 
-	zombie.num_animations = 3;
+	zombie.num_animations = 4;
 	Animation anim;
 
 	anim.frames = 22;
@@ -2458,6 +2458,10 @@ Entity defineProspectorZombie() {
 	anim.frames = 25;
 	anim.frameTimer = 0.07f;
 	zombie.animations[2] = anim;
+
+	anim.frames = 25;
+	anim.frameTimer = 0.05f;
+	zombie.animations[3] = anim;
 
 	zombie.setCurrentAnimation(0);
 	return zombie;
@@ -2683,6 +2687,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 		if (!zombie.isDead && (zombie.currentAnimationIndex == 0
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR && zombie.currentAnimationIndex == 3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -2814,13 +2819,13 @@ void updateZombieRa(Entity& zombie) {
 			Sun& sun = suns[i];
 			if (!sun.targeted || !isSunAlive(sun) || sun.ownerIndex != zombie.id) continue;
 
-			float dx = zombie.position.x - sun.position.x;
-			float dy = zombie.position.y - sun.position.y;
-			float dist = sqrt(dx * dx + dy * dy);
+			float dx = zombie.position.x - sun.position.x;//horizontal dist
+			float dy = zombie.position.y - sun.position.y;//vertical dist
+			float dist = sqrt(dx * dx + dy * dy);// dist between
 
 			if (dist > 1.0f) {
-				sun.position.x += (dx / dist) * 300.0f * delta_time;
-				sun.position.y += (dy / dist) * 300.0f * delta_time;
+				sun.position.x += (dx / dist) * 300.0f * delta_time; //dx/dist is horizontal part of dist
+				sun.position.y += (dy / dist) * 300.0f * delta_time; //dy/dist is vertical part of dist
 			}
 
 			if (dist < 60.0f) {
@@ -2902,29 +2907,24 @@ void updateZombieAllStars(Entity& zombie) {
 }
 void updateNewspaperZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		if (zombie.currentAnimationIndex != 2) {
-			zombie.setCurrentAnimation(2);
-			FallenItem item;
-			item.texture = TEXTURE_TYPE::ITEM_NEWSPAPER;
-			item.clock.restart();
-			item.fallPosition = zombie.position + Vector2f(100, 0);
-			fallenItems.push_back(item);
-		}
-
+		zombie.setCurrentAnimation(2);
+		FallenItem item;
+		item.texture = TEXTURE_TYPE::ITEM_NEWSPAPER;
+		item.clock.restart();
+		item.fallPosition = zombie.position + Vector2f(100, 0);
+		fallenItems.push_back(item);
 		zombie.x_vel = 170.0f;
 		zombie.attackTimer = 0.4f;
 	}
 }
 void updateConeheadZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		if (zombie.currentAnimationIndex != 2) {
-			zombie.setCurrentAnimation(2);
-			FallenItem item;
-			item.texture = TEXTURE_TYPE::ITEM_CONE;
-			item.clock.restart();
-			item.fallPosition = zombie.position + Vector2f(100, 0);
-			fallenItems.push_back(item);
-		}
+		zombie.setCurrentAnimation(2);
+		FallenItem item;
+		item.texture = TEXTURE_TYPE::ITEM_CONE;
+		item.clock.restart();
+		item.fallPosition = zombie.position + Vector2f(100, 0);
+		fallenItems.push_back(item);
 	}
 }
 
@@ -2948,9 +2948,82 @@ void updatePharaohZombie(Entity& zombie) {
 }
 
 void updatePianistZombie(Entity& zombie) {
+
+	if (zombie.currentAnimationIndex == 0) {
+		zombie.scale = 1.2f;
+	} else if (zombie.currentAnimationIndex == 2) {
+		zombie.scale = 1.0f;
+	}
+
 	if (zombie.health <= 250 && zombie.currentAnimationIndex == 0) {
-		if (zombie.currentAnimationIndex != 2) {
-			zombie.setCurrentAnimation(2);
+		zombie.scale = 1.0f;
+		zombie.setCurrentAnimation(2);
+	}
+
+	
+	for (Entity& e : entities) {
+		if (e.category != ENTITY_CATEGORY::ZOMBIE || e.type != ENTITY_TYPE::ZOMBIE_PROSPECTOR || e.health <= 0 || e.isDead)
+			continue;
+
+		// doesnt work if zombie is eating or too far away
+		float dx = abs(e.position.x - zombie.position.x);
+		bool isEating;
+		if (e.currentAnimationIndex == 2) {
+			isEating = true;
+		} else {
+			isEating = false;
+		}
+
+		if (isEating || dx > 600.0f) {
+			
+			if (e.currentAnimationIndex == 3) {
+				e.setCurrentAnimation(0);
+				e.x_vel = 70;
+			}
+			
+			continue;
+		}
+
+		if (e.currentAnimationIndex != 3 && e.currentAnimationIndex != 1) {
+			e.setCurrentAnimation(3);
+			e.x_vel = 0.0f;
+			e.storedSunValue = e.gridRow; // storedsunvalue as a random int variable to use from entity struct and used as target row
+			e.abilityClock.restart();
+		}
+
+		if (e.currentAnimationIndex == 3 && currentLevel != nullptr) {
+			float targetY = currentLevel->offsetY + e.storedSunValue * currentLevel->cellHeight;
+			float dy = targetY - e.position.y;
+
+			if (abs(dy) > 4.0f) {
+				float moveSpeed = 120.0f;
+				e.position.y += (dy > 0 ? 1.0f : -1.0f) * moveSpeed * delta_time;   //dy condition for direction
+			} else {  // zombie close enough now
+				e.position.y = targetY;
+				e.gridRow = e.storedSunValue;
+
+				float switchCooldown = 3.5f+(rand() % 100) / 100.0f;
+				if (e.abilityClock.getElapsedTime().asSeconds() >= switchCooldown) {
+					int randRow;
+					do {
+						randRow = rand() % gridRows;
+					} while (randRow == e.gridRow);
+					e.storedSunValue = randRow;
+					e.abilityClock.restart();
+				}
+			}
+		}
+	}
+
+	if (zombie.health <= 0) {
+		for (Entity& e : entities) {
+			if (e.category != ENTITY_CATEGORY::ZOMBIE || e.type != ENTITY_TYPE::ZOMBIE_PROSPECTOR || e.health <= 0 || e.isDead)
+				continue;
+
+			if (e.currentAnimationIndex == 3) {
+				e.setCurrentAnimation(0);
+				e.x_vel = 70;
+			}
 		}
 	}
 }
@@ -3072,6 +3145,8 @@ void DrawZombies(RenderWindow& window) {
 						zombie.x_vel = 170;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
 						zombie.x_vel = 260;
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) {
+						zombie.x_vel = 20;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
 						zombie.x_vel = 135;
 					} else {
@@ -5421,7 +5496,7 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
-	levels[11].addWave(4, 5, { zombieProspector, zombiePianist }, 5);
+	levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
@@ -5544,6 +5619,7 @@ int main() {
 	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][0].loadFromFile("assets/prospector_walk.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][1].loadFromFile("assets/prospector_die.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][2].loadFromFile("assets/prospector_eat.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][3].loadFromFile("assets/ProspectorZombieDancing.png");
 	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][0].loadFromFile("assets/redhair_walk.png");
 	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][1].loadFromFile("assets/redhair_die.png");
 	textures[TEXTURE_TYPE::ZOMBIE_REDHAIR][2].loadFromFile("assets/redhair_eat.png");
