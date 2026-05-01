@@ -3079,7 +3079,6 @@ void updatePianistZombie(Entity& zombie) {
 			continue;
 
 		// doesnt work if zombie is eating or too far away
-		float dx = abs(e.position.x - zombie.position.x);
 		bool isEating;
 		if (e.currentAnimationIndex == 2) {
 			isEating = true;
@@ -3087,7 +3086,18 @@ void updatePianistZombie(Entity& zombie) {
 			isEating = false;
 		}
 
-		if (isEating || dx > 600.0f) {
+		// check for all pianists not 1
+		bool nearAnyPianist = false;
+		for (Entity& ent : entities) {
+			if (ent.category != ENTITY_CATEGORY::ZOMBIE || ent.type != ENTITY_TYPE::ZOMBIE_PIANIST || ent.health <= 0 || ent.isDead) 
+				continue;
+			if (abs(e.position.x - ent.position.x) <= 600.0f) {
+				nearAnyPianist = true;
+				break;
+			}
+		}
+
+		if (isEating || !nearAnyPianist) {
 			
 			if (e.currentAnimationIndex == 3) {
 				e.setCurrentAnimation(0);
