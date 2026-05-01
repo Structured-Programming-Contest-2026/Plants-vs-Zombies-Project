@@ -4373,6 +4373,15 @@ void DrawLevelSelector(RenderWindow& window) {
 
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 75.0f);
 
+	//For TESTING
+	for (int i = 0; i < number_levels; i++) {
+		if (levels[i].theme == THEME::NONE) {
+			levels[i].isUnlocked = false; continue;
+		}
+		levels[i].isUnlocked = true;
+	}
+
+
 	for (int i = 0; i < number_levels; i++) {
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
 
@@ -4941,7 +4950,8 @@ Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zo
 vector<Entity> allPlantTypes;
 
 void defineDayLevels() {
-	vector<Entity> mainDayPlantTypes = {normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon};
+	//vector<Entity> mainDayPlantTypes = {normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon};
+	vector<Entity> mainDayPlantTypes = allPlantTypes;
 	for (int lvl = 1; lvl <= 3; lvl++) {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
@@ -4961,12 +4971,7 @@ void defineDayLevels() {
 	levels[1].isUnlocked = true;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
-	levels[1].addWave(1, 5, { zombieRedhair }, 5);
-	levels[1].addWave(1, 5, { zombieProspector }, 5);
-	levels[1].addWave(1, 5, { zombiePogo }, 5);
-	levels[1].addWave(1, 5, { zombieCowboy }, 5);
-	levels[1].addWave(1, 5, { zombieCowboy }, 5);
-	//levels[1].addWave(1, 5, { zombie }, 5);
+	levels[1].addWave(1, 5, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
 	levels[1].addWave(5, 15, { zombie }, 10);
@@ -4996,7 +5001,8 @@ void defineDayLevels() {
 }
 
 void defineNightLevels() {
-	vector<Entity> mainNightPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	//vector<Entity> mainNightPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainNightPlantTypes = allPlantTypes;
 	// Level 4: Night
 	for (int lvl = 4; lvl <= 6; lvl++) {
 		levels[lvl].theme = THEME::NIGHT;
@@ -5055,7 +5061,8 @@ void defineNightLevels() {
 }
 
 void defineAncientLevels() {
-	vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainAncientPlantTypes = allPlantTypes;
 	// Level 4: Night
 	for (int lvl = 7; lvl <= 9; lvl++) {
 		levels[lvl].theme = THEME::ANCIENT;
@@ -5115,6 +5122,74 @@ void defineAncientLevels() {
 	setupLevelLawnmowers(levels[9]);
 }
 
+void defineWildWestLevels() {
+	//vector<Entity> mainWildWestPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainWildWestPlantTypes = allPlantTypes;
+	// Level 4: Night
+	for (int lvl = 10; lvl <= 12; lvl++) {
+		levels[lvl].theme = THEME::WILDWEST;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainWildWestPlantTypes;
+		levels[lvl].zombie_types = { zombieMummy, zombieRa, zombieTorch, zombiePharaoh };
+		levels[lvl].targetZombie = 30;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+	// 2 2 4 5 8 10
+	//levels[7].plantReward = CHEERY_BOMB;
+	levels[10].coinReward = 300;
+	levels[10].addWave(8, 20, { zombieRedhair, zombieCowboy, zombieProspector, zombiePogo }, 0);
+	/*levels[10].addWave(3, 5, { zombieProspector }, 5);
+	levels[10].addWave(3, 5, { zombiePogo }, 5);
+	levels[10].addWave(3, 5, { zombieCowboy }, 5);
+	levels[10].addWave(3, 5, { zombieCowboy }, 5);
+	levels[10].addWave(2, 5, { zombieMummy }, 5);
+	levels[10].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+	levels[10].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+	levels[10].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[10].addWave(4, 12, { zombieMummy }, 5);
+	levels[10].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+	levels[10].addWave(4, 12, { zombieMummy }, 5);
+	levels[10].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[10].addWave(4, 16, { zombieMummy }, 5);
+	levels[10].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);*/
+	setupLevelLawnmowers(levels[10]);
+
+	// Level 8
+	levels[11].plantReward = icePeashooter;
+	levels[11].coinReward = 300;
+	levels[11].addWave(2, 5, { zombieProspector }, 5);
+	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
+	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
+	levels[11].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[11].addWave(4, 12, { zombieProspector }, 5);
+	levels[11].addWave(8, 24, { zombieRedhair, zombieProspector, zombiePharaoh }, 10, true);
+	levels[11].addWave(4, 12, { zombieProspector }, 5);
+	levels[11].addWave(9, 23, { zombieRedhair, zombieProspector, zombiePharaoh, zombieTorch }, 10, true);
+	levels[11].addWave(4, 16, { zombieProspector }, 5);
+	levels[11].addWave(10, 22, { zombieRedhair, zombieProspector, zombiePharaoh, zombieTorch }, 0, true);*/
+	setupLevelLawnmowers(levels[11]);
+
+	// Level 9
+	//levels[9].plantReward ;
+	levels[12].coinReward = 300;
+	levels[12].addWave(2, 5, { zombiePogo }, 5);
+	/*levels[12].addWave(2, 5, {zombieRedhair, zombieMummy}, 10);
+	levels[12].addWave(4, 12, { zombieRedhair, zombieMummy }, 10);
+	levels[12].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+	levels[12].addWave(4, 12, { zombieMummy }, 5);
+	levels[12].addWave(8, 24, { zombieRedhair, zombieMummy, zombiePharaoh }, 10, true);
+	levels[12].addWave(4, 12, { zombieMummy }, 5);
+	levels[12].addWave(9, 23, { zombieRedhair, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+	levels[12].addWave(4, 16, { zombieMummy }, 5);
+	levels[12].addWave(10, 22, { zombieRedhair, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);*/
+	setupLevelLawnmowers(levels[12]);
+}
+
+
 int main() {
 	srand(time(0));
 
@@ -5172,7 +5247,7 @@ int main() {
 	zombiePogo = definePogoZombie();
 ;
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom };
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -5241,6 +5316,8 @@ int main() {
 	defineDayLevels();
 	defineNightLevels();
 	defineAncientLevels();
+	defineWildWestLevels();
+	
 //---------------------------------------
 //// Level 1: Day
 //	levels[1].lvlNum = 1;
@@ -5480,7 +5557,7 @@ int main() {
 			// If UI queued a level music start (e.g. user clicked "Start Game"), handle it here
 			if (requestedLevelMusic != -1) {
 				if (music.getStatus() == Music::Playing) music.stop();
-				playMusicForLevel(requestedLevelMusic, music);
+				playMusicForLevel(int(levels[requestedLevelMusic].theme), music);
 				requestedLevelMusic = -1;
 			}
 			UpdateLevel(window);
