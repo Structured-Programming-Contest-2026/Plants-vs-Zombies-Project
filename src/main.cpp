@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <vector>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
@@ -59,6 +59,9 @@ ZombieGap_dt = 0.1;	// Level Pace
 int selectedPlant = 0;
 int sunsMoney = 3000;
 int coinsMoney = 0;
+
+
+int requestedLevelMusic = -1; 
 
 float wincooldowntimer = 3.f;
 bool isGameWonCoolDownStarted = false;
@@ -3341,13 +3344,18 @@ void DrawSelectPlants(RenderWindow& window) {
 	startButton.setScale(Vector2f(1.5f, 1.5f));
 	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
-	if (currentLevel->selectedPlants.size() == 0) {
-		startButton.setColor(Color(64, 64, 64, 255));
-	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->arePlantsSelected = true;
 			currentLevel->plantsSelectedTime = currentLevel->clock.getElapsedTime();
+
+			// Queue level music to be started by the main loop.
+			// For level two explicitly use the level 2 music.
+			if (currentLevel != nullptr) {
+				if (currentLevel->lvlNum == 2) requestedLevelMusic = 2;
+				else requestedLevelMusic = currentLevel->lvlNum;
+			}
 		}
 	}
 
@@ -4755,6 +4763,7 @@ int level_1_music(Music& music) {
 	music.play();
 	return 0;
 }
+
 int level_2_music(Music& music) {
 	if (!music.openFromFile("assets/audio/11. Main Music 05.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -4893,6 +4902,18 @@ int lose_music(Music& music) {
 	music.setLoop(false);
 	music.play();
 	return 0;
+}
+
+void playMusicForLevel(int level, Music& music) {
+	switch (level) {
+	case 1: level_1_music(music); break;
+	case 2: level_2_music(music); break;
+	case 3: level_3_music(music); break;
+	case 4: level_4_music(music); break;
+	case 5: level_5_music(music); break;
+	case 6: level_6_music(music); break;
+	default: /* fallback */ select_levels_background_music(music); break;
+	}
 }
 
 int main() {
@@ -5252,13 +5273,17 @@ int main() {
 
 		// Separate UI -> Main Menu and Level
 		if (currentLevel != nullptr) {
-			if (music.getStatus() == Music::Playing) music.stop();
+			// If UI queued a level music start (e.g. user clicked "Start Game"), handle it here
+			if (requestedLevelMusic != -1) {
+				if (music.getStatus() == Music::Playing) music.stop();
+				playMusicForLevel(requestedLevelMusic, music);
+				requestedLevelMusic = -1;
+			}
 			UpdateLevel(window);
 		} else {
 			if (music.getStatus() != Music::Playing) select_levels_background_music(music);
 			DrawMainMenu(window);
 		}
-
 		window.display();
 	}
 
