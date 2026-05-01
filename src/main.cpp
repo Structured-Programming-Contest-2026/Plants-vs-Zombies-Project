@@ -132,10 +132,12 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_DOOM_MINE,
 	PLANT_CHEERY_BOMB,
 	PLANT_ICESHROOM,
+	PLANT_SNAPDRAGON,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
+	FireDragonBullet,
 
 
 
@@ -202,10 +204,13 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_DOOM_MINE,
 	PLANT_CHEERY_BOMB,
 	PLANT_ICESHROOM,
+	PLANT_SNAPDRAGON,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
+	FireDragonBullet,
+
 	SHOVEL,
 	MAGIC_SHOVEL,
 };
@@ -259,6 +264,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBIE_POGO:
 		textureType = TEXTURE_TYPE::ZOMBIE_POGO;
 		break;
+
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
 		textureType = TEXTURE_TYPE::PLANT_NORMAL;
@@ -290,14 +296,6 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_ICESHROOM:
 		textureType = TEXTURE_TYPE::PLANT_ICESHROOM;
 		break;
-		//other
-	case ENTITY_TYPE::NormalBullet:
-		textureType = TEXTURE_TYPE::NormalBullet;
-		break;
-	case ENTITY_TYPE::IceBullet:
-		textureType = TEXTURE_TYPE::IceBullet;
-		break;
-
 	case ENTITY_TYPE::PLANT_POTATO_MINE:
 		textureType = TEXTURE_TYPE::PLANT_POTATO_MINE;
 		break;
@@ -307,6 +305,21 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_CHEERY_BOMB:
 		textureType = TEXTURE_TYPE::PLANT_CHEERY_BOMB;
 		break;
+	case ENTITY_TYPE::PLANT_SNAPDRAGON:
+		textureType = TEXTURE_TYPE::PLANT_SNAPDRAGON;
+		break;
+
+		//other
+	case ENTITY_TYPE::NormalBullet:
+		textureType = TEXTURE_TYPE::NormalBullet;
+		break;
+	case ENTITY_TYPE::IceBullet:
+		textureType = TEXTURE_TYPE::IceBullet;
+		break;
+	case ENTITY_TYPE::FireDragonBullet:
+		textureType = TEXTURE_TYPE::FireDragonBullet;
+		break;
+
 
 	case ENTITY_TYPE::ShroomBullet:
 		textureType = TEXTURE_TYPE::ShroomBullet;
@@ -1016,7 +1029,25 @@ Entity defineShroomBullet() {
 
 	return bullet;
 }
+Entity defineFireDragonBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/FireDragon.png"); 
+	textures[TEXTURE_TYPE::FireDragonBullet][Default_Texture_Index] = tex;
 
+	Entity dragon{};
+	dragon.category = ENTITY_CATEGORY::Bullet;
+	dragon.type = ENTITY_TYPE::FireDragonBullet;
+	dragon.attack = 500;
+	dragon.x_vel = -0.2f;
+	dragon.scale = 1.0f;
+
+	dragon.num_animations = 1;
+	dragon.animations[0].frames = 25; 
+	dragon.animations[0].frameTimer = 0.1f;
+	dragon.setCurrentAnimation(0);
+
+	return dragon;
+}
 // plants
 Entity defineNormalPlant() {
 
@@ -1856,6 +1887,85 @@ Entity defineIceShroom() {
 	plants[ENTITY_TYPE::PLANT_ICESHROOM] = plant;
 	return plant;
 }
+Entity defineSnapdragon() 
+{
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][0].loadFromFile("assets/SnapdragonIdle.png");
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][1].loadFromFile("assets/SnapdragonAttack.png");
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_SNAPDRAGON;
+	plant.health = 300;
+	plant.attack = 50; 
+	plant.price = 150;
+	plant.seedCooldown = 7.5f;
+	plant.scale = 1.0f;
+	plant.attackTimer = 2.0f;
+
+	plant.num_animations = 4;
+
+	plant.animations[0].frames = 20; // Idle
+	plant.animations[0].frameTimer = 0.1f;
+
+	plant.animations[1].frames = 20; // Attack 
+	plant.animations[1].frameTimer = 0.08f;
+
+	plant.animations[3].frames = 23; // Boost
+	plant.animations[3].frameTimer = 0.1f;
+
+	plant.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_SNAPDRAGON] = plant;
+
+	plant.updateEntity = [](Entity& p)
+		{
+		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+			bool zombieInRange = false;
+
+			for (Entity& zombie : entities) 
+			{
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0)
+				{
+					float diffY = abs(zombie.position.y - p.position.y);
+					float diffX = zombie.position.x - p.position.x;
+
+					if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) 
+					{
+						zombieInRange = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInRange)
+			{
+				p.DoAnimation(1, 1); 
+
+				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2)
+				{
+					p.attackClock.restart();
+
+					for (Entity& zombie : entities)
+					{
+						if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead)
+						{
+							float diffY = abs(zombie.position.y - p.position.y);
+							float diffX = zombie.position.x - p.position.x;
+
+							if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) 
+							{
+								attackZombie(zombie, p.attack, true);
+							}
+						}
+					}
+				}
+			}
+		}
+		};
+
+	return plant;
+}
 
 // zombies
 Entity defineNormalZombie() {
@@ -2230,7 +2340,7 @@ Entity definePogoZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[3] = anim;
 
-	anim.frames = 23;
+	anim.frames = 20;
 	anim.frameTimer = 0.08f;
 	zombie.animations[4] = anim;
 
@@ -2781,49 +2891,43 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 		for (Entity& zombie : entities) {
 
-			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;// skip non-zombie or dead ones
+			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;
 
-			if (abs(bullet.position.y - zombie.position.y) < 100.0f && // same row
+			if (abs(bullet.position.y - zombie.position.y) < 100.0f &&
 				bullet.position.x >= zombie.position.x &&
-				bullet.position.x <= zombie.position.x + 100.0f) // almost touched
-			{
-				// shield guard zombie only dies to shroom bullet
+				bullet.position.x <= zombie.position.x + 100.0f) {
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
-					bullet.category = ENTITY_CATEGORY::NONE; // bullet disappears and doesnt do damage
-					break;   // bullet is gone so stop loop from checking other zombies
+					bullet.category = ENTITY_CATEGORY::NONE;
+					break;
 				}
 
 				attackZombie(zombie, bullet.attack, true);
 
 				if (bullet.type == ENTITY_TYPE::IceBullet) {
 					zombie.freezeTimer = 3.0f;
-					cout << "Zombie Slowed!" << endl;
 				}
 
 				bullet.category = ENTITY_CATEGORY::NONE;
-
-				//cout << "Zombie hit! Health left: " << zombie.health << endl; //console just testing
-
-
-				if (zombie.isDead) {
-					cout << "Zombie Killed!" << endl;
-				}
-
 				break;
 			}
 		}
 
 		if (bullet.category == ENTITY_CATEGORY::Bullet) {
-			Texture& bulletTex = getDefaultEntityTexture(bullet.type);
+			Texture& bulletTex = textures[getTextureType(bullet.type)][bullet.currentAnimationIndex];
 			bulletSprite.setTexture(bulletTex);
-			bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
+
+			if (bullet.num_animations > 0 && bullet.animations[bullet.currentAnimationIndex].frames > 0) {
+				bulletSprite.setTextureRect(getFrameRect(bullet));
+			} else {
+				bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
+			}
+
 			bulletSprite.setPosition(bullet.position);
 			bulletSprite.setScale(Vector2f(bullet.scale, bullet.scale));
 			window.draw(bulletSprite);
 		}
 	}
 }
-
 void UpdateLawnmowers(RenderWindow& window) {
 	if (currentLevel == nullptr || !currentLevel->lawnmowersEnabled) return;
 	// draw lawnmowers - cars
@@ -4625,6 +4729,9 @@ int main() {
 	Entity doomShroom = defineDOOM_SHROOM();
 	Entity CHEERY_BOMB = defineCherryBomb();
 	Entity iceShroom = defineIceShroom();
+	Entity snapdragon = defineSnapdragon();
+
+	
 
 	// Zombies
 	Entity zombie = defineNormalZombie();
@@ -4690,6 +4797,7 @@ int main() {
 		isEntityUnlocked[doomShroom.type] =
 		isEntityUnlocked[CHEERY_BOMB.type] =
 		isEntityUnlocked[iceShroom.type] =
+		isEntityUnlocked[snapdragon.type] =
 		true;
 
 	// Levels
@@ -4796,6 +4904,7 @@ int main() {
 	// Level 4: Wild West
 	levels[4].lvlNum = 4;
 	levels[4].plant_types = mainPlantTypes;
+	levels[4].plant_types.push_back(snapdragon);//it will be romoved later
 	levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
 	levels[4].targetZombie = 30;
 	levels[4].waveLimit = 12;
