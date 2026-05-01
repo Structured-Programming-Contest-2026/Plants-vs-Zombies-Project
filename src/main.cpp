@@ -97,7 +97,19 @@ struct Lawnmower {
 		position.x += v;
 	}
 };
+struct Rail 
+{
+	int column;    
+	int startRow;  
+	int endRow;
+};
 
+struct Minecart 
+{
+	int column;
+	int currentRow;
+	int plantId = -1;
+};
 enum class ENTITY_CATEGORY : uint8_t {
 	NONE = 0,
 	ZOMBIE,
@@ -557,7 +569,8 @@ struct Wave {
 	//}
 };
 
-struct Level {
+struct Level 
+{
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 3000;
@@ -603,6 +616,7 @@ struct Level {
 		} else if (r.type == Reward::Plant) {
 			plantReward = r;
 		}
+
 	}
 	void claimRewards() {
 		if (!coinReward.isClaimed) {
@@ -629,6 +643,16 @@ struct Level {
 		if (rest) waves.push_back(Wave(0, rest, {}, false));	// rest wave
 		this->setTargetZombie();
 	}
+
+	//for mincart
+	vector<Rail> rails;
+	vector<Minecart> carts;
+	void addRail(int col, int sRow, int eRow)
+	{
+		rails.push_back({ col, sRow, eRow });
+		carts.push_back({ col, sRow, -1 });
+	}
+
 };
 const int number_levels = 6;
 vector<Level> levels(number_levels + 1);
@@ -3842,6 +3866,44 @@ void UpdateFallenItems(RenderWindow& window) {
 	}
 }
 
+void DrawRailsAndCarts(RenderWindow& window)
+{
+	if (currentLevel == nullptr) return;
+
+	Texture& railTex = getTexture(TEXTURE_TYPE::RAIL);
+	Sprite railSprite(railTex);
+
+	float railScaleX = currentLevel->cellWidth / (float)railTex.getSize().x;
+	float railScaleY = currentLevel->cellHeight / (float)railTex.getSize().y;
+	railSprite.setScale(railScaleX, railScaleY);
+
+	for (const auto& rail : currentLevel->rails)
+	{
+		float x = currentLevel->offsetX + (rail.column * currentLevel->cellWidth);
+
+		for (int r = rail.startRow; r <= rail.endRow; r++)
+		{
+			float y = currentLevel->offsetY + (r * currentLevel->cellHeight);
+			railSprite.setPosition(x, y);
+			window.draw(railSprite);
+		}
+	}
+
+	Texture& cartTex = getTexture(TEXTURE_TYPE::CART);
+	Sprite cartSprite(cartTex);
+
+	float cartScaleX = currentLevel->cellWidth / (float)cartTex.getSize().x;
+	float cartScaleY = currentLevel->cellHeight / (float)cartTex.getSize().y;
+	cartSprite.setScale(cartScaleX, cartScaleY);
+
+	for (const auto& cart : currentLevel->carts) {
+		float x = currentLevel->offsetX + (cart.column * currentLevel->cellWidth);
+		float y = currentLevel->offsetY + (cart.currentRow * currentLevel->cellHeight);
+		cartSprite.setPosition(x, y);
+		window.draw(cartSprite);
+	}
+}
+
 void UpdateLevel(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
 	// Drawing
@@ -3858,7 +3920,11 @@ void UpdateLevel(RenderWindow& window) {
 	ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND][level]);
 	window.draw(ground);
 
-	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f) UpdateLawnmowers(window);
+	if (currentLevel->arePlantsSelected && (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds()) >= 0.95f)
+	{
+		UpdateLawnmowers(window);
+		DrawRailsAndCarts(window);
+	}
 
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
 		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
@@ -4918,6 +4984,8 @@ int main() {
 	levels[4].offsetY = 135;
 	levels[4].cellWidth = 150;
 	levels[4].cellHeight = 170;
+	levels[4].addRail(2, 1, 3);
+	levels[4].addRail(5, 0, 2);
 	levels[4].plantReward = repeaterPlant;
 	levels[4].coinReward = 400;
 	// Wave Design
