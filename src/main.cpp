@@ -1049,7 +1049,7 @@ Entity defineNormalBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::NormalBullet;
 	bullet.attack = 30;
-	bullet.x_vel = -0.4f;
+	bullet.x_vel = -270.0f;
 
 
 	return bullet;
@@ -1064,7 +1064,7 @@ Entity defineIceBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::IceBullet;
 	bullet.attack = 10;
-	bullet.x_vel = -0.4f;
+	bullet.x_vel = -270.0f;
 
 	return bullet;
 }
@@ -1078,7 +1078,7 @@ Entity defineShroomBullet() {
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::ShroomBullet;
 	bullet.attack = 5;
-	bullet.x_vel = -0.4f;
+	bullet.x_vel = -270.0f;
 
 	return bullet;
 }
@@ -1091,7 +1091,7 @@ Entity defineFireDragonBullet() {
 	dragon.category = ENTITY_CATEGORY::Bullet;
 	dragon.type = ENTITY_TYPE::FireDragonBullet;
 	dragon.attack = 500;
-	dragon.x_vel = -0.2f;
+	dragon.x_vel = -130.0f;
 	dragon.scale = 1.0f;
 
 	dragon.num_animations = 1;
@@ -2015,7 +2015,7 @@ Entity defineNormalZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][0].loadFromFile("assets/NormalZombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_NORMAL][1].loadFromFile("assets/NormalZombieDeath.png");
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_NORMAL };
-	zombie.x_vel = .05;
+	zombie.x_vel = 50;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 100;
@@ -2037,7 +2037,7 @@ Entity defineConeheadZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][1].loadFromFile("assets/NormalZombieDeath.png");
 	textures[TEXTURE_TYPE::ZOMBIE_CONEHEAD][2].loadFromFile("assets/NormalZombie.png");
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_CONEHEAD };
-	zombie.x_vel = .05;
+	zombie.x_vel = 50;
 	zombie.scale = 1.0;
 	zombie.attack = 10;
 	zombie.health = 200;
@@ -2065,7 +2065,7 @@ Entity defineJapaneseZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_JAPANESE };
 	zombie.health = 70;
 	zombie.attack = 50;
-	zombie.x_vel = .05;
+	zombie.x_vel = 50;
 	// Walk animation
 	zombie.num_animations = 1;
 	zombie.animations[0].frames = 20;
@@ -2084,7 +2084,7 @@ Entity defineBigZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_BIG;
 	zombie.health = 100;
 	zombie.attack = 30;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	zombie.scale = 1.1f;
 
 	// Walk + Dying animations
@@ -2111,7 +2111,7 @@ Entity defineTorchlightZombie() {
 
 	zombie.health = 200;
 	zombie.attack = 20;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	zombie.scale = 0.8f;
 
 	zombie.num_animations = 2;
@@ -2138,7 +2138,7 @@ Entity defineRaZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_RA;
 	zombie.health = 200;
 	zombie.attack = 20;
-	zombie.x_vel = 0.05;
+	zombie.x_vel = 50;
 	// Animations
 	zombie.num_animations = 3;
 	Animation anim;
@@ -2169,7 +2169,7 @@ Entity defineMummyZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_MUMMY;
 	zombie.health = 100;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05;
+	zombie.x_vel = 50;
 	// Animations
 	zombie.num_animations = 2;
 	Animation anim;
@@ -2200,7 +2200,7 @@ Entity defineNewspaperZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_NEWSPAPER;
 	zombie.health = 250;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05;
+	zombie.x_vel = 50;
 	zombie.scale = 1.2f;
 	// Animations
 	zombie.num_animations = 3;
@@ -2233,7 +2233,7 @@ Entity defineAllStarZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_ALLSTAR;
 	zombie.health = 400;
 	zombie.attack = 10;
-	zombie.x_vel = 0.18f;
+	zombie.x_vel = 70;
 	// Animations
 	zombie.num_animations = 4;
 	Animation anim;
@@ -2270,7 +2270,7 @@ Entity definePharaohZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_PHARAOH;
 	zombie.health = 600;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	// Animations
 	zombie.num_animations = 4;
 	Animation anim;
@@ -2305,7 +2305,7 @@ Entity defineShieldGuardZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_SHIELDGUARD;
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	// Animations
 	zombie.num_animations = 2;
 	Animation anim;
@@ -2327,7 +2327,7 @@ Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2353,7 +2353,7 @@ Entity defineRedhairZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_REDHAIR };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2379,7 +2379,7 @@ Entity defineCowboyZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_COWBOY };
 	zombie.health = 150;
 	zombie.attack = 10;
-	zombie.x_vel = 0.05f;
+	zombie.x_vel = 50;
 	zombie.scale = 1.0f;
 
 	zombie.num_animations = 3;
@@ -2438,7 +2438,7 @@ Entity definePogoZombie() {
 	zombie.type = ENTITY_TYPE::ZOMBIE_POGO;
 	zombie.health = 350;
 	zombie.attack = 10;
-	zombie.x_vel = 0.12f;
+	zombie.x_vel = 80;
 	zombie.scale = 1.0f;
 	zombie.num_animations = 6;
 
@@ -2477,7 +2477,7 @@ Entity definePogoZombie() {
 
 			z.afterAnimation = [](Entity& entity) {
 				entity.setCurrentAnimation(0);
-				entity.x_vel = 0.05f;
+				entity.x_vel = 50;
 				};
 		}
 		};
@@ -2649,7 +2649,7 @@ void checkZombieEnteredHome(Entity& zombie) {
 			zombie.position.y -= 0.075;
 			if (zombie.position.y < 525) zombie.position.y = 525;
 		} else {
-			zombie.position.x -= zombie.x_vel;
+			zombie.position.x -= zombie.x_vel * delta_time;
 		}
 	}
 }
@@ -2723,7 +2723,7 @@ void updateZombieRa(Entity& zombie) {
 				}
 			}
 			zombie.isUsingAbility = false;
-			zombie.x_vel = 0.05f;
+			zombie.x_vel = 50.0f;
 			zombie.setCurrentAnimation(0);
 			zombie.scale = 1.0f;
 			zombie.abilityClock.restart();
@@ -2752,7 +2752,7 @@ void updateZombieAllStars(Entity& zombie) {
 			zombie.afterAnimation = [](Entity& entity) {
 				entity.isTackling = false;
 				entity.hasTackled = true;
-				entity.x_vel = 0.05f;
+				entity.x_vel = 50.0f;
 				entity.setCurrentAnimation(0);
 				};
 		}
@@ -2787,7 +2787,7 @@ void updateNewspaperZombie(Entity& zombie) {
 			fallenItems.push_back(item);
 		}
 
-		zombie.x_vel = 0.12f;
+		zombie.x_vel = 80.0f;
 		zombie.attackTimer = 0.4f;
 	}
 }
@@ -2819,7 +2819,7 @@ void updatePharaohZombie(Entity& zombie) {
 			item.fallPosition = zombie.position + Vector2f(100, 0);
 			fallenItems.push_back(item);
 		}
-		zombie.x_vel = 0.08f;
+		zombie.x_vel = 53.0f;
 	}
 }
 
@@ -2843,7 +2843,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 
 			if (plant.health <= 0) {
 				if (zombie.health > 0) {
-					zombie.x_vel = 0.05f;
+					zombie.x_vel = 50;
 
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
@@ -2907,7 +2907,7 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		// zombie move
-		if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel;
+		if (!isGameOver && !isGameWon) zombie.position.x -= zombie.x_vel * delta_time;
 
 		// check enters home
 		checkZombieEnteredHome(zombie);
@@ -2919,28 +2919,28 @@ void DrawZombies(RenderWindow& window) {
 			Entity& plant = getEntity({ r, c });
 			if (plant.category == ENTITY_CATEGORY::PLANT) { // touching a plant
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 3) {
-					zombie.x_vel = 0.12f; //plants don't stop him
+					zombie.x_vel = 80; //plants don't stop him
 				} else {
 					zombieEatPlant(zombie, plant);
 				}
 			} else if (zombie.health > 0) {
 				if (!(zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)) {
 					if (zombie.isSuperFrozen) {
-						zombie.x_vel = 0.002f;
+						zombie.x_vel = 1.3f;
 					} else if (zombie.freezeTimer > 0) {
-						zombie.x_vel = 0.02f;
+						zombie.x_vel = 13;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
-						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 0.12f;
-						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 0.05f;
+						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 80;
+						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 50;
 						else zombie.x_vel = 0.0f;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2) {
-						zombie.x_vel = 0.12f;
+						zombie.x_vel = 80;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && !zombie.hasTackled && !zombie.isTackling) {
-						zombie.x_vel = 0.18f;
+						zombie.x_vel = 120;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
-						zombie.x_vel = 0.08f;
+						zombie.x_vel = 63.0f;
 					} else {
-						zombie.x_vel = .05; // no plant - has health - move normally
+						zombie.x_vel = 50; // no plant - has health - move normally
 					}
 				}
 			}
@@ -2994,7 +2994,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 	for (Entity& bullet : bullets) {
 		if (bullet.category != ENTITY_CATEGORY::Bullet) continue;
 
-		bullet.position.x -= bullet.x_vel; // move right
+		bullet.position.x -= bullet.x_vel * delta_time; // move right
 
 		if (bullet.position.x >= windowWidth) {
 			bullet.category = ENTITY_CATEGORY::NONE;
@@ -5205,6 +5205,7 @@ int main() {
 
 	Music music;	// can't be global - OpenAL must be loaded first
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
+	window.setFramerateLimit(120);
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -5324,153 +5325,153 @@ int main() {
 	defineNightLevels();
 	defineAncientLevels();
 	defineWildWestLevels();
-	
-//---------------------------------------
-//// Level 1: Day
-//	levels[1].lvlNum = 1;
-//	levels[1].plant_types = mainPlantTypes;
-//	levels[1].zombie_types = { zombie, zombieConehead };
-//	levels[1].targetZombie = 20;
-//	//levels[1].targetZombie = 2;
-//	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
-//	levels[1].plantReward = chomper;
-//	levels[1].coinReward = 100;
-//	levels[1].isUnlocked = true;
-//	levels[1].startingSuns = 50;
-//
-//	levels[1].offsetX = 450;
-//	levels[1].offsetY = 135;
-//	levels[1].cellWidth = 150;
-//	levels[1].cellHeight = 170;
-//	// Wave Design
-//	//levels[1].addWave(10, 30, { zombie });	// 
-//	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
-//	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
-//	//levels[1].addWave(0, 5, { });
-//	//levels[1].addWave(5, 10, { zombie }, true);
-//	//levels[1].addWave(5, 2, { zombie }, true);
-//	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
-//
-//	levels[1].addWave(1, 5, { zombie }, 5);
-//	levels[1].addWave(3, 9, { zombie }, 5);
-//	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-//	levels[1].addWave(5, 15, { zombie }, 10);
-//	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
-//	levels[1].addWave(5, 15, { zombie }, 5);
-//	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
-//
-//	setupLevelLawnmowers(levels[1]);
+
 	//---------------------------------------
-//---------------------------------------
-	//// Level 2: Night
-	//levels[2].lvlNum = 2;
-	//levels[2].plant_types = mainPlantTypes;
-	//levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
-	//levels[2].targetZombie = 25;
-	//levels[2].startingSuns = 100;
-	//levels[2].offsetX = 450;
-	//levels[2].offsetY = 135;
-	//levels[2].cellWidth = 150;
-	//levels[2].cellHeight = 170;
-	//levels[2].plantReward = shroom;
-	//levels[2].coinReward = 200;
-	//// Wave Design
-	///*levels[2].addWave(3, 15, {zombieConehead});
-	//levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
-	//levels[2].addWave(10, 5, { zombieAllStar }, true);*/
-	//levels[2].addWave(1, 5, { zombie }, 5);
-	//levels[2].addWave(3, 9, { zombie }, 10);
-	//levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-	//levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
-	//levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
-	//levels[2].addWave(3, 12, { zombie }, 0);
-	//levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	//levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	//levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-	//levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
-	//setupLevelLawnmowers(levels[2]);
-
-		//------------------------------------------
-		// Level 3: Egypt
-		//levels[3].lvlNum = 3;
-		//levels[3].plant_types = mainPlantTypes;
-		//levels[3].plant_types.push_back(shroom);
-		//levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
-		//levels[3].targetZombie = 30;
-		//levels[3].addReward(500);
-		//levels[3].addReward(wallnut);
-		//levels[3].offsetX = 450;
-		//levels[3].offsetY = 135;
-		//levels[3].cellWidth = 150;
-		//levels[3].cellHeight = 170;
-		//levels[3].plantReward = wallnut;
-		//levels[3].coinReward = 300;
+	//// Level 1: Day
+	//	levels[1].lvlNum = 1;
+	//	levels[1].plant_types = mainPlantTypes;
+	//	levels[1].zombie_types = { zombie, zombieConehead };
+	//	levels[1].targetZombie = 20;
+	//	//levels[1].targetZombie = 2;
+	//	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
+	//	levels[1].plantReward = chomper;
+	//	levels[1].coinReward = 100;
+	//	levels[1].isUnlocked = true;
+	//	levels[1].startingSuns = 50;
+	//
+	//	levels[1].offsetX = 450;
+	//	levels[1].offsetY = 135;
+	//	levels[1].cellWidth = 150;
+	//	levels[1].cellHeight = 170;
+	//	// Wave Design
+	//	//levels[1].addWave(10, 30, { zombie });	// 
+	//	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
+	//	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
+	//	//levels[1].addWave(0, 5, { });
+	//	//levels[1].addWave(5, 10, { zombie }, true);
+	//	//levels[1].addWave(5, 2, { zombie }, true);
+	//	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
+	//
+	//	levels[1].addWave(1, 5, { zombie }, 5);
+	//	levels[1].addWave(3, 9, { zombie }, 5);
+	//	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
+	//	levels[1].addWave(5, 15, { zombie }, 10);
+	//	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
+	//	levels[1].addWave(5, 15, { zombie }, 5);
+	//	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
+	//
+	//	setupLevelLawnmowers(levels[1]);
+		//---------------------------------------
+	//---------------------------------------
+		//// Level 2: Night
+		//levels[2].lvlNum = 2;
+		//levels[2].plant_types = mainPlantTypes;
+		//levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
+		//levels[2].targetZombie = 25;
+		//levels[2].startingSuns = 100;
+		//levels[2].offsetX = 450;
+		//levels[2].offsetY = 135;
+		//levels[2].cellWidth = 150;
+		//levels[2].cellHeight = 170;
+		//levels[2].plantReward = shroom;
+		//levels[2].coinReward = 200;
 		//// Wave Design
-		///*levels[3].addWave(2, 15, { zombieMummy });
-		//levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
-		//levels[3].addWave(3, 5, { zombieRa, zombieMummy });
-		//levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-		//levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
-		//// 2 2 4 5 8 10
-		//levels[3].addWave(2, 5, { zombieMummy }, 5);
-		//levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
-		//levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
-		//levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
-		//levels[3].addWave(4, 12, { zombieMummy }, 5);
-		//levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
-		//levels[3].addWave(4, 12, { zombieMummy }, 5);
-		//levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
-		//levels[3].addWave(4, 16, { zombieMummy }, 5);
-		//levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
-		//setupLevelLawnmowers(levels[3]);
+		///*levels[2].addWave(3, 15, {zombieConehead});
+		//levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
+		//levels[2].addWave(10, 5, { zombieAllStar }, true);*/
+		//levels[2].addWave(1, 5, { zombie }, 5);
+		//levels[2].addWave(3, 9, { zombie }, 10);
+		//levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+		//levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
+		//levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
+		//levels[2].addWave(3, 12, { zombie }, 0);
+		//levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+		//levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+		//levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+		//levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
+		//setupLevelLawnmowers(levels[2]);
+
+			//------------------------------------------
+			// Level 3: Egypt
+			//levels[3].lvlNum = 3;
+			//levels[3].plant_types = mainPlantTypes;
+			//levels[3].plant_types.push_back(shroom);
+			//levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
+			//levels[3].targetZombie = 30;
+			//levels[3].addReward(500);
+			//levels[3].addReward(wallnut);
+			//levels[3].offsetX = 450;
+			//levels[3].offsetY = 135;
+			//levels[3].cellWidth = 150;
+			//levels[3].cellHeight = 170;
+			//levels[3].plantReward = wallnut;
+			//levels[3].coinReward = 300;
+			//// Wave Design
+			///*levels[3].addWave(2, 15, { zombieMummy });
+			//levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
+			//levels[3].addWave(3, 5, { zombieRa, zombieMummy });
+			//levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+			//levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+			//// 2 2 4 5 8 10
+			//levels[3].addWave(2, 5, { zombieMummy }, 5);
+			//levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
+			//levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
+			//levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
+			//levels[3].addWave(4, 12, { zombieMummy }, 5);
+			//levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
+			//levels[3].addWave(4, 12, { zombieMummy }, 5);
+			//levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
+			//levels[3].addWave(4, 16, { zombieMummy }, 5);
+			//levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
+			//setupLevelLawnmowers(levels[3]);
 
 
 
-		//------------------------------------------
-		// Level 4: Wild West
-		//levels[4].lvlNum = 4;
-		//levels[4].plant_types = mainPlantTypes;
-		//levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
-		//levels[4].targetZombie = 30;
-		//levels[4].waveLimit = 12;
-		//levels[4].waveTimer = 15;
-		//levels[4].startingSuns = 3000;
-		//levels[4].isUnlocked = true;
-		//levels[4].offsetX = 450;
-		//levels[4].offsetY = 135;
-		//levels[4].cellWidth = 150;
-		//levels[4].cellHeight = 170;
-		//levels[4].plantReward = repeaterPlant;
-		//levels[4].coinReward = 400;
-		//// Wave Design
-		//levels[4].addWave(10, 20, { zombie });
-		///*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
-		//levels[4].addWave(3, 5, { zombieRa, zombieMummy });
-		//levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-		//levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
-		//setupLevelLawnmowers(levels[4]);
-		////------------------------------------------
+			//------------------------------------------
+			// Level 4: Wild West
+			//levels[4].lvlNum = 4;
+			//levels[4].plant_types = mainPlantTypes;
+			//levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
+			//levels[4].targetZombie = 30;
+			//levels[4].waveLimit = 12;
+			//levels[4].waveTimer = 15;
+			//levels[4].startingSuns = 3000;
+			//levels[4].isUnlocked = true;
+			//levels[4].offsetX = 450;
+			//levels[4].offsetY = 135;
+			//levels[4].cellWidth = 150;
+			//levels[4].cellHeight = 170;
+			//levels[4].plantReward = repeaterPlant;
+			//levels[4].coinReward = 400;
+			//// Wave Design
+			//levels[4].addWave(10, 20, { zombie });
+			///*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
+			//levels[4].addWave(3, 5, { zombieRa, zombieMummy });
+			//levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
+			//levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
+			//setupLevelLawnmowers(levels[4]);
+			////------------------------------------------
 
-		//// Level 5: Squaid Game
-		//levels[5].lvlNum = 5;
-		//levels[5].plant_types = mainPlantTypes;
-		//levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
-		//levels[5].targetZombie = 40;
-		//levels[5].waveLimit = 15;
-		//levels[5].waveTimer = 18;
-		//levels[5].startingSuns = 50;
-		//levels[5].isUnlocked = true;
-		//levels[5].offsetX = 450;
-		//levels[5].offsetY = 135;
-		//levels[5].cellWidth = 150;
-		//levels[5].cellHeight = 170;
-		//// Wave Design
-		//levels[4].addWave(10, 20, { zombie });
-		//setupLevelLawnmowers(levels[5]);
+			//// Level 5: Squaid Game
+			//levels[5].lvlNum = 5;
+			//levels[5].plant_types = mainPlantTypes;
+			//levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
+			//levels[5].targetZombie = 40;
+			//levels[5].waveLimit = 15;
+			//levels[5].waveTimer = 18;
+			//levels[5].startingSuns = 50;
+			//levels[5].isUnlocked = true;
+			//levels[5].offsetX = 450;
+			//levels[5].offsetY = 135;
+			//levels[5].cellWidth = 150;
+			//levels[5].cellHeight = 170;
+			//// Wave Design
+			//levels[4].addWave(10, 20, { zombie });
+			//setupLevelLawnmowers(levels[5]);
 
 
 
-		// setting levels background textures //bravooo
+			// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	//for (int lvl = 1; lvl <= number_levels; lvl++) {
