@@ -2813,6 +2813,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				zombie.animations[9] = electroAnim;
 				zombie.DoAnimation(1, 9);
 				zombie.scale = 0.40f;
+				zombie.scale = 0.40f;
 			}
 			else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 				if (zombie.currentAnimationIndex == 3) {
