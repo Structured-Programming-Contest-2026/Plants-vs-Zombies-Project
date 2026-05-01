@@ -3724,7 +3724,7 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
+	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
 		// Huge Wave
 
 		diff = wc.getElapsedTime().asSeconds();
@@ -5292,32 +5292,32 @@ void defineNightLevels() {
 	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
 
 	// Level 5
-	levels[4].plantReward = miniShroom;
-	levels[4].coinReward = 300;
-	levels[4].addWave(1, 5, { zombie }, 5);
-	levels[4].addWave(3, 9, { zombie }, 10);
-	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
-	levels[4].addWave(3, 12, { zombie }, 0);
-	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+	levels[5].plantReward = miniShroom;
+	levels[5].coinReward = 300;
+	levels[5].addWave(1, 5, { zombie }, 5);
+	levels[5].addWave(3, 9, { zombie }, 10);
+	levels[5].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[5].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[5].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[5].addWave(3, 12, { zombie }, 0);
+	levels[5].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[5].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[5].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[5].addWave(6, 20, { zombieAllStar }, 0, true);
 
 	// Level 6
-	levels[4].plantReward = chomper;
-	levels[4].coinReward = 400;
-	levels[4].addWave(1, 5, { zombie }, 5);
-	levels[4].addWave(3, 9, { zombie }, 10);
-	levels[4].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-	levels[4].addWave(3, 9, { zombie, zombieConehead }, 10);
-	levels[4].addWave(3, 12, { zombie, zombieAllStar }, 10);
-	levels[4].addWave(3, 12, { zombie }, 0);
-	levels[4].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-	levels[4].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-	levels[4].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-	levels[4].addWave(6, 20, { zombieAllStar }, 0, true);
+	levels[6].plantReward = chomper;
+	levels[6].coinReward = 400;
+	levels[6].addWave(1, 5, { zombie }, 5);
+	levels[6].addWave(3, 9, { zombie }, 10);
+	levels[6].addWave(3, 9, { zombie, zombieNewspaper }, 5);
+	levels[6].addWave(3, 9, { zombie, zombieConehead }, 10);
+	levels[6].addWave(3, 12, { zombie, zombieAllStar }, 10);
+	levels[6].addWave(3, 12, { zombie }, 0);
+	levels[6].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
+	levels[6].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
+	levels[6].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
+	levels[6].addWave(6, 20, { zombieAllStar }, 0, true);
 }
 
 void defineAncientLevels() {
