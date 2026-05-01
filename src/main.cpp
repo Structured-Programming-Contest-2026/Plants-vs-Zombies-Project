@@ -4923,6 +4923,18 @@ int lose_music(Music& music) {
 	music.play();
 	return 0;
 }
+void playMusicForLevel(int level, Music& music) {
+	switch (level) {
+	case 1: level_1_music(music); break;
+	case 2: level_2_music(music); break;
+	case 3: level_3_music(music); break;
+	case 4: level_4_music(music); break;
+	case 5: level_5_music(music); break;
+	case 6: level_6_music(music); break;
+	default: /* fallback */ select_levels_background_music(music); break;
+	}
+}
+
 
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon;
 Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo;
