@@ -213,6 +213,8 @@ enum class TEXTURE_TYPE : uint8_t {
 
 	SHOVEL,
 	MAGIC_SHOVEL,
+	RAIL,
+	CART,
 };
 
 
@@ -3643,7 +3645,7 @@ void UI_DrawClick(RenderWindow& window) {
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(800.0f, 20.0f);
+	uiSprite.setPosition(900.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -4774,7 +4776,8 @@ int main() {
 	textures[TEXTURE_TYPE::ITEM_CONE][Default_Texture_Index].loadFromFile("assets/item_cone.png");
 	textures[TEXTURE_TYPE::ITEM_NEWSPAPER][Default_Texture_Index].loadFromFile("assets/item_newspaper.png");
 	textures[TEXTURE_TYPE::ITEM_PHAROAH_CASKET][Default_Texture_Index].loadFromFile("assets/item_pharoah_casket.png");
-
+	textures[TEXTURE_TYPE::RAIL][Default_Texture_Index].loadFromFile("assets/rail.png");
+	textures[TEXTURE_TYPE::CART][Default_Texture_Index].loadFromFile("assets/cart.png");
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
