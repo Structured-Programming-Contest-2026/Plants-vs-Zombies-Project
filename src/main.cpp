@@ -136,6 +136,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_PROSPECTOR,
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
+	ZOMBIE_PIANIST,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -211,6 +212,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_PROSPECTOR,
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
+	ZOMBIE_PIANIST,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -303,6 +305,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_COWBOY:
 		textureType = TEXTURE_TYPE::ZOMBIE_COWBOY;
+		break;
+	case ENTITY_TYPE::ZOMBIE_PIANIST:
+		textureType = TEXTURE_TYPE::ZOMBIE_PIANIST;
 		break;
 
 		//plantes
@@ -2328,6 +2333,38 @@ Entity defineShieldGuardZombie() {
 	return zombie;
 }
 
+Entity definePianistZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][0].loadFromFile("assets/PianistZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][1].loadFromFile("assets/PianistZombieDeath.png");
+	textures[TEXTURE_TYPE::ZOMBIE_PIANIST][2].loadFromFile("assets/PianistZombieDamaged.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_PIANIST;
+	zombie.health = 500;
+	zombie.attack = 20;
+	zombie.x_vel = 30;
+	// Animations
+	zombie.num_animations = 3;
+	Animation anim;
+	// walk
+	anim.frames = 30;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 53;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+	// damaged walk
+	anim.frames = 30;
+	anim.frameTimer = 0.05f;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	
+	return zombie;
+}
+
 Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
@@ -2573,6 +2610,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 		// [1] health done but not started dying animation yet
 		if (!zombie.isDead && (zombie.currentAnimationIndex == 0
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -2607,6 +2645,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				zombie.scale = 0.8f;
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD) // for shield guard
 				zombie.scale = 1.2f;
+			if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) // for pianist
+				zombie.scale = 1.3f;
 
 			// [1.2] After Death Animation
 			zombie.afterAnimation = [&zombie](Entity& entity) {
@@ -2835,6 +2875,14 @@ void updatePharaohZombie(Entity& zombie) {
 	}
 }
 
+void updatePianistZombie(Entity& zombie) {
+	if (zombie.health <= 250 && zombie.currentAnimationIndex == 0) {
+		if (zombie.currentAnimationIndex != 2) {
+			zombie.setCurrentAnimation(2);
+		}
+	}
+}
+
 void zombieEatPlant(Entity& zombie, Entity& plant) {
 	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		zombie.x_vel = 0;
@@ -2916,6 +2964,9 @@ void DrawZombies(RenderWindow& window) {
 		}
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.health > 0) { // for pharaoh
 			updatePharaohZombie(zombie);
+		}
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.health > 0) { // for pianist
+			updatePianistZombie(zombie);
 		}
 
 		// zombie move
@@ -5066,7 +5117,7 @@ void playMusicForLevel(int level, Music& music) {
 
 
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon;
-Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo;
+Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist;
 vector<Entity> allPlantTypes;
 
 void defineDayLevels() {
@@ -5281,7 +5332,7 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
-	levels[11].addWave(2, 5, { zombieProspector }, 5);
+	levels[11].addWave(4, 5, { zombieProspector, zombiePianist }, 5);
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
@@ -5366,6 +5417,7 @@ int main() {
 	zombieRedhair = defineRedhairZombie();
 	zombieProspector = defineProspectorZombie();
 	zombiePogo = definePogoZombie();
+	zombiePianist = definePianistZombie();
 	;
 
 	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon };
