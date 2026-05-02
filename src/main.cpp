@@ -5462,9 +5462,9 @@ void defineDayLevels() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
 	levels[1].addWave(1, 5, { zombie }, 5);
-	/*levels[1].addWave(3, 9, { zombie }, 5);
+	levels[1].addWave(3, 9, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-	levels[1].addWave(5, 15, { zombie }, 10);*/
+	levels[1].addWave(5, 15, { zombie }, 10);
 	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
 	levels[1].addWave(5, 15, { zombie }, 5);
 	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
