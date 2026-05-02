@@ -21,6 +21,7 @@ using namespace sf;
 
 bool gamePaused = false;
 Clock gamePauseClock;
+Time totalPauseTime = Time::Zero;
 
 // Global Variables
 // consts
@@ -120,6 +121,7 @@ int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
 float nextZombieTimer = 10; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float zombieClockOffset = 0;
 float ZombieMinGapTime = 7,
 //float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 //float ZombieMinGapTime = 1,
@@ -144,6 +146,7 @@ Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 Clock wc;
+Time wcOffset;
 
 //shovel
 bool isShovelActive = false;
@@ -574,8 +577,7 @@ struct Entity {
 
 	// Updates width and height whenever Animation is changed - ex: To calculate zombie position properly
 	void updateDimensions() {
-		if (currentAnimation.frames == 0) 
-		{
+		if (currentAnimation.frames == 0) {
 			cout << "ERROR: Switching To Animation with 0 frames...";
 			return;
 		}
@@ -583,8 +585,7 @@ struct Entity {
 		TEXTURE_TYPE tType = getTextureType(type);
 		int tIndex = currentAnimationIndex;
 
-		if (category == ENTITY_CATEGORY::ZOMBIE && diedByElectrocution && currentAnimationIndex == 9)
-		{
+		if (category == ENTITY_CATEGORY::ZOMBIE && diedByElectrocution && currentAnimationIndex == 9) {
 			tType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
 			tIndex = 0;
 		}
@@ -935,14 +936,12 @@ bool addSun(Sun sun) {
 void resizeSpriteToTex(Sprite& sprite, Texture& tex) {
 	sprite.setTextureRect(IntRect{ 0, 0, (int)tex.getSize().x, (int)tex.getSize().y });
 }
-IntRect getFrameRect(Entity& entity)
-{
-	
+IntRect getFrameRect(Entity& entity) {
+
 	TEXTURE_TYPE texType = getTextureType(entity.type);
 	int texIndex = entity.currentAnimationIndex;
 
-	if (entity.category == ENTITY_CATEGORY::ZOMBIE && entity.diedByElectrocution && texIndex == 9) 
-	{
+	if (entity.category == ENTITY_CATEGORY::ZOMBIE && entity.diedByElectrocution && texIndex == 9) {
 		texType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
 		texIndex = 0;
 	}
@@ -1062,6 +1061,10 @@ void resetLevel() {
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
 	currentLevel->selectedPlants.clear();
+
+	totalPauseTime = Time::Zero;
+	wcOffset = Time::Zero;
+	zombieClockOffset = 0;
 }
 
 void startLevel(int level) {
@@ -1306,8 +1309,7 @@ Entity defineNormalPlant() {
 
 }
 
-Entity defineLightningBullet() 
-{
+Entity defineLightningBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/LightningBullet.png");
 	textures[TEXTURE_TYPE::LightningBullet][Default_Texture_Index] = tex;
@@ -2153,8 +2155,7 @@ Entity defineSnapdragon() {
 
 	return plant;
 }
-Entity defineLightningReed()
-{
+Entity defineLightningReed() {
 	Texture tex;
 	tex.loadFromFile("assets/LightningReed.png");
 	textures[TEXTURE_TYPE::PLANT_LIGHTNING_REED][Default_Texture_Index] = tex;
@@ -2178,8 +2179,7 @@ Entity defineLightningReed()
 	plants[ENTITY_TYPE::PLANT_LIGHTNING_REED] = plant;
 
 	//it will be developed
-	plant.updateEntity = [](Entity& p)
-		{
+	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
 			bool zombieInLane = false;
 
@@ -2189,7 +2189,7 @@ Entity defineLightningReed()
 						zombie.position.x > p.position.x &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
-						break; 
+						break;
 					}
 				}
 			}
@@ -2548,7 +2548,7 @@ Entity definePianistZombie() {
 	zombie.animations[2] = anim;
 
 	zombie.setCurrentAnimation(0);
-	
+
 	return zombie;
 }
 
@@ -2828,7 +2828,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				zombie.scale = 0.40f;
 				Animation electroAnim;
 				electroAnim.frames = 18;
-				electroAnim.frameTimer = 0.08f; 
+				electroAnim.frameTimer = 0.08f;
 				zombie.animations[9] = electroAnim;
 				zombie.DoAnimation(1, 9);
 			}
@@ -3085,7 +3085,7 @@ void updatePianistZombie(Entity& zombie) {
 		zombie.setCurrentAnimation(2);
 	}
 
-	
+
 	for (Entity& e : entities) {
 		if (e.category != ENTITY_CATEGORY::ZOMBIE || e.type != ENTITY_TYPE::ZOMBIE_PROSPECTOR || e.health <= 0 || e.isDead)
 			continue;
@@ -3101,7 +3101,7 @@ void updatePianistZombie(Entity& zombie) {
 		// check for all pianists not 1
 		bool nearAnyPianist = false;
 		for (Entity& ent : entities) {
-			if (ent.category != ENTITY_CATEGORY::ZOMBIE || ent.type != ENTITY_TYPE::ZOMBIE_PIANIST || ent.health <= 0 || ent.isDead) 
+			if (ent.category != ENTITY_CATEGORY::ZOMBIE || ent.type != ENTITY_TYPE::ZOMBIE_PIANIST || ent.health <= 0 || ent.isDead)
 				continue;
 			if (abs(e.position.x - ent.position.x) <= 600.0f) {
 				nearAnyPianist = true;
@@ -3110,12 +3110,12 @@ void updatePianistZombie(Entity& zombie) {
 		}
 
 		if (isEating || !nearAnyPianist) {
-			
+
 			if (e.currentAnimationIndex == 3) {
 				e.setCurrentAnimation(0);
 				e.x_vel = 70;
 			}
-			
+
 			continue;
 		}
 
@@ -3137,7 +3137,7 @@ void updatePianistZombie(Entity& zombie) {
 				e.position.y = targetY;
 				e.gridRow = e.storedSunValue;
 
-				float switchCooldown = 3.5f+(rand() % 100) / 100.0f;
+				float switchCooldown = 3.5f + (rand() % 100) / 100.0f;
 				if (e.abilityClock.getElapsedTime().asSeconds() >= switchCooldown) {
 					int randRow;
 					do {
@@ -3300,8 +3300,7 @@ void DrawZombies(RenderWindow& window) {
 		TEXTURE_TYPE texType = getTextureType(zombie.type);
 		int texIndex = zombie.currentAnimationIndex;
 
-		if (zombie.diedByElectrocution && texIndex == 9)
-		{
+		if (zombie.diedByElectrocution && texIndex == 9) {
 			texType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
 			texIndex = 0;
 		}
@@ -3367,8 +3366,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				}
 
 				attackZombie(zombie, bullet.attack, true);
-				if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0)
-				{
+				if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
 					zombie.diedByElectrocution = true;
 				}
 
@@ -3448,13 +3446,14 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 	//}
 
 	// single zombie
-	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
+	if (zombieClock.getElapsedTime().asSeconds() + zombieClockOffset >= nextZombieTimer) {
 		if (currentWave == currentLevel->waves.data() + currentLevel->waves.size()) return;	// should be covered above
 
 		// Next wave if required
-		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
+		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() + wcOffset.asSeconds() >= currentWave->length) {
 			currentWave++, curWaveZombieCnt = 0;
 			wc.restart();
+			wcOffset = Time::Zero;
 			// allow huge-wave handler to run for the upcoming wave if it's huge
 			hugeWaveTriggered = false;
 		}
@@ -3470,6 +3469,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 
 		cout << "New Zombie\n";
 		zombieClock.restart();
+		zombieClockOffset = 0;
 		//nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
 		//if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
 		if (!currentWave->zombieCount) {
@@ -3946,7 +3946,7 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
+	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() + wcOffset.asSeconds() < 5.0f) {
 		// Huge Wave
 
 		diff = wc.getElapsedTime().asSeconds();
@@ -4367,6 +4367,25 @@ bool inStore = false;
 Time startMenuItemTime = Time::Zero;
 Time startMainMenuTime = Time::Zero;
 
+void SetGamePaused(bool paused) {
+	if (gamePaused == paused) return;
+	if (currentLevel == nullptr) return;
+
+	if (!currentLevel->arePlantsSelected || (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f)) {
+		return;
+	}
+
+	gamePaused = paused;
+
+	if (gamePaused) {
+		gamePauseClock.restart();
+	} else {
+		totalPauseTime += gamePauseClock.getElapsedTime();
+		wcOffset -= gamePauseClock.getElapsedTime();
+		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
+	}
+}
+
 void DrawLevelDetails(RenderWindow& window) {
 	Sprite button;
 	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
@@ -4409,8 +4428,7 @@ void DrawLevelDetails(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			gamePaused = true;
-			gamePauseClock.restart();
+			SetGamePaused(true);
 		}
 	}
 
@@ -4473,7 +4491,7 @@ void DrawPauseMenu(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			gamePaused = false;
+			SetGamePaused(false);
 		}
 	}
 
@@ -4598,12 +4616,12 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 
-		gamePaused = false;
+		SetGamePaused(false);
 	}
 
 	if (isGameOver) {
 		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][int(levels[level].theme)]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][int(currentLevel->theme)]);
 		window.draw(ground);
 	}
 
@@ -4679,7 +4697,7 @@ void UpdateLevel(RenderWindow& window) {
 
 	if (isGameOver) {
 		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][level]);
-		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][int(levels[level].theme)]);
+		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][int(currentLevel->theme)]);
 		window.draw(ground);
 
 		gameOverAnimation(window);
@@ -4720,10 +4738,15 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	// Level Update
-	if (zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) zombieClock.restart(); // DEBUG
-	CheckTimer_AddZombie(window);
-	CheckTimer_AddSun(window);
-	CheckTimer_AddBooster(false);
+	if (zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) {
+		zombieClock.restart(); // DEBUG
+		zombieClockOffset = 0;
+	}
+	if (!gamePaused) {
+		CheckTimer_AddZombie(window);
+		CheckTimer_AddSun(window);
+		CheckTimer_AddBooster(false);
+	}
 
 	for (auto& plant : currentLevel->selectedPlants) {
 		if (plant.currentSeedCooldown > 0.0f) {
@@ -6035,8 +6058,7 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
-			}
-			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11){
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
 				fullscreen = !fullscreen;
 				if (fullscreen) {
 					oldPos = window.getPosition();
@@ -6051,8 +6073,7 @@ int main() {
 					window.setSize(oldSize);
 				}
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-				gamePaused = !gamePaused;
-				if (gamePaused) gamePauseClock.restart();
+				SetGamePaused(!gamePaused);
 			}
 		}
 
