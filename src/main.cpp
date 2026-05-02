@@ -530,8 +530,8 @@ struct Entity {
 	Time lastDamaged = Time::Zero;
 	int targetId = -1; //for the chomper
 
-	float seedCooldown = 1.0f;       
-	float currentSeedCooldown = 0.0f; 
+	float seedCooldown = 1.0f;
+	float currentSeedCooldown = 0.0f;
 
 	int num_animations = 1,
 		currentAnimationIndex = 0;
@@ -1239,7 +1239,7 @@ Entity defineFireTornadoBullet() {
 	tornado.category = ENTITY_CATEGORY::Bullet;
 	tornado.type = ENTITY_TYPE::FireTornadoBullet;
 	tornado.attack = 1;
-	tornado.x_vel = -250.0f; 
+	tornado.x_vel = -250.0f;
 	tornado.scale = 0.85f;
 
 	tornado.num_animations = 1;
@@ -3606,6 +3606,11 @@ void screenFade(RenderWindow& window, float v) {
 	window.draw(fade);
 }
 
+bool selectingLevel = false;
+bool inStore = false;
+Time startMenuItemTime = Time::Zero;
+Time startMainMenuTime = Time::Zero;
+
 // There is a bug in SFML that causes the program to crash when exiting
 // Making this a pointer and deleting it early prevents that crash
 Font* font;
@@ -3809,7 +3814,9 @@ void DrawSelectPlants(RenderWindow& window) {
 	startButton.setScale(Vector2f(1.5f, 1.5f));
 	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
-	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+	if (currentLevel->selectedPlants.empty()) {
+		startButton.setColor(Color(64, 64, 64, 255));
+	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
 		if (mouseJustClicked[0]) {
 			currentLevel->arePlantsSelected = true;
@@ -3881,27 +3888,55 @@ void DrawRewardsScreen(RenderWindow& window) {
 	packetBg.setPosition(Vector2f(960 + 200, 540));
 	window.draw(packetBg);
 
-	// TODO: add coins rewards
+	{
+		Sprite coin;
+		coin.setTexture(getTexture(TEXTURE_TYPE::COIN));
+		coin.setOrigin(Vector2f(getTexture(TEXTURE_TYPE::COIN).getSize()) / 2.0f);
+
+		coin.setPosition(packetBg.getPosition() + Vector2f(0, -50));
+		coin.setScale(scale * 0.5f, scale * 0.5f);
+
+		window.draw(coin);
+
+		// Glowing
+		/*coin.setColor(Color(255, 255, 255, 32 * abs(sin(gameClock.getElapsedTime().asSeconds()))));
+		window.draw(coin, sf::BlendAdd);*/
+
+		Text text;
+
+		text.setFont(*font);
+		text.setString(std::to_string(currentLevel->coinReward.coins) + " Coins");
+		text.setCharacterSize(44);
+		text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+		text.setPosition(coin.getPosition() + Vector2f(0, 150));
+		text.setFillColor(Color(255, 255, 0, 255 * progress));
+		text.setOutlineColor(Color::Black);
+		text.setOutlineThickness(6);
+		text.setScale(std::max(progress, 0.01f), std::max(progress, 0.01f));
+
+		window.draw(text);
+	}
 
 	Sprite startButton;
 
 	startButton.setTexture(getTexture(TEXTURE_TYPE::WOOD_BUTTON));
 	startButton.setOrigin(startButton.getGlobalBounds().getSize() / 2.0f);
 	startButton.setScale(Vector2f(.25f, .25f));
-	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900));
+	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900) + Vector2f(192, 0));
 
 	text.setFont(*font);
 	text.setString("Next Level");
 	text.setCharacterSize(44);
 	text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
 	text.setPosition(startButton.getPosition() + Vector2f(0, -8));
-	text.setFillColor(Color(255, 255, 255, 255));
+	text.setFillColor(Color::Green);
 	text.setOutlineColor(Color::Black);
 	text.setOutlineThickness(6);
 
 	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
-		text.setFillColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
 		if (mouseJustClicked[0]) {
 			currentLevel->claimRewards();
 			if (currentLevel->lvlNum < number_levels - 1)
@@ -3919,7 +3954,32 @@ void DrawRewardsScreen(RenderWindow& window) {
 	}
 
 	window.draw(startButton);
+	window.draw(text);
 
+	startButton.setColor(Color::White);
+	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900) - Vector2f(192, 0));
+	text.setString("Main Menu");
+	text.setCharacterSize(44);
+	text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+	text.setPosition(startButton.getPosition() + Vector2f(0, -8));
+	text.setFillColor(Color::Red);
+
+	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+		startButton.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
+			resetLevel();
+			delete currentLevel;
+			currentLevel = nullptr;
+			selectingLevel = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(startButton);
 	window.draw(text);
 }
 void DrawWinScreen(RenderWindow& window) {
@@ -4450,11 +4510,6 @@ void DrawRailsAndCarts(RenderWindow& window) {
 	}
 }
 
-bool selectingLevel = false;
-bool inStore = false;
-Time startMenuItemTime = Time::Zero;
-Time startMainMenuTime = Time::Zero;
-
 void SetGamePaused(bool paused) {
 	if (gamePaused == paused) return;
 	if (currentLevel == nullptr) return;
@@ -4613,7 +4668,7 @@ void DrawPauseMenu(RenderWindow& window) {
 	button.setColor(Color::White);
 	text.setFillColor(Color::Red);
 	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 150) - animationOffset);
-	text.setString(std::string("Quit"));
+	text.setString(std::string("Main Menu"));
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 	text.setPosition(button.getPosition());
 
@@ -4749,7 +4804,7 @@ void UpdateLevel(RenderWindow& window) {
 
 		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
 			if (currentLevel->theme != THEME::WILDWEST) {
-				float realProgress = (progress - 0.15f) / 0.55f;
+				float realProgress = (progress - 0.15f) / 0.57f;
 
 				Sprite roll;
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
@@ -5858,7 +5913,7 @@ int main() {
 	zombiePianist = definePianistZombie();
 	;
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno};
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -5921,7 +5976,7 @@ int main() {
 
 	// General Plants to any level
 
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom, inferno};//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom, inferno };//, shroom, sunshroom };
 
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
