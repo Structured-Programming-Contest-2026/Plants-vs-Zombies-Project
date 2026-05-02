@@ -1636,10 +1636,10 @@ Entity defineCherryBomb() {
 
 	cherry.num_animations = 2;
 
-	cherry.animations[0].frames = 11; 
+	cherry.animations[0].frames = 11;
 	cherry.animations[0].frameTimer = 0.1f;
 
-	
+
 	cherry.animations[1].frames = 7;
 	cherry.animations[1].frameTimer = 0.08f;
 
@@ -1650,11 +1650,10 @@ Entity defineCherryBomb() {
 
 	cherry.updateEntity = [](Entity& plant) {
 
-		if (plant.targetId == -1)
-		{
-			float EnhanceX = 20.0f; 
+		if (plant.targetId == -1) {
+			float EnhanceX = 20.0f;
 			plant.position.x -= EnhanceX;
-			plant.targetId = 0; 
+			plant.targetId = 0;
 		}
 
 		if (plant.currentAnimationIndex == 0 && plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
@@ -1670,20 +1669,16 @@ Entity defineCherryBomb() {
 			plant.position.x -= offsetX;
 			plant.position.y -= offsetY;
 
-			plant.afterAnimation = [](Entity& p) 
-				{
+			plant.afterAnimation = [](Entity& p) {
 				float explosionRangeX = 250.0f;
 				float explosionRangeY = 250.0f;
 
-				for (Entity& z : entities) 
-				{
-					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) 
-					{
+				for (Entity& z : entities) {
+					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 						float diffY = abs(z.position.y - p.position.y);
 						float diffX = abs(z.position.x - p.position.x);
 
-						if (diffY < explosionRangeY && diffX < explosionRangeX)
-						{
+						if (diffY < explosionRangeY && diffX < explosionRangeX) {
 							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 						}
@@ -2822,8 +2817,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			}
 
 			// [1.1] play dying animation once
-			if (zombie.diedByElectrocution) 
-			{
+			if (zombie.diedByElectrocution) {
 
 				zombie.scale = 0.40f;
 				Animation electroAnim;
@@ -2831,8 +2825,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				electroAnim.frameTimer = 0.08f;
 				zombie.animations[9] = electroAnim;
 				zombie.DoAnimation(1, 9);
-			}
-			else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+			} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 				if (zombie.currentAnimationIndex == 3) {
 					zombie.DoAnimation(1, 5);
 				} else {
@@ -4577,7 +4570,15 @@ void UpdateLevel(RenderWindow& window) {
 
 		Vector2f pos;
 
-		pos.x = windowWidth - (ground.getTextureRect().left / 334.0) * 685;
+		int actualTexWidth = ground.getTexture()->getSize().x;
+		int actualTexHeight = ground.getTexture()->getSize().y;
+		//zoom_scale
+		float scale = (float)windowHeight / actualTexHeight;
+		ground.setScale(scale, scale);
+		int visibleWidth = windowWidth / scale;
+		int maxPan = std::max(0, actualTexWidth - visibleWidth);
+
+		pos.x = windowWidth - (ground.getTextureRect().left / (float)maxPan) * 685;
 
 		if (currentLevel->zombie_types.size() > 0) {
 
@@ -4795,6 +4796,18 @@ void DrawLevelSelector(RenderWindow& window) {
 
 	Sprite sprite;
 
+	static int selectedLevel = 0;
+	static int previousSelectedLevel = -1;
+	static Clock selectionChanged;
+
+	bool levelClicked = false;
+
+	const float animationDuration = 0.5f;
+
+	float animationProgress = std::min(selectionChanged.getElapsedTime().asSeconds(), animationDuration) / animationDuration;
+	// ease in out
+	animationProgress = -(cos(animationProgress * 3.14159265358979323846f) - 1) / 2;
+
 	Texture bgTex = getTexture(TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND);
 	sprite.setTexture(bgTex);
 	sprite.setPosition(Vector2f(0, 0));
@@ -4803,7 +4816,15 @@ void DrawLevelSelector(RenderWindow& window) {
 		windowHeight / (float)bgTex.getSize().y
 	));
 
+	sprite.setColor(Color::White);
+	sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][int(levels[selectedLevel + 1].theme)]);
 	window.draw(sprite);
+
+	if (previousSelectedLevel != -1 && animationProgress < 1) {
+		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][int(levels[previousSelectedLevel + 1].theme)]);
+		sprite.setColor(Color(255, 255, 255, 255 * (1 - animationProgress)));
+		window.draw(sprite);
+	}
 
 	FloatRect backRc;
 	backRc.left = 714;
@@ -4812,7 +4833,7 @@ void DrawLevelSelector(RenderWindow& window) {
 	backRc.height = 100;
 
 	if (backRc.contains(Vector2f(mousePos))) {
-		sprite.setTexture(getTexture(TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK));
+		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][int(levels[selectedLevel + 1].theme)]);
 		window.draw(sprite);
 
 		if (mouseJustClicked[0]) {
@@ -4840,22 +4861,10 @@ void DrawLevelSelector(RenderWindow& window) {
 
 	Text text;
 
-	static int selectedLevel = 0;
-	static int previousSelectedLevel = -1;
-	static Clock selectionChanged;
-
 	Texture levelTex = getTexture(TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND);
 	Vector2f levelTexSize = Vector2f(levelTex.getSize());
 	sprite.setTexture(levelTex);
 	sprite.setOrigin(levelTexSize / 2.0f);
-
-	bool levelClicked = false;
-
-	const float animationDuration = 0.5f;
-
-	float animationProgress = std::min(selectionChanged.getElapsedTime().asSeconds(), animationDuration) / animationDuration;
-	// ease in out
-	animationProgress = -(cos(animationProgress * 3.14159265358979323846f) - 1) / 2;
 
 	float offset = selectedLevel * animationProgress + std::max(previousSelectedLevel, 0) * (1 - animationProgress);
 
@@ -4916,6 +4925,9 @@ void DrawLevelSelector(RenderWindow& window) {
 
 		sprite.setTextureRect({ 0, 0, (int)levelTexSize.x, (int)levelTexSize.y });
 		sprite.setTexture(levelTex);
+
+		sprite.setTexture(textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][int(levels[i + 1].theme)]);
+
 		sprite.setPosition(pos);
 		sprite.setScale(scale);
 		window.draw(sprite);
@@ -5749,8 +5761,20 @@ int main() {
 	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
 	textures[TEXTURE_TYPE::STORE_WINDOW][Default_Texture_Index].loadFromFile("assets/mainmenu/store_window.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][1].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][2].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][3].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][4].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][1].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][2].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][3].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][4].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][1].loadFromFile("assets/mainmenu/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][2].loadFromFile("assets/mainmenu/level_option_background.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][3].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][4].loadFromFile("assets/mainmenu/level_option_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
