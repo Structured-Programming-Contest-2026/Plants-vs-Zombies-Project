@@ -860,17 +860,13 @@ struct ShopItem {
 		}
 	}
 };
-struct Booster : ShopItem {
+struct Booster {
 	Clock spawnClock;
 	Clock lifeClock;
 	float minSpawnDuration = boosterSpawnDuration;
 	float maxLifeDuration = boosterLifeDuration;
 	// Shop
 	int cost = 50;
-	string title = "Booster";
-	TEXTURE_TYPE textureType = TEXTURE_TYPE::BOOSTER;
-	int* counter = &curBoosterCnt;
-	int maxCount = maxBoosterCnt;
 
 	Vector2f scale = { 0.5f, 0.5f };
 	//float minDuration = 10.0f;
@@ -924,8 +920,8 @@ void CheckTimer_AddBooster(bool zombieJustDead = false, Vector2f position = { 0,
 
 // Shop items
 ShopItem shopItems[2] = {
-	booster,
-	{100, "Magic Shovel", TEXTURE_TYPE::MAGIC_SHOVEL, &curMagicShovelCnt}
+	{50, "Booster", TEXTURE_TYPE::BOOSTER, &curBoosterCnt, maxBoosterCnt, false},
+	{100, "Magic Shovel", TEXTURE_TYPE::MAGIC_SHOVEL, &curMagicShovelCnt, 1000000, false}
 };
 
 // Suns
@@ -5174,7 +5170,7 @@ void DrawStore(RenderWindow& window) {
 
 	Text text;
 
-	text.setFont(*font);
+	text.setFont(*loudFont);
 	text.setFillColor(Color::White);
 	text.setOutlineColor(Color::Black);
 	text.setOutlineThickness(4);
@@ -5187,6 +5183,7 @@ void DrawStore(RenderWindow& window) {
 	text.setPosition(Vector2f(windowWidth / 2.0f, 200));
 
 	window.draw(text);
+	text.setFont(*font);
 	text.setCharacterSize(48);
 
 	button.setColor(Color::White);
@@ -5211,9 +5208,109 @@ void DrawStore(RenderWindow& window) {
 	window.draw(text);
 
 	{
-		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
-		if (progress < 0) progress = 0;
-		screenFade(window, progress);
+		Sprite coin;
+		coin.setTexture(getTexture(TEXTURE_TYPE::COIN));
+		coin.setOrigin(Vector2f(getTexture(TEXTURE_TYPE::COIN).getSize()) / 2.0f);
+		coin.setPosition(503, 320);
+
+		coin.setScale(0.4f, 0.4f);
+
+		window.draw(coin);
+
+		Text text;
+
+		text.setFont(*font);
+		text.setFillColor(Color::White);
+		text.setOutlineColor(Color::Black);
+		text.setOutlineThickness(4);
+		text.setCharacterSize(36);
+		text.setString(std::to_string(coinsMoney) + " Coins");
+
+		text.setPosition(Vector2f(590, 300));
+
+		window.draw(text);
+	}
+
+	int i = 0;
+	for (auto& item : shopItems) {
+		//if (!item.isUnlocked) continue;
+
+		Texture tex = getTexture(item.textureType);
+
+		Sprite sprite;
+		sprite.setTexture(tex);
+
+		sprite.setScale(
+			128.0f / tex.getSize().x,
+			128.0f / tex.getSize().y
+		);
+
+		sprite.setPosition(Vector2f(600, 425) + float(i) * Vector2f(0, 128 + 32));
+
+		window.draw(sprite);
+
+		Text text;
+
+		text.setFont(*font);
+		text.setFillColor(Color::White);
+		text.setOutlineColor(Color::Black);
+		text.setOutlineThickness(4);
+		text.setCharacterSize(48);
+		text.setString(item.title);
+
+		text.setPosition(sprite.getPosition() + Vector2f(128 + 32, 16));
+
+		window.draw(text);
+
+		text.setPosition(sprite.getPosition() + Vector2f(128 + 32, 80));
+		text.setCharacterSize(32);
+		text.setFillColor(Color::Yellow);
+		text.setString(std::to_string(item.cost) + " Coins");
+		window.draw(text);
+
+		text.setPosition(sprite.getPosition() + Vector2f(128 + 196, 80));
+		text.setString("Owned: " + std::to_string(*item.counter));
+		text.setFillColor(Color::White);
+		if (*item.counter == 0) {
+			text.setFillColor(Color::Red);
+		}
+		window.draw(text);
+
+		Sprite buy;
+
+		buy.setTexture(getTexture(TEXTURE_TYPE::GREEN_BUTTON));
+		buy.setPosition(sprite.getPosition() + Vector2f(512, 24));
+
+		text.setString("Buy");
+		text.setFillColor(Color::White);
+		text.setPosition(buy.getPosition() + Vector2f(84, 16));
+		text.setCharacterSize(48);
+
+		if (item.isUnlocked || *item.counter >= item.maxCount) {
+			text.setString("Owned");
+			buy.setColor(Color(96, 96, 96, 255));
+			text.setFillColor(Color(96, 96, 96, 255));
+			text.setPosition(buy.getPosition() + Vector2f(56, 16));
+			if (!item.isUnlocked) {
+				text.setString("Max");
+				text.setPosition(buy.getPosition() + Vector2f(84, 16));
+			}
+		} else if (item.cost > coinsMoney) {
+			buy.setColor(Color(96, 96, 96, 255));
+			text.setFillColor(Color(96, 96, 96, 255));
+		} else if (buy.getGlobalBounds().contains(Vector2f(mousePos))) {
+			buy.setColor(Color(128, 128, 128, 255));
+			text.setFillColor(Color(128, 128, 128, 255));
+
+			if (mouseJustClicked[0]) {
+				item.buy(1);
+			}
+		}
+
+		window.draw(buy);
+		window.draw(text);
+
+		i++;
 	}
 
 	/*
@@ -5226,6 +5323,12 @@ void DrawStore(RenderWindow& window) {
 	shopItems[1].buy(5);
 	booster.buy(2);
 	*/
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
 }
 
 void DrawMainMenu(RenderWindow& window) {
