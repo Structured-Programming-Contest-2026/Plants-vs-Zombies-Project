@@ -226,12 +226,14 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_ICESHROOM,
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
+	PLANT_INFERNO,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
 	FireDragonBullet,
 	LightningBullet,
+	FireTornadoBullet,
 
 
 
@@ -305,12 +307,14 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_ICESHROOM,
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
+	PLANT_INFERNO,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
 	FireDragonBullet,
 	LightningBullet,
+	FireTornadoBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -434,6 +438,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_LIGHTNING_REED:
 		textureType = TEXTURE_TYPE::PLANT_LIGHTNING_REED;
 		break;
+	case ENTITY_TYPE::PLANT_INFERNO:
+		textureType = TEXTURE_TYPE::PLANT_INFERNO;
+		break;
 
 		//other
 	case ENTITY_TYPE::NormalBullet:
@@ -447,6 +454,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
+		break;
+	case ENTITY_TYPE::FireTornadoBullet:
+		textureType = TEXTURE_TYPE::FireTornadoBullet;
 		break;
 
 	case ENTITY_TYPE::ShroomBullet:
@@ -520,8 +530,8 @@ struct Entity {
 	Time lastDamaged = Time::Zero;
 	int targetId = -1; //for the chomper
 
-	float seedCooldown = 1.0f;       // <--- ADDED: default cooldown for all plants
-	float currentSeedCooldown = 0.0f; // <--- ADDED: active cooldown timer
+	float seedCooldown = 1.0f;       
+	float currentSeedCooldown = 0.0f; 
 
 	int num_animations = 1,
 		currentAnimationIndex = 0;
@@ -1219,6 +1229,25 @@ Entity defineFireDragonBullet() {
 	dragon.setCurrentAnimation(0);
 
 	return dragon;
+}
+Entity defineFireTornadoBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/FireTornado.png");
+	textures[TEXTURE_TYPE::FireTornadoBullet][Default_Texture_Index] = tex;
+
+	Entity tornado{};
+	tornado.category = ENTITY_CATEGORY::Bullet;
+	tornado.type = ENTITY_TYPE::FireTornadoBullet;
+	tornado.attack = 1;
+	tornado.x_vel = -250.0f; 
+	tornado.scale = 0.85f;
+
+	tornado.num_animations = 1;
+	tornado.animations[0].frames = 1;
+	tornado.animations[0].frameTimer = 0.05f;
+	tornado.setCurrentAnimation(0);
+
+	return tornado;
 }
 // plants
 Entity defineNormalPlant() {
@@ -2193,6 +2222,56 @@ Entity defineLightningReed() {
 			if (zombieInLane) {
 				p.attackClock.restart();
 				Entity newBullet = defineLightningBullet();
+				newBullet.attack = p.attack;
+				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+				bullets.push_back(newBullet);
+			}
+		}
+		};
+
+	return plant;
+}
+Entity defineInfernoPlant() {
+	Texture tex;
+	tex.loadFromFile("assets/Inferno.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_INFERNO;
+	plant.health = 300;
+	plant.attack = 20;
+	plant.price = 150;
+	plant.seedCooldown = 7.5f;
+	plant.scale = 1.0f;
+	plant.attackTimer = 8.0f;
+
+	plant.num_animations = 1;
+	plant.animations[0].frames = 40;
+	plant.animations[0].frameTimer = 0.08f;
+
+	plant.setCurrentAnimation(0);
+
+	plants[ENTITY_TYPE::PLANT_INFERNO] = plant;
+
+	plant.updateEntity = [](Entity& p) {
+		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+			bool zombieInLane = false;
+
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInLane) {
+				p.attackClock.restart();
+				Entity newBullet = defineFireTornadoBullet();
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
 				bullets.push_back(newBullet);
@@ -3359,6 +3438,20 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
 					bullet.category = ENTITY_CATEGORY::NONE;
 					break;
+				}
+
+				if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
+					zombie.position.x -= bullet.x_vel * delta_time;
+					float expectedDamage = bullet.attack * delta_time;
+					int tickDamage = (int)expectedDamage;
+					float fractionalPart = expectedDamage - tickDamage;
+					if ((rand() % 100) / 100.0f < fractionalPart) {
+						tickDamage++;
+					}
+					if (tickDamage > 0) {
+						attackZombie(zombie, tickDamage, false);
+					}
+					continue;
 				}
 
 				attackZombie(zombie, bullet.attack, true);
@@ -5457,7 +5550,7 @@ void playMusicForLevel(int level, Music& music) {
 }
 
 
-Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed;
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
 Entity zombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist;
 vector<Entity> allPlantTypes;
 
@@ -5744,6 +5837,7 @@ int main() {
 	iceShroom = defineIceShroom();
 	snapdragon = defineSnapdragon();
 	lightningReed = defineLightningReed();
+	inferno = defineInfernoPlant();
 
 	// Zombies
 	zombie = defineNormalZombie();
@@ -5764,7 +5858,7 @@ int main() {
 	zombiePianist = definePianistZombie();
 	;
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed };
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno};
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -5827,7 +5921,7 @@ int main() {
 
 	// General Plants to any level
 
-	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom };//, shroom, sunshroom };
+	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom, inferno};//, shroom, sunshroom };
 
 	// Unlock starting plants
 	isEntityUnlocked[repeaterPlant.type] =
@@ -5842,6 +5936,7 @@ int main() {
 		isEntityUnlocked[iceShroom.type] =
 		isEntityUnlocked[snapdragon.type] =
 		isEntityUnlocked[lightningReed.type] =
+		isEntityUnlocked[inferno.type] =
 		true;
 
 	// Levels
