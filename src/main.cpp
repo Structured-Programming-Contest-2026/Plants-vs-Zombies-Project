@@ -1036,7 +1036,7 @@ void resetLevel() {
 	firstZombieTriggered = false;
 	//Sending Zombies
 	nextZombieTimer = 5; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-	//ZombieMinGapTime = 7,
+	//ZombieMinGapTime = 7
 	//	ZombieMaxGapTime = ZombieMinGapTime + 3,
 	//	ZombieGap_dt = 0.1;	// Level Pace
 	curWaveZombieCnt = 0;
