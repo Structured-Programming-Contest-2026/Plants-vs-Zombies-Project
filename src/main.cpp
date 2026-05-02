@@ -3969,6 +3969,10 @@ void DrawRewardsScreen(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
+			currentLevel->claimRewards();
+			if (currentLevel->lvlNum < number_levels - 1)
+				levels[currentLevel->lvlNum + 1].isUnlocked = true;
+
 			requestedLevelMusic = REQUEST_SELECT_MUSIC;
 
 			resetLevel();
