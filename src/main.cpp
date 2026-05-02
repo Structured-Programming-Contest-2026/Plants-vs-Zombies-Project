@@ -1619,6 +1619,7 @@ Entity defineIcePeaShooter() {
 	return icePea;
 }
 Entity defineCherryBomb() {
+
 	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB][0].loadFromFile("assets/CherryBomb.png");
 	textures[TEXTURE_TYPE::PLANT_CHEERY_BOMB][1].loadFromFile("assets/cherryexp.png");
 
@@ -1629,59 +1630,70 @@ Entity defineCherryBomb() {
 	cherry.attack = 9999;
 	cherry.price = 150;
 	cherry.scale = 1.0f;
-	cherry.width = 120;
-	cherry.height = 120;
-
 	cherry.seedCooldown = 20.0f;
 
 	cherry.num_animations = 2;
 
-	// animation 0 = النبتة العادية
-	cherry.animations[0].frames = 7;   // ← غير لعدد الفريمات
+	cherry.animations[0].frames = 11; 
 	cherry.animations[0].frameTimer = 0.1f;
 
-	// animation 1 = الانفجار
-	cherry.animations[1].frames = 8;  // ← غير لعدد الفريمات
-	cherry.animations[1].frameTimer = 0.05f;
+	
+	cherry.animations[1].frames = 7;
+	cherry.animations[1].frameTimer = 0.08f;
 
 	cherry.setCurrentAnimation(0);
+	cherry.attackTimer = 1.2f; // Time before explosion
 
 	plants[ENTITY_TYPE::PLANT_CHEERY_BOMB] = cherry;
 
-	// update
 	cherry.updateEntity = [](Entity& plant) {
-		// START EXPLOSION ANIMATION
 
-		if (plant.attackClock.getElapsedTime().asSeconds() >= 3.0f && plant.currentAnimationIndex != 1) {
-			plant.setCurrentAnimation(1); // تتحول للحالة الجاهزة
+		if (plant.targetId == -1)
+		{
+			float EnhanceX = 20.0f; 
+			plant.position.x -= EnhanceX;
+			plant.targetId = 0; 
 		}
 
-		if (plant.currentAnimationIndex != 1) {
+		if (plant.currentAnimationIndex == 0 && plant.attackClock.getElapsedTime().asSeconds() >= plant.attackTimer) {
+
+			int oldWidth = plant.width;
+			int oldHeight = plant.height;
+
 			plant.DoAnimation(1, 1);
 
+			float offsetX = (plant.width - oldWidth) / 2.0f;
+			float offsetY = (plant.height - oldHeight) / 2.0f;
 
-			plant.afterAnimation = [&](Entity& p) 
+			plant.position.x -= offsetX;
+			plant.position.y -= offsetY;
+
+			plant.afterAnimation = [](Entity& p) 
 				{
-				// RANGE OF EXPLOSION 
-				float explosionRange = 150.0f;
+				float explosionRangeX = 250.0f;
+				float explosionRangeY = 250.0f;
 
-				for (Entity& z : entities) {
-					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
+				for (Entity& z : entities) 
+				{
+					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) 
+					{
 						float diffY = abs(z.position.y - p.position.y);
 						float diffX = abs(z.position.x - p.position.x);
 
-						// 3*3
-						if (diffY < 120.0f && diffX < explosionRange) {
-							z.health -= p.attack; // عادة الـ attack بتاعها بيموت أي زومبي عادي فوراً
+						if (diffY < explosionRangeY && diffX < explosionRangeX)
+						{
+							z.diedByElectrocution = true;
+							attackZombie(z, p.attack, true);
 						}
 					}
 				}
-				//DISAPPER AFTER EXPLOSION
-				p.category = ENTITY_CATEGORY::NONE;
-				};
 
+				p.category = ENTITY_CATEGORY::NONE;
+				p.isDead = true;
+				};
 		}
 		};
+
 	return cherry;
 }
 Entity defineMiniShroom() {
@@ -2812,13 +2824,13 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			// [1.1] play dying animation once
 			if (zombie.diedByElectrocution) 
 			{
+
+				zombie.scale = 0.40f;
 				Animation electroAnim;
 				electroAnim.frames = 18;
 				electroAnim.frameTimer = 0.08f; 
 				zombie.animations[9] = electroAnim;
 				zombie.DoAnimation(1, 9);
-				zombie.scale = 0.40f;
-				zombie.scale = 0.40f;
 			}
 			else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 				if (zombie.currentAnimationIndex == 3) {
