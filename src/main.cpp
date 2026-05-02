@@ -2239,11 +2239,11 @@ Entity defineInfernoPlant() {
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_INFERNO;
 	plant.health = 300;
-	plant.attack = 25;
+	plant.attack = 20;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
 	plant.scale = 1.0f;
-	plant.attackTimer = 6.0f;
+	plant.attackTimer = 8.0f;
 
 	plant.num_animations = 1;
 	plant.animations[0].frames = 40;
