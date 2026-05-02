@@ -3834,10 +3834,9 @@ void screenAnimation(RenderWindow& window) {
 	int actualTexWidth = ground.getTexture()->getSize().x;
 	int actualTexHeight = ground.getTexture()->getSize().y;
 	//zoom_scale
-	float scaleY = (float)windowHeight / actualTexHeight;
-	float scaleX = scaleY;
-	ground.setScale({ scaleX, scaleY });
-	int visibleWidth = windowWidth / scaleX;
+	float scale = (float)windowHeight / actualTexHeight;
+	ground.setScale(scale, scale);
+	int visibleWidth = windowWidth / scale;
 	int maxPan = std::max(0, actualTexWidth - visibleWidth);
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 1) {
 		ground.setTextureRect(IntRect(0, 0, visibleWidth, actualTexHeight));
@@ -4557,6 +4556,55 @@ void UpdateLevel(RenderWindow& window) {
 		DrawRailsAndCarts(window);
 	}
 
+	//fake zombies
+	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
+		float previewDiff = currentLevel->clock.getElapsedTime().asSeconds();
+
+		Vector2f pos;
+
+		pos.x = windowWidth - (ground.getTextureRect().left / 334.0) * 685;
+
+		if (currentLevel->zombie_types.size() > 0) {
+
+			float offsetX[5] = { 0, 90, 40, 130, 70 };
+
+			for (int raw = 0; raw < 4; raw++) {
+				for (int col = 0; col < 3; col++) {
+
+					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
+					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
+
+					int previewAnimIdx = 0;
+					if (dummyZombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+						previewAnimIdx = 3;
+					}
+
+					Texture& zomTex = textures[getTextureType(dummyZombie.type)][previewAnimIdx];
+					int frames = dummyZombie.animations[previewAnimIdx].frames;
+
+
+					if (frames > 0) {
+						int frameWidth = zomTex.getSize().x / frames;
+
+						int frame = (int)(previewDiff * 15 + raw * 3 + col * 7) % frames;
+
+						zombieSprite.setTexture(zomTex);
+						zombieSprite.setTextureRect(IntRect(frame * frameWidth, 0, frameWidth, zomTex.getSize().y));
+						zombieSprite.setScale(Vector2f(dummyZombie.scale, dummyZombie.scale));
+						zombieSprite.setColor(Color::White);
+
+						float actualHeight = zomTex.getSize().y * dummyZombie.scale;
+						float zomY = currentLevel->offsetY + (raw * currentLevel->cellHeight) - (actualHeight - currentLevel->cellHeight);
+						float zomX = offsetX[raw] + (col * 130);
+
+						zombieSprite.setPosition(pos + Vector2f(zomX, zomY));
+						window.draw(zombieSprite);
+					}
+				}
+			}
+		}
+	}
+
 	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
 		float diff = currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds();
 
@@ -4608,71 +4656,6 @@ void UpdateLevel(RenderWindow& window) {
 		//ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][level]);
 		ground.setTexture(textures[TEXTURE_TYPE::LEVEL_BACKGROUND_OPENDOOR][int(currentLevel->theme)]);
 		window.draw(ground);
-	}
-
-	//fake zombies
-	if (!currentLevel->arePlantsSelected || currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 3.75f) {
-
-
-		float previewDiff = currentLevel->clock.getElapsedTime().asSeconds();
-		float camProgress = 0.0f;
-
-		if (previewDiff >= 1.0f && previewDiff < 2.0f) {
-			camProgress = easeInOut((previewDiff - 1.0f) / 1.0f);//حته بتاعت يوتيوبر كبير (:
-		} else if (previewDiff >= 2.0f && !currentLevel->arePlantsSelected) {
-			camProgress = 1.0f;
-		} else if (currentLevel->arePlantsSelected) {
-			float pan = (previewDiff - currentLevel->plantsSelectedTime.asSeconds()) / 0.75f;
-			camProgress = 1.0f - easeInOut(min(pan, 1.0f));
-		}
-
-
-
-		float targetX = 1250.0f;
-
-
-		float startX = (windowWidth + 200.0f) - (camProgress * ((windowWidth + 200.0f) - targetX));
-
-
-		if (currentLevel->zombie_types.size() > 0) {
-
-			float offsetX[5] = { 0, 90, 40, 130, 70 };
-
-			for (int raw = 0; raw < 4; raw++) {
-				for (int col = 0; col < 3; col++) {
-
-					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
-					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
-
-					int previewAnimIdx = 0;
-					if (dummyZombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
-						previewAnimIdx = 3;
-					}
-
-					Texture& zomTex = textures[getTextureType(dummyZombie.type)][previewAnimIdx];
-					int frames = dummyZombie.animations[previewAnimIdx].frames;
-
-
-					if (frames > 0) {
-						int frameWidth = zomTex.getSize().x / frames;
-
-						int frame = (int)(previewDiff * 15 + raw * 3 + col * 7) % frames;
-
-						zombieSprite.setTexture(zomTex);
-						zombieSprite.setTextureRect(IntRect(frame * frameWidth, 0, frameWidth, zomTex.getSize().y));
-						zombieSprite.setScale(Vector2f(dummyZombie.scale, dummyZombie.scale));
-						zombieSprite.setColor(Color::White);
-
-						float actualHeight = zomTex.getSize().y * dummyZombie.scale;
-						float zomY = currentLevel->offsetY + (raw * currentLevel->cellHeight) - (actualHeight - currentLevel->cellHeight);
-						float zomX = startX + offsetX[raw] + (col * 130);
-
-						zombieSprite.setPosition(zomX, zomY);
-						window.draw(zombieSprite);
-					}
-				}
-			}
-		}
 	}
 
 	DrawZombies(window);
