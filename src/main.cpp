@@ -1231,15 +1231,15 @@ Entity defineFireDragonBullet() {
 }
 Entity defineFireTornadoBullet() {
 	Texture tex;
-	tex.loadFromFile("assets/FireDragon.png");
+	tex.loadFromFile("assets/FireTornado.png");
 	textures[TEXTURE_TYPE::FireTornadoBullet][Default_Texture_Index] = tex;
 
 	Entity tornado{};
 	tornado.category = ENTITY_CATEGORY::Bullet;
 	tornado.type = ENTITY_TYPE::FireTornadoBullet;
-	tornado.attack = 50;
+	tornado.attack = 1;
 	tornado.x_vel = -250.0f; 
-	tornado.scale = 1.0f;
+	tornado.scale = 0.85f;
 
 	tornado.num_animations = 1;
 	tornado.animations[0].frames = 1;
@@ -2239,11 +2239,11 @@ Entity defineInfernoPlant() {
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_INFERNO;
 	plant.health = 300;
-	plant.attack = 50;
+	plant.attack = 25;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
 	plant.scale = 1.0f;
-	plant.attackTimer = 2.0f;
+	plant.attackTimer = 6.0f;
 
 	plant.num_animations = 1;
 	plant.animations[0].frames = 40;
@@ -3443,8 +3443,15 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 				if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
 					zombie.position.x -= bullet.x_vel * delta_time;
-					int tickDamage = std::max(1, bullet.attack / 20);
-					attackZombie(zombie, tickDamage, false);
+					float expectedDamage = bullet.attack * delta_time;
+					int tickDamage = (int)expectedDamage;
+					float fractionalPart = expectedDamage - tickDamage;
+					if ((rand() % 100) / 100.0f < fractionalPart) {
+						tickDamage++;
+					}
+					if (tickDamage > 0) {
+						attackZombie(zombie, tickDamage, false);
+					}
 					continue;
 				}
 
