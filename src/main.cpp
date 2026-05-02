@@ -1305,7 +1305,6 @@ Entity defineNormalPlant() {
 	return plant;
 
 }
-
 Entity defineLightningBullet() 
 {
 	Texture tex;
