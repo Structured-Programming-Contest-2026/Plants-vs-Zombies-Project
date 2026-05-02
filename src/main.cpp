@@ -21,6 +21,7 @@ using namespace sf;
 
 bool gamePaused = false;
 Clock gamePauseClock;
+Time totalPauseTime = Time::Zero;
 
 // Global Variables
 // consts
@@ -120,6 +121,7 @@ int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
 float nextZombieTimer = 10; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+float zombieClockOffset = 0;
 float ZombieMinGapTime = 7,
 //float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
 //float ZombieMinGapTime = 1,
@@ -144,6 +146,7 @@ Clock gameClock;
 Clock zombieClock, waveClockX;
 Clock sunSpawnClock;
 Clock wc;
+Time wcOffset;
 
 //shovel
 bool isShovelActive = false;
@@ -1058,6 +1061,10 @@ void resetLevel() {
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
 	currentLevel->selectedPlants.clear();
+
+	totalPauseTime = Time::Zero;
+	wcOffset = Time::Zero;
+	zombieClockOffset = 0;
 }
 
 void startLevel(int level) {
@@ -3424,13 +3431,14 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 	//}
 
 	// single zombie
-	if (zombieClock.getElapsedTime().asSeconds() >= nextZombieTimer) {
+	if (zombieClock.getElapsedTime().asSeconds() + zombieClockOffset >= nextZombieTimer) {
 		if (currentWave == currentLevel->waves.data() + currentLevel->waves.size()) return;	// should be covered above
 
 		// Next wave if required
-		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() >= currentWave->length) {
+		if (curWaveZombieCnt == currentWave->zombieCount && wc.getElapsedTime().asSeconds() + wcOffset.asSeconds() >= currentWave->length) {
 			currentWave++, curWaveZombieCnt = 0;
 			wc.restart();
+			wcOffset = Time::Zero;
 			// allow huge-wave handler to run for the upcoming wave if it's huge
 			hugeWaveTriggered = false;
 		}
@@ -3446,6 +3454,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 
 		cout << "New Zombie\n";
 		zombieClock.restart();
+		zombieClockOffset = 0;
 		//nextZombieTimer = ZombieMinGapTime + rand() % max(int(ZombieMaxGapTime - ZombieMinGapTime), 1);//I will edit it
 		//if (ZombieMinGapTime > 0 && ZombieMaxGapTime > 0) ZombieMinGapTime -= ZombieGap_dt, ZombieMaxGapTime -= ZombieGap_dt;
 		if (!currentWave->zombieCount) {
@@ -3922,7 +3931,7 @@ void DrawPopupText(RenderWindow& window) {
 		text.setString("GO");
 		showProgress = (diff - 2.75f) / 0.25f;
 		hideProgress = (diff - 4.5f) / 0.25f;
-	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() < 5.0f) {
+	} else if (currentWave && currentWave->isHuge && wc.getElapsedTime().asSeconds() + wcOffset.asSeconds() < 5.0f) {
 		// Huge Wave
 
 		diff = wc.getElapsedTime().asSeconds();
@@ -4343,6 +4352,25 @@ bool inStore = false;
 Time startMenuItemTime = Time::Zero;
 Time startMainMenuTime = Time::Zero;
 
+void SetGamePaused(bool paused) {
+	if (gamePaused == paused) return;
+	if (currentLevel == nullptr) return;
+
+	if (!currentLevel->arePlantsSelected || (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f)) {
+		return;
+	}
+
+	gamePaused = paused;
+
+	if (gamePaused) {
+		gamePauseClock.restart();
+	} else {
+		totalPauseTime += gamePauseClock.getElapsedTime();
+		wcOffset -= gamePauseClock.getElapsedTime();
+		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
+	}
+}
+
 void DrawLevelDetails(RenderWindow& window) {
 	Sprite button;
 	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
@@ -4385,8 +4413,7 @@ void DrawLevelDetails(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			gamePaused = true;
-			gamePauseClock.restart();
+			SetGamePaused(true);
 		}
 	}
 
@@ -4449,7 +4476,7 @@ void DrawPauseMenu(RenderWindow& window) {
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			gamePaused = false;
+			SetGamePaused(false);
 		}
 	}
 
@@ -4574,7 +4601,7 @@ void UpdateLevel(RenderWindow& window) {
 			}
 		}
 
-		gamePaused = false;
+		SetGamePaused(false);
 	}
 
 	if (isGameOver) {
@@ -4696,10 +4723,15 @@ void UpdateLevel(RenderWindow& window) {
 	}
 
 	// Level Update
-	if (zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) zombieClock.restart(); // DEBUG
-	CheckTimer_AddZombie(window);
-	CheckTimer_AddSun(window);
-	CheckTimer_AddBooster(false);
+	if (zombieClock.getElapsedTime().asSeconds() >= currentLevel->clock.getElapsedTime().asSeconds()) {
+		zombieClock.restart(); // DEBUG
+		zombieClockOffset = 0;
+	}
+	if (!gamePaused) {
+		CheckTimer_AddZombie(window);
+		CheckTimer_AddSun(window);
+		CheckTimer_AddBooster(false);
+	}
 
 	for (auto& plant : currentLevel->selectedPlants) {
 		if (plant.currentSeedCooldown > 0.0f) {
@@ -5430,9 +5462,9 @@ void defineDayLevels() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
 	levels[1].addWave(1, 5, { zombie }, 5);
-	levels[1].addWave(3, 9, { zombie }, 5);
+	/*levels[1].addWave(3, 9, { zombie }, 5);
 	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-	levels[1].addWave(5, 15, { zombie }, 10);
+	levels[1].addWave(5, 15, { zombie }, 10);*/
 	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
 	levels[1].addWave(5, 15, { zombie }, 5);
 	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
@@ -6026,8 +6058,7 @@ int main() {
 					window.setSize(oldSize);
 				}
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-				gamePaused = !gamePaused;
-				if (gamePaused) gamePauseClock.restart();
+				SetGamePaused(!gamePaused);
 			}
 		}
 
