@@ -1065,6 +1065,7 @@ void resetLevel() {
 	totalPauseTime = Time::Zero;
 	wcOffset = Time::Zero;
 	zombieClockOffset = 0;
+	gamePaused = false;
 }
 
 void startLevel(int level) {
@@ -2829,14 +2830,12 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				} else {
 					zombie.DoAnimation(1, 2);
 				}
-			} 
-			else {
+			} else {
 				zombie.DoAnimation(1, 1);
 			}
 
-	
-			if (!zombie.diedByElectrocution)
-			{
+
+			if (!zombie.diedByElectrocution) {
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
 					zombie.scale = 1.3f;
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
@@ -3610,7 +3609,7 @@ void DrawSeeds(RenderWindow& window) {
 		Vector2f spritePos = pos + Vector2f(155.0f + i * (seedPacketSize.x + 10), 24.0f);
 
 		Color packetColor = Color::White;
-		if (sunsMoney < plant.price || plant.currentSeedCooldown > 0) {
+		if ((currentLevel->arePlantsSelected && sunsMoney < plant.price) || plant.currentSeedCooldown > 0) {
 			packetColor = Color(100, 100, 100, 255);
 		}
 
@@ -4657,13 +4656,20 @@ void UpdateLevel(RenderWindow& window) {
 
 		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
 			if (currentLevel->theme != THEME::WILDWEST) {
+				float realProgress = (progress - 0.15f) / 0.55f;
+
 				Sprite roll;
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
 				roll.setTexture(rollTex);
-				roll.setOrigin(rollTex.getSize().x / 2, 0);
+
+				int frameLength = rollTex.getSize().x / 5;
+				roll.setTextureRect(IntRect(int(realProgress * 5) * frameLength, 0, frameLength, rollTex.getSize().y));
+
+				roll.setOrigin(frameLength / 2, 0);
 				roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
+
 				float scale = 1.0f;
-				scale = (currentLevel->cellHeight * gridRows + 125) / rollTex.getSize().y;
+				scale = (currentLevel->cellHeight * gridRows + 155) / rollTex.getSize().y;
 				roll.setScale(Vector2f(scale, scale));
 				window.draw(roll);
 			}
@@ -4802,7 +4808,7 @@ void DrawLevelSelector(RenderWindow& window) {
 
 	static int selectedLevel = 0;
 	static int previousSelectedLevel = -1;
-	static Clock selectionChanged;
+	static Clock selectionChanged = gameClock;
 
 	bool levelClicked = false;
 
@@ -4907,7 +4913,9 @@ void DrawLevelSelector(RenderWindow& window) {
 
 		if (previousSelectedLevel == i) {
 			scale = Vector2f(1.0f, 1.0f) * (1 - animationProgress) + Vector2f(0.75f, 0.75f) * animationProgress;
-		} else if (!selected) {
+		} else if (selected) {
+			scale = Vector2f(1.0f, 1.0f) * animationProgress + Vector2f(0.75f, 0.75f) * (1 - animationProgress);
+		} else {
 			scale = Vector2f(0.75f, 0.75f);
 		}
 
