@@ -2815,10 +2815,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				}
 				zombie.isUsingAbility = false;
 			}
-
 			// [1.1] play dying animation once
 			if (zombie.diedByElectrocution) {
-
 				zombie.scale = 0.40f;
 				Animation electroAnim;
 				electroAnim.frames = 18;
@@ -2831,17 +2829,23 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				} else {
 					zombie.DoAnimation(1, 2);
 				}
-			} else {
+			} 
+			else {
 				zombie.DoAnimation(1, 1);
 			}
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
-				zombie.scale = 1.3f;
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
-				zombie.scale = 0.8f;
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD) // for shield guard
-				zombie.scale = 1.2f;
-			if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) // for pianist
-				zombie.scale = 1.3f;
+
+	
+			if (!zombie.diedByElectrocution)
+			{
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_RA) // for ra
+					zombie.scale = 1.3f;
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH) // for pharaoh
+					zombie.scale = 0.8f;
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD) // for shield guard
+					zombie.scale = 1.2f;
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) // for pianist
+					zombie.scale = 1.3f;
+			}
 
 			// [1.2] After Death Animation
 			zombie.afterAnimation = [&zombie](Entity& entity) {
