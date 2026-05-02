@@ -3127,10 +3127,6 @@ void updateConeheadZombie(Entity& zombie) {
 void updatePharaohZombie(Entity& zombie) {
 	if (zombie.health <= 300 && !zombie.shellDestroyed) {
 		zombie.shellDestroyed = true;
-		zombie.playingShellAnim = true;
-		zombie.shellAnim = zombie.animations[3];
-		zombie.shellAnim.currentFrame = 0;
-		zombie.shellAnim.clock.restart();
 		if (zombie.currentAnimationIndex != 2) {
 			zombie.setCurrentAnimation(2);
 			FallenItem item;
@@ -3384,32 +3380,6 @@ void DrawZombies(RenderWindow& window) {
 		}
 
 		window.draw(zombieSprite);
-
-		// to play pharaoh zombie's shell breaking animation
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.playingShellAnim) {
-			if (zombie.shellAnim.clock.getElapsedTime().asSeconds() >= zombie.shellAnim.frameTimer) {
-				zombie.shellAnim.clock.restart();
-				zombie.shellAnim.currentFrame++;
-				if (zombie.shellAnim.currentFrame >= zombie.shellAnim.frames) {
-					zombie.playingShellAnim = false;     // all frames done and only 1 cycle so stop animation
-				}
-			}
-
-			Texture& shellTex = textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3];
-			float frameWidth = shellTex.getSize().x / zombie.shellAnim.frames;
-			float frameHeight = shellTex.getSize().y;
-
-			uiSprite.setTexture(shellTex);
-			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame * frameWidth, 0, frameWidth, shellTex.getSize().y));
-			// (x initial position for each frame, 0 is top of frame)
-
-			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
-			uiSprite.setScale(3.0f, 3.0f);
-			uiSprite.setPosition(zombie.position.x + 100, zombie.position.y + 130);
-			window.draw(uiSprite);
-			uiSprite.setOrigin(0.0f, 0.0f); // reset
-			uiSprite.setScale(1.0f, 1.0f);  // reset
-		}
 	}
 }
 
