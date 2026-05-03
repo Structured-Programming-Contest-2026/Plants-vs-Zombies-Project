@@ -254,7 +254,6 @@ enum class ENTITY_TYPE : uint8_t {
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
 	RedBullet,
-	RedBullet,
 
 	ENTITY_TYPE_COUNT	// keep it last
 };
@@ -665,8 +664,8 @@ struct Entity {
 		}
 
 		Texture tex = getTexture(tType, tIndex);
-		int w = (tex.getSize().x / currentAnimation.frames) * scale;
-		int h = tex.getSize().y * scale;
+		int w = ((float)tex.getSize().x / currentAnimation.frames) * scale;
+		int h = (float)tex.getSize().y * scale;
 
 		width = w, height = h;
 	}
