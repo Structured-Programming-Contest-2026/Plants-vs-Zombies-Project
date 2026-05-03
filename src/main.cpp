@@ -141,6 +141,12 @@ int coinsMoney = 0;
 const int REQUEST_NONE = -1;
 const int REQUEST_SELECT_MUSIC = -2; // ask main loop to play select-levels background
 int requestedLevelMusic = REQUEST_NONE;
+bool loseMusicPlayed = false;
+int pause_music(Music& music);
+
+
+sf::Music* g_music = nullptr;
+sf::Music* pauseMusic = nullptr;
 
 float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
@@ -1152,6 +1158,7 @@ void resetLevel() {
 	totalPauseTime = Time::Zero;
 	wcOffset = Time::Zero;
 	zombieClockOffset = 0;
+	loseMusicPlayed = false;
 	gamePaused = false;
 }
 
@@ -5058,8 +5065,39 @@ void SetGamePaused(bool paused) {
 	gamePaused = paused;
 
 	if (gamePaused) {
+		// Start pause clock as before
 		gamePauseClock.restart();
+
+		// Pause the background music (if any) and play pause sound on a separate Music instance.
+		if (g_music && g_music->getStatus() == sf::Music::Playing) {
+			g_music->pause();
+		}
+
+		// Create a temporary Music instance to play pause sound so it doesn't clobber the main music object.
+		if (!pauseMusic) {
+			pauseMusic = new sf::Music();
+			// Use the existing helper to open & play the pause sound into this Music object.
+			// pause_music opens the file and starts playback for the provided Music instance.
+			if (pause_music(*pauseMusic) != 0) {
+				// On failure free it
+				delete pauseMusic;
+				pauseMusic = nullptr;
+			}
+		}
+
 	} else {
+		// Unpausing: stop and free the temporary pause music, then resume the background music.
+		if (pauseMusic) {
+			pauseMusic->stop();
+			delete pauseMusic;
+			pauseMusic = nullptr;
+		}
+
+		if (g_music && g_music->getStatus() != sf::Music::Playing) {
+			g_music->play();
+		}
+
+		// adjust pause timing as before
 		totalPauseTime += gamePauseClock.getElapsedTime();
 		wcOffset -= gamePauseClock.getElapsedTime();
 		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
@@ -5497,6 +5535,21 @@ void UpdateLevel(RenderWindow& window) {
 				cout << "Zombies ate your brains!\n";
 				// request switching back to normal (select-levels) music
 				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
+				// Play lose music once when game over screen appears.
+				if (!loseMusicPlayed) {
+					// heap-allocated to keep playing (matches project pattern)
+					sf::Music* loseMusic = new sf::Music();
+					if (loseMusic->openFromFile("assets/audio/05. losemusic.ogg")) {
+						loseMusic->setLoop(false);
+						loseMusic->play();
+						loseMusicPlayed = true;
+					} else {
+						delete loseMusic;
+						std::cout << "Failed to load assets/audio/05. losemusic.ogg\n";
+					}
+				}
+
 				break;
 			}
 		}
@@ -6159,6 +6212,67 @@ int level_6_music(Music& music) {
 	music.play();
 	return 0;
 }
+
+int level_7_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_7.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_8_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_8.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_9_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_9.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_10_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_10.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_11_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_12_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
 int huge_wave_music(Music& music) {
 	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -6261,6 +6375,12 @@ void playMusicForLevel(int level, Music& music) {
 	case 4: level_4_music(music); break;
 	case 5: level_5_music(music); break;
 	case 6: level_6_music(music); break;
+	case 7: level_7_music(music); break;
+	case 8: level_8_music(music); break;
+	case 9: level_9_music(music); break;
+	case 10: level_10_music(music); break;
+	case 11: level_11_music(music); break;
+	case 12: level_12_music(music); break;
 	default: /* fallback */ select_levels_background_music(music); break;
 	}
 }
@@ -6515,9 +6635,9 @@ int main() {
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
 	Music music;	// can't be global - OpenAL must be loaded first
+	g_music = &music; // let other code (SetGamePaused) pause/resume background music
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
-
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -6843,18 +6963,13 @@ int main() {
 	gameWonScreen.setOrigin(250.0f, 350.0f);
 	gameWonScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
 
-	// Load storage
+
 	loadStorage();
 
-	// in main(), after creating resources:
 	onHugeWave = []() {
 		std::cout << "Custom huge-wave handler executed\n";
-		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
-		// e.g. you could toggle a game-state boolean or request a special sound
+
 		};
-
-	// Game Loop
-
 
 	Clock DeltaTimeClock;
 
@@ -6909,8 +7024,6 @@ int main() {
 			}
 		}
 
-		// Separate UI -> Main Menu and Level
-		// First, handle any queued music request (stop current music, play requested)
 		if (requestedLevelMusic != REQUEST_NONE) {
 			if (music.getStatus() == Music::Playing) music.stop();
 
