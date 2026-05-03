@@ -942,7 +942,7 @@ ShopItem shopItems[2] = {
 };
 
 // Plants - zombies - allplanttypes
-Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed;
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
 Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombotDragon;
 vector<Entity> allPlantTypes;
 
@@ -1745,6 +1745,7 @@ Entity defineCherryBomb() {
 				float explosionRangeY = 250.0f;
 
 				for (Entity& z : entities) {
+					if (z.type == ENTITY_TYPE::ZOMBOT_DRAGON) continue;
 					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 						float diffY = abs(z.position.y - p.position.y);
 						float diffX = abs(z.position.x - p.position.x);
@@ -1915,6 +1916,8 @@ Entity defineChomperPlant() {
 			for (Entity& zombie : entities) {
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
 
+				if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) continue;
+
 				bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 
 
@@ -1999,6 +2002,7 @@ Entity definePOTATO_MINE() {
 
 		for (Entity& zombie : entities) {
 			if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead) continue;
+			if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) continue;
 
 			float diffY = abs(zombie.position.y - plant.position.y);
 			float diffX = abs(zombie.position.x - plant.position.x);
@@ -2017,7 +2021,8 @@ Entity definePOTATO_MINE() {
 						for (Entity& z : entities) {
 							if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 								if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-									z.health -= p.attack;
+									//z.health -= p.attack;
+									attackZombie(z, p.attack, false);	// wont won if not used
 								}
 							}
 						}
@@ -2028,7 +2033,8 @@ Entity definePOTATO_MINE() {
 					for (Entity& z : entities) {
 						if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 							if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-								z.health -= p.attack;
+								//z.health -= p.attack;
+								attackZombie(z, p.attack, false);	// wont won if not used
 							}
 						}
 					}
@@ -3667,7 +3673,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 					}
 
 				if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
-					zombie.position.x -= bullet.x_vel * delta_time;
+					if(zombie.type!=ENTITY_TYPE::ZOMBOT_DRAGON) zombie.position.x -= bullet.x_vel * delta_time;
 					float expectedDamage = bullet.attack * delta_time;
 					int tickDamage = (int)expectedDamage;
 					float fractionalPart = expectedDamage - tickDamage;
