@@ -657,7 +657,14 @@ struct Entity {
 		}
 	}
 	void DoAnimation(int forCycles = 1, int idx = 0) {
-		if (currentAnimationIndex == idx) return;
+		//if (currentAnimationIndex == idx) return;
+
+		// Add a log inside DoAnimation to verify it's actually switching:
+		if (type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+			cout << "DoAnimation called: idx=" << idx << " currentAnimationIndex=" << currentAnimationIndex << endl;
+			if (currentAnimationIndex == idx) { cout << "SKIPPED - same index\n"; return; }
+		}
+		else if (currentAnimationIndex == idx) return;
 
 		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
@@ -982,7 +989,8 @@ IntRect getFrameRect(Entity& entity) {
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
-	if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
+	// DEBUG: NOT SURE BUT IT'S REPEATED
+	// if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -2805,6 +2813,38 @@ Entity defineZombotDragon() {
 	return zombie;
 }
 
+// Character Sound Effects
+int playZombotDragonFireBall() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-fireball.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+int playZombotDragonRoar() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-roar.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+int playZombotDragonDeath() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-death.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -3008,19 +3048,36 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				} else {
 					zombie.DoAnimation(1, 2);
 				}
-			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)
+			{
 				// Zombot Dragon Death
+				cout << "---------- 1 You killed Zombot\n";	// maybe message here to kill the boss
+				playZombotDragonDeath();
 				float s = zombie.scale;
 				zombie.DoAnimation(1, 1);
+				for (Entity& z : entities) {
+					if (z.category == ENTITY_CATEGORY::ZOMBIE && z.type != ENTITY_TYPE::ZOMBOT_DRAGON) {
+						attackZombie(z, 10000000, true);
+						//attackZombie(z, 10000000, true);
+					}
+					cout << "XXXXXX Killed remaining zombie\n";
+				}
+				currentWaveIndex = currentLevel->waves.size(); // no more waves
+				deadZombieCount = currentLevel->targetZombie;
+				//curWaveZombieCnt = currentLevel->waves[currentWaveIndex].zombieCount; // win this wave
+				//cout << "currentWaveIndex = " << currentWaveIndex << "\ncurWaveZombieCnt = " << curWaveZombieCnt << endl;
+
 				zombie.afterAnimation = [s](Entity& zombie) {
+					cout << "---------- 2 You killed Zombot\n";	// maybe message here to kill the boss
 					zombie.DoAnimation(1, 4);
 					zombie.afterAnimation = [s](Entity& zombie) {
+						cout << "---------- 3 You killed Zombot\n";	// maybe message here to kill the boss
 						zombie.scale = s;
 						cout << "You killed Zombot\n";	// maybe message here to kill the boss
-						zombie.category = ENTITY_CATEGORY::NONE;
+						//zombie.category = ENTITY_CATEGORY::NONE;
 						attackZombie(zombie, 10000000, false);
-						};
 					};
+				};
 			} else {
 				zombie.DoAnimation(1, 1);
 			}
@@ -3391,6 +3448,7 @@ void updateZombotDragon(Entity& zombie) {
 		inJump = true;
 		targetRow = rand() % (gridRows);	// do not come to last row [removed to try]
 		cout << "000 chose targetROW = " << targetRow << endl;
+		playZombotDragonRoar;
 	}
 	float targetRowY = gridCellPosition(targetRow, 0, zombie).y;
 	
@@ -3418,10 +3476,15 @@ void updateZombotDragon(Entity& zombie) {
 	}
 
 	// Attack
-	if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+	if (!zombie.isDead && zombie.health > 0 && zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 		float s = zombie.scale;
 		zombie.DoAnimation(1, 2);
+		zombie.afterAnimation = [](Entity& z) {
+			cout << "------- after zombot dragon attack\n";
+			};
 		zombie.scale = 1.25;
+		// Play sound effect
+		playZombotDragonFireBall();
 		// 1- Shoot a bullet
 		Entity newBullet = defineZombotDragonBullet();
 		newBullet.position = { zombie.position.x, zombie.position.y + 50 };
@@ -3488,15 +3551,26 @@ void DrawZombies(RenderWindow& window) {
 		// lawnmowers
 		checkZombieHitByLawnmower(zombie);
 
-		// zombie dead - zombie dying
-		bool disappearedDead = false;
-		if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
-		if (disappearedDead) continue;
-
 		// zombie Animation
 		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
+
+		// zombie dead - zombie dying
+		bool disappearedDead = false;
+		if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
+		if (disappearedDead) continue;
+		
+		//// zombie dead - zombie dying
+		//bool disappearedDead = false;
+		//if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
+		//if (disappearedDead) continue;
+
+		//// zombie Animation
+		//if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
+		//IntRect frameRect = getFrameRect(zombie);
+		//zombieSprite.setTextureRect(frameRect); // crop texture
+
 
 		// call update function if exists
 		if (zombie.updateEntity != nullptr) {
@@ -5929,8 +6003,6 @@ void playMusicForLevel(int level, Music& music) {
 	}
 }
 
-
-
 void defineDayLevels() {
 	//vector<Entity> mainDayPlantTypes = {normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon};
 	vector<Entity> mainDayPlantTypes = allPlantTypes;
@@ -5938,7 +6010,7 @@ void defineDayLevels() {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainDayPlantTypes;
-		levels[lvl].zombie_types = { normalZombie, zombieConehead, zombotDragon };
+		levels[lvl].zombie_types = { normalZombie, zombieConehead };
 		levels[lvl].targetZombie = 20;
 		//levels[1].targetZombie = 2;
 		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
@@ -5954,7 +6026,7 @@ void defineDayLevels() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
 	levels[1].addWave(1, 5, { normalZombie }, 5);
-	levels[1].addWave(3, 9, { zombotDragon }, 5);
+	levels[1].addWave(3, 9, { zombieConehead }, 5);
 	levels[1].addWave(3, 9, { normalZombie, zombieConehead }, 7);
 	levels[1].addWave(5, 15, { normalZombie }, 10);
 	levels[1].addWave(7, 20, { normalZombie, zombieConehead }, 15, true);
