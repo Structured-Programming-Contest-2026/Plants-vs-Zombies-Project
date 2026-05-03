@@ -2326,6 +2326,7 @@ Entity defineInfernoPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Inferno.png");
 	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_INFERNO][1].loadFromFile("assets/Inferno-attack.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2337,9 +2338,13 @@ Entity defineInfernoPlant() {
 	plant.scale = 1.0f;
 	plant.attackTimer = 8.0f;
 
-	plant.num_animations = 1;
+	plant.num_animations = 2;
+	// Idle
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
+	// Attack
+	plant.animations[1].frames = 24;
+	plant.animations[1].frameTimer = 0.1f;
 
 	plant.setCurrentAnimation(0);
 
@@ -2361,14 +2366,19 @@ Entity defineInfernoPlant() {
 			}
 
 			if (zombieInLane) {
-				p.attackClock.restart();
-				Entity newBullet = defineFireTornadoBullet();
-				newBullet.attack = p.attack;
-				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
-				bullets.push_back(newBullet);
+				p.DoAnimation(1, 1);
+				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
+
+					p.attackClock.restart();
+
+					Entity newBullet = defineFireTornadoBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+					bullets.push_back(newBullet);
+				}
 			}
 		}
-		};
+	};
 
 	return plant;
 }
