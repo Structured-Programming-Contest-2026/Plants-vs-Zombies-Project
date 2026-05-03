@@ -706,14 +706,12 @@ struct FallenItem {
 };
 vector<FallenItem> fallenItems;
 
-FallenItem& SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position) {
+void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position) {
 	FallenItem item;
 	item.texture = tex;
 	item.clock.restart();
 	item.fallPosition = position;
 	fallenItems.push_back(item);
-
-	return item;
 }
 
 map<ENTITY_TYPE, Entity> plants;
@@ -3090,7 +3088,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR && zombie.currentAnimationIndex == 3)
-			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex ==3)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -3559,6 +3557,8 @@ void updateZombotDragon(Entity& zombie) {
 }
 
 void zombieEatPlant(Entity& zombie, Entity& plant) {
+	if (gamePaused) return;
+
 	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		zombie.x_vel = 0;
 
@@ -4910,17 +4910,34 @@ void DrawLevelDetails(RenderWindow& window) {
 	button.setPosition(Vector2f(windowWidth, 0) + Vector2f(-85, 125));
 	text.setString(std::string("Pause"));
 	text.setFillColor(Color::White);
-	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 	text.setPosition(button.getPosition());
+
+	bool pausingEnabled = !(!currentLevel->arePlantsSelected || (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f));
+
+	if (!pausingEnabled) {
+		text.setString("Main Menu");
+	}
 
 	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
 		button.setColor(Color(128, 128, 128, 255));
 		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
 		if (mouseJustClicked[0]) {
-			SetGamePaused(true);
+			if (pausingEnabled) {
+				SetGamePaused(true);
+			} else {
+				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
+				resetLevel();
+				delete currentLevel;
+				currentLevel = nullptr;
+				selectingLevel = false;
+				startMainMenuTime = gameClock.getElapsedTime();
+			}
 		}
 	}
+
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 
 	window.draw(button);
 	window.draw(text);
