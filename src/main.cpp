@@ -1400,7 +1400,9 @@ Entity defineFireTornadoBoostedBullet() {
 }
 Entity definePomegranateBullet() {
 	textures[TEXTURE_TYPE::PomegranateBullet][Default_Texture_Index].loadFromFile("assets/pomegranate-bullet-normal.png");
+	Entity bullet;
 
+	return bullet;
 }
 
 
