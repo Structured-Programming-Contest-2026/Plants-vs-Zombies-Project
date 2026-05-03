@@ -660,6 +660,7 @@ struct Entity {
 	}
 	void nextFrame() {
 		if (gamePaused) return;
+		if (isSuperFrozen) return;
 		// next frame + check animation finish
 		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
 			currentAnimation.clock.restart();
@@ -2481,10 +2482,10 @@ Entity defineInfernoPlant() {
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
 					bullets.push_back(newBullet);
 				}
-			
+
 			}
 		}
-	};
+		};
 
 	return plant;
 }
@@ -3834,7 +3835,7 @@ void DrawZombies(RenderWindow& window) {
 
 		if (!isGameOver) {
 			int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
-			zombieSprite.setColor(Color(255, damage, damage));
+			zombieSprite.setColor(zombieSprite.getColor() * Color(255, damage, damage));
 		}
 		// Change Origin For Zombot dragon as its huge
 		Vector2f orgOrg = zombieSprite.getOrigin();
@@ -4195,7 +4196,11 @@ void DrawSeeds(RenderWindow& window) {
 
 		Color packetColor = Color::White;
 		if ((currentLevel->arePlantsSelected && sunsMoney < plant.price) || plant.currentSeedCooldown > 0) {
-			packetColor = Color(100, 100, 100, 255);
+			packetColor = Color(64, 64, 64, 255);
+		} else if (currentLevel->arePlantsSelected && selectedPlant == i) {
+			if (!isShovelActive && !isRelocateActive && !isBoostActive) {
+				packetColor = Color(190, 255, 190, 255);
+			}
 		}
 
 		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.9f, packetColor);
@@ -4220,6 +4225,9 @@ void DrawSeeds(RenderWindow& window) {
 				if (currentLevel->arePlantsSelected) {
 					if (plant.currentSeedCooldown <= 0 && sunsMoney >= plant.price) {
 						selectedPlant = i;
+						isShovelActive = false;
+						isRelocateActive = false;
+						isBoostActive = false;
 					}
 				} else {
 					removePlant = i;
@@ -4745,22 +4753,6 @@ void uiCollectBooster(RenderWindow& window) {
 		}
 	}
 }
-void uiAddBooster(RenderWindow& window) {
-	if (isClicked(addBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
-		if (mouseJustClicked[0]) {
-			uiInteracted = true;
-			if (curBoosterCnt < maxBoosterCnt && coinsMoney >= booster.cost) {
-				curBoosterCnt++;
-				coinsMoney -= booster.cost;
-			} else if (coinsMoney < booster.cost) {
-				// message that you dont have enough coins
-			} else if (curBoosterCnt >= maxBoosterCnt) {
-				// maybe show some message that you cant have more boosters
-			}
-		}
-	}
-
-}
 
 //	UI interaction - Buttons click, Collect Items, Click plants ... etc
 void UI_DrawClick(RenderWindow& window) {
@@ -4777,6 +4769,8 @@ void UI_DrawClick(RenderWindow& window) {
 	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 		if (mouseJustClicked[0]) {
 			isShovelActive = !isShovelActive;
+			isRelocateActive = false;
+			isBoostActive = false;
 			uiInteracted = true;
 		}
 	}
@@ -4800,11 +4794,37 @@ void UI_DrawClick(RenderWindow& window) {
 		if (mouseJustClicked[0]) {
 			isRelocateActive = !isRelocateActive;
 			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
+			isBoostActive = false;
 
 			if (!isRelocateActive) {
 				isRelocating = false;
 				selectedPlantIndex = -1;
 			}
+			uiInteracted = true;
+		}
+	}
+	window.draw(uiSprite);
+	uiSprite.setColor(Color::White);
+	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
+
+	// Boost
+	Texture& boostTex = getTexture(TEXTURE_TYPE::BOOSTER);
+	uiSprite.setTexture(boostTex);
+	resizeSpriteToTex(uiSprite, boostTex);
+	uiSprite.setScale(Vector2f(1, 1));
+	uiSprite.setPosition(1020.0f, 20.0f);
+
+	if (isBoostActive) uiSprite.setColor(Color(150, 150, 150));
+	else uiSprite.setColor(Color::White);
+
+	if (curBoosterCnt <= 0) {
+		uiSprite.setColor(Color(100, 100, 100, 255));
+	} else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (mouseJustClicked[0]) {
+			isBoostActive = !isBoostActive;
+			isShovelActive = false;
+			isRelocateActive = false;
+
 			uiInteracted = true;
 		}
 	}
@@ -4824,8 +4844,6 @@ void UI_Interaction(RenderWindow& window) {
 		uiCollectBooster(window);
 		// Active boost
 		uiBoostActive(window);
-		// Add booster
-		uiAddBooster(window);
 
 		// Other
 		if (!uiInteracted) {
