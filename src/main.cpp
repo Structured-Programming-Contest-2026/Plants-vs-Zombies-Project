@@ -2405,8 +2405,8 @@ Entity defineInfernoPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Inferno.png");
 	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack.png");
-	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boosted.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack-170-130-34.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boost-170-130-35.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2424,10 +2424,10 @@ Entity defineInfernoPlant() {
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
 	// Attack
-	plant.animations[2].frames = 29;
+	plant.animations[2].frames = 34;
 	plant.animations[2].frameTimer = 0.1f;
 	// Boosted
-	plant.animations[3].frames = 25;
+	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
 
 	plant.setCurrentAnimation(0);
