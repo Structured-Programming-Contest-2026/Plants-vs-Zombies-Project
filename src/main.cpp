@@ -2334,7 +2334,7 @@ Entity defineInfernoPlant() {
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
 	plant.scale = 1.0f;
-	plant.attackTimer = 8.0f;
+	plant.attackTimer = 6.0f;	
 
 	plant.num_animations = 2;
 	// Idle
@@ -2364,8 +2364,9 @@ Entity defineInfernoPlant() {
 			}
 
 			if (zombieInLane) {
+
 				p.DoAnimation(1, 1);
-				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
+				if (p.currentAnimation.currentFrame == 22) {
 
 					p.attackClock.restart();
 
@@ -2374,6 +2375,7 @@ Entity defineInfernoPlant() {
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
 					bullets.push_back(newBullet);
 				}
+			
 			}
 		}
 	};
