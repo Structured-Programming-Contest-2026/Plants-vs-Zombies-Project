@@ -2343,7 +2343,7 @@ Entity defineInfernoPlant() {
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
 	// Attack
-	plant.animations[1].frames = 24;
+	plant.animations[1].frames = 29;
 	plant.animations[1].frameTimer = 0.1f;
 
 	plant.setCurrentAnimation(0);
