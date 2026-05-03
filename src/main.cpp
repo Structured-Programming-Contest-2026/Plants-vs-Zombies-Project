@@ -6258,7 +6258,7 @@ void defineWildWestLevels() {
 	// 2 2 4 5 8 10
 	//levels[7].plantReward = CHEERY_BOMB;
 	levels[10].coinReward = 300;
-	levels[10].addWave(8, 20, { zombieRedhair, zombieCowboy, zombieProspector, zombiePogo }, 0);
+	levels[10].addWave(8, 20, { zombieRedhair, zombieCowboy, zombieProspector }, 0);
 	/*levels[10].addWave(3, 5, { zombieProspector }, 5);
 	levels[10].addWave(3, 5, { zombiePogo }, 5);
 	levels[10].addWave(3, 5, { zombieCowboy }, 5);
@@ -6297,7 +6297,7 @@ void defineWildWestLevels() {
 	// Level 9
 	//levels[9].plantReward ;
 	levels[12].coinReward = 300;
-	levels[12].addWave(2, 5, { zombiePogo }, 5);
+	levels[12].addWave(2, 5, { zombieRedhair }, 5);
 	/*levels[12].addWave(2, 5, {zombieRedhair, zombieMummy}, 10);
 	levels[12].addWave(4, 12, { zombieRedhair, zombieMummy }, 10);
 	levels[12].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
