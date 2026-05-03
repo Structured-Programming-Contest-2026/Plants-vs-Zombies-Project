@@ -234,6 +234,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_POMEGRANATE,
 
 	NormalBullet,
 	IceBullet,
@@ -243,6 +244,7 @@ enum class ENTITY_TYPE : uint8_t {
 	ZombotDragonBullet,
 	FireTornadoBullet,
 	FireTornadoBulletBoosted,
+	PomegranateBullet,
 
 
 	ENTITY_TYPE_COUNT	// keep it last
@@ -320,6 +322,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_POMEGRANATE,
 
 	NormalBullet,
 	IceBullet,
@@ -329,6 +332,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZombotDragonBullet,
 	FireTornadoBullet,
 	FireTornadoBulletBoosted,
+	PomegranateBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -463,6 +467,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::PLANT_INFERNO:
 		textureType = TEXTURE_TYPE::PLANT_INFERNO;
+		break;
+	case ENTITY_TYPE::PLANT_POMEGRANATE:
+		textureType = TEXTURE_TYPE::PLANT_POMEGRANATE;
 		break;
 
 		//other
@@ -1316,7 +1323,6 @@ Entity defineZombotDragonBullet() {
 	return dragonBullet;
 }
 
-
 Entity defineFireTornadoBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/FireTornado.png");
@@ -1354,6 +1360,10 @@ Entity defineFireTornadoBoostedBullet() {
 	tornado.setCurrentAnimation(0);
 
 	return tornado;
+}
+Entity definePomegranateBullet() {
+	textures[TEXTURE_TYPE::PomegranateBullet][Default_Texture_Index].loadFromFile("assets/pomegranate-bullet-normal.png");
+
 }
 
 
@@ -2429,6 +2439,72 @@ Entity defineInfernoPlant() {
 			}
 		}
 	};
+
+	return plant;
+}
+Entity definePomegranatePlant() {
+	Texture tex;
+	tex.loadFromFile("assets/pomegranate-idle.png");
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][2].loadFromFile("assets/pomegranate-attack.png");
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][3].loadFromFile("assets/pomegranate-boost.png");
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_POMEGRANATE;
+	plant.health = 150;
+	plant.price = 150;
+	plant.attack = 50;
+
+	plant.num_animations = 3;
+	// Idle
+	plant.animations[0].frames = 0;
+	plant.animations[0].frameTimer = 0.1;
+	// Attack
+	plant.animations[2].frames = 0;
+	plant.animations[2].frameTimer = 0.1;
+	// Boosted
+	plant.animations[3].frames = 0;
+	plant.animations[3].frameTimer = 0.1;
+
+	plants[ENTITY_TYPE::PLANT_POMEGRANATE] = plant;
+
+	plant.updateEntity = [](Entity& p) {
+		float currentTimer = p.isBoosted ? p.boostAttackTimer : p.attackTimer;
+
+		if (p.attackClock.getElapsedTime().asSeconds() >= currentTimer) {
+			// Boosted
+			if (p.isBoosted) {
+				return;
+			}
+
+			//Normal
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInLane) {
+				p.DoAnimation(1, 2);
+				if (p.currentAnimation.currentFrame == 22) {
+					p.attackClock.restart();
+
+					Entity newBullet = definePomegranateBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+					bullets.push_back(newBullet);
+				}
+			}
+
+		}
+		};
 
 	return plant;
 }
