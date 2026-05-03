@@ -234,6 +234,7 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_RED_SHOOTER,
 
 	NormalBullet,
 	IceBullet,
@@ -242,6 +243,7 @@ enum class ENTITY_TYPE : uint8_t {
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	RedBullet,
 
 
 	ENTITY_TYPE_COUNT	// keep it last
@@ -262,6 +264,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
 	LEVEL_ICON,
+	LEVEL_RIBBON_EASY,
+	LEVEL_RIBBON_MEDIUM,
+	LEVEL_RIBBON_HARD,
 	GRID_ROLL,
 	LUSTER,
 	SEED_CHOOSER,
@@ -319,6 +324,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_RED_SHOOTER,
 
 	NormalBullet,
 	IceBullet,
@@ -327,6 +333,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	RedBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -339,6 +346,10 @@ enum class THEME : uint8_t {
 	NIGHT,
 	ANCIENT,
 	WILDWEST,
+	LOST_CITY,     
+	DARK_AGES,    
+	JURASSIC_AGE,
+	ROMAN,
 
 	COUNT	// keep it last
 };
@@ -462,6 +473,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_INFERNO:
 		textureType = TEXTURE_TYPE::PLANT_INFERNO;
 		break;
+	case ENTITY_TYPE::PLANT_RED_SHOOTER:
+		textureType = TEXTURE_TYPE::PLANT_RED_SHOOTER;
+		break;
 
 		//other
 	case ENTITY_TYPE::NormalBullet:
@@ -479,14 +493,13 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::FireTornadoBullet:
 		textureType = TEXTURE_TYPE::FireTornadoBullet;
 		break;
-
 	case ENTITY_TYPE::ShroomBullet:
 		textureType = TEXTURE_TYPE::ShroomBullet;
-
 		break;
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
-
+	case ENTITY_TYPE::RedBullet:
+		textureType = TEXTURE_TYPE::RedBullet;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -855,7 +868,7 @@ struct Level {
 	}
 
 };
-const int number_levels = 20;
+const int number_levels = 24;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 //Wave* currentLevel->waves[currentWaveIndex] = nullptr;   // Removed .. cuz when you push_back to waves (as in zombot), you get a dangling currentWave pointer
@@ -985,7 +998,7 @@ ShopItem shopItems[2] = {
 };
 
 // Plants - zombies - allplanttypes
-Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno , redShooterPlant;
 Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombotDragon;
 vector<Entity> allPlantTypes;
 
@@ -1438,6 +1451,21 @@ Entity defineLightningBullet() {
 
 	return bullet;
 }
+Entity defineRedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/red_bullet.png"); 
+	textures[TEXTURE_TYPE::RedBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::RedBullet;
+	bullet.attack = 40;
+	bullet.x_vel = -600.0f; 
+	bullet.scale = 0.2f; 
+
+	return bullet;
+}
+
 Entity defineRepeaterPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Repeater.png");
@@ -2366,6 +2394,70 @@ Entity defineInfernoPlant() {
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
 				bullets.push_back(newBullet);
+			}
+		}
+		};
+
+	return plant;
+}
+Entity defineRedShooter() 
+{
+	textures[TEXTURE_TYPE::PLANT_RED_SHOOTER][0].loadFromFile("assets/RedStingerIdle.png");
+	textures[TEXTURE_TYPE::PLANT_RED_SHOOTER][1].loadFromFile("assets/RedStingerAttack.png"); 
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_RED_SHOOTER;
+	plant.health = 150;
+	plant.attack = 40;
+	plant.price = 150;
+	plant.scale = 0.5f;
+	plant.attackTimer = 2.0f; 
+
+	plant.num_animations = 2;
+
+
+	plant.animations[0].frames = 19;
+	plant.animations[0].frameTimer = 0.15f;
+
+	plant.animations[1].frames = 15;
+	plant.animations[1].frameTimer = 0.15f;
+
+	plant.setCurrentAnimation(0);
+	plants[ENTITY_TYPE::PLANT_RED_SHOOTER] = plant;
+
+
+	plant.updateEntity = [](Entity& p)
+		{
+		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) 
+		{
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) 
+				{
+		
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f)
+					{
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInLane) 
+			{
+				p.DoAnimation(1, 1);
+
+				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2)
+				{
+					p.attackClock.restart();
+					Entity newBullet = defineRedBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 30); 
+					bullets.push_back(newBullet);
+				}
 			}
 		}
 		};
@@ -5384,7 +5476,8 @@ void DrawLevelSelector(RenderWindow& window) {
 	}
 
 
-	for (int i = 0; i < number_levels; i++) {
+	for (int i = 0; i < number_levels; i++) 
+	{
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
 
 		bool selected = i == selectedLevel;
@@ -5448,6 +5541,36 @@ void DrawLevelSelector(RenderWindow& window) {
 		text.setPosition(pos + Vector2f(0, (1 + scale.y - 0.75) * 120));
 
 		window.draw(text);
+		Sprite ribbonSprite;
+		int levelNumberForMath = i + 1;
+
+		if (levelNumberForMath % 3 == 1)
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_EASY][Default_Texture_Index]);
+		} else if (levelNumberForMath % 3 == 2) 
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_MEDIUM][Default_Texture_Index]);
+		} else if (levelNumberForMath % 3 == 0) 
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_HARD][Default_Texture_Index]);
+		}
+
+		float ribbonScale = 0.2f * scale.x;
+		ribbonSprite.setScale(ribbonScale, ribbonScale);
+		float ribbonWidth = ribbonSprite.getGlobalBounds().width;
+		ribbonSprite.setPosition(pos.x - (ribbonWidth / 2.0f), pos.y - 250.0f * scale.y); //samaan
+
+		if (!selected && !hovered)
+		{
+			ribbonSprite.setColor(Color(128, 128, 128, 255));
+		}
+		else 
+		{
+			ribbonSprite.setColor(Color::White);
+		}
+
+		window.draw(ribbonSprite);
+
 	}
 
 	{
@@ -6168,7 +6291,6 @@ void defineNightLevels() {
 	levels[6].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
 	levels[6].addWave(6, 20, { zombieAllStar }, 0, true);
 }
-
 void defineAncientLevels() {
 	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
 	vector<Entity> mainAncientPlantTypes = allPlantTypes;
@@ -6301,6 +6423,81 @@ void defineWildWestLevels() {
 }
 
 
+void defineLostCityLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainLostCityPlantTypes = allPlantTypes;
+
+
+	for (int lvl = 13; lvl <= 15; lvl++) {
+		levels[lvl].theme = THEME::LOST_CITY;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainLostCityPlantTypes;
+		levels[lvl].targetZombie = 30; 
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+
+	//to be continued
+}
+
+void defineDarkAgesLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainDarkAgesPlantTypes = allPlantTypes;
+
+	for (int lvl = 16; lvl <= 18; lvl++) 
+	{
+		levels[lvl].theme = THEME::DARK_AGES;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainDarkAgesPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+void defineJurassicAgeLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainJurassicPlantTypes = allPlantTypes;
+
+	for (int lvl = 19; lvl <= 21; lvl++) {
+		levels[lvl].theme = THEME::JURASSIC_AGE;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainJurassicPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+void defineRomanLevels()
+{
+	//vector<Entity> mainRomanPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainRomanPlantTypes = allPlantTypes;
+
+	for (int lvl = 22; lvl <= 24; lvl++) {
+		levels[lvl].theme = THEME::ROMAN;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainRomanPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+
+
 int main() {
 	srand(time(0));
 
@@ -6344,6 +6541,7 @@ int main() {
 	snapdragon = defineSnapdragon();
 	lightningReed = defineLightningReed();
 	inferno = defineInfernoPlant();
+	redShooterPlant = defineRedShooter();
 
 	// Zombies
 	normalZombie = defineNormalZombie();
@@ -6366,7 +6564,7 @@ int main() {
 	;
 	zombotDragon = defineZombotDragon();
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno };
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno ,redShooterPlant };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -6374,21 +6572,41 @@ int main() {
 	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
 	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
 	textures[TEXTURE_TYPE::STORE_WINDOW][Default_Texture_Index].loadFromFile("assets/mainmenu/store_window.png");
+
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_EASY][Default_Texture_Index].loadFromFile("assets/mainmenu/Easy.png");
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_MEDIUM][Default_Texture_Index].loadFromFile("assets/mainmenu/Medium.png");
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_HARD][Default_Texture_Index].loadFromFile("assets/mainmenu/Hard.png");
+
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][1].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][2].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][3].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][4].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][5].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][6].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][7].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][8].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][1].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][2].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][3].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][4].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][5].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][6].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][7].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][8].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][1].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][2].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][3].loadFromFile("assets/mainmenu/level_option_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][4].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][7].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][8].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][5].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][6].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
@@ -6448,6 +6666,7 @@ int main() {
 		isEntityUnlocked[snapdragon.type] =
 		isEntityUnlocked[lightningReed.type] =
 		isEntityUnlocked[inferno.type] =
+		isEntityUnlocked[redShooterPlant.type] = true;
 		true;
 
 	// Levels
@@ -6455,6 +6674,10 @@ int main() {
 	defineNightLevels();
 	defineAncientLevels();
 	defineWildWestLevels();
+	defineLostCityLevels();
+	defineDarkAgesLevels();
+	defineJurassicAgeLevels();
+	defineRomanLevels();
 
 	//---------------------------------------
 	//// Level 1: Day
@@ -6605,7 +6828,7 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	//for (int lvl = 1; lvl <= number_levels; lvl++) {
-	for (int theme = 1; theme <= int(THEME::COUNT); theme++) {
+	for (int theme = 1; theme < int(THEME::COUNT); theme++) {
 		cout << "Loading level " << theme << " files" << endl;
 		levels[theme].lvlNum = theme;
 
