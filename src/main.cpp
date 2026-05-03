@@ -1345,7 +1345,7 @@ Entity defineFireTornadoBoostedBullet() {
 	tornado.category = ENTITY_CATEGORY::Bullet;
 	tornado.type = ENTITY_TYPE::FireTornadoBulletBoosted;
 	tornado.attack = 1;
-	tornado.x_vel = -100.0f;
+	tornado.x_vel = -175.0f;
 	tornado.scale = 1.2f;
 
 	tornado.num_animations = 1;
