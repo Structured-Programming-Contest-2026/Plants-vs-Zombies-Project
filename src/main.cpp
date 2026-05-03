@@ -683,7 +683,7 @@ struct Entity {
 		afterAnimation = [orgAttackTimer](Entity& p) {
 			p.attackTimer = orgAttackTimer;
 			p.isBoosted = false;
-		};
+			};
 	}
 
 	void (*updateEntity)(Entity& entity) = nullptr; // This function should not have problems with Global variables .. but local variables (on its definition) are probably not captured
@@ -823,6 +823,16 @@ struct Level {
 	void addWave(int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, float rest = 0, bool isHuge = false) {
 		waves.push_back(Wave(zombieCount, length, zombieTypes, isHuge));
 		if (rest) waves.push_back(Wave(0, rest, {}, false));	// rest wave
+		for (auto& type : zombieTypes) {
+			bool exists = false;
+			for (auto& t : zombie_types) {
+				if (t.type == type.type) {
+					exists = true;
+					break;
+				}
+			}
+			if (!exists) zombie_types.push_back(type);
+		}
 		this->setTargetZombie();
 	}
 
@@ -5992,7 +6002,6 @@ void defineDayLevels() {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainDayPlantTypes;
-		levels[lvl].zombie_types = { normalZombie, zombieConehead };
 		levels[lvl].targetZombie = 20;
 		//levels[1].targetZombie = 2;
 		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
@@ -6046,7 +6055,6 @@ void defineNightLevels() {
 		levels[lvl].theme = THEME::NIGHT;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainNightPlantTypes;
-		levels[lvl].zombie_types = { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
 		levels[lvl].targetZombie = 25;
 		levels[lvl].startingSuns = 100;
 		levels[lvl].offsetX = 450;
@@ -6106,7 +6114,6 @@ void defineAncientLevels() {
 		levels[lvl].theme = THEME::ANCIENT;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainAncientPlantTypes;
-		levels[lvl].zombie_types = { zombieMummy, zombieRa, zombieTorch, zombiePharaoh };
 		levels[lvl].targetZombie = 30;
 		levels[lvl].offsetX = 450;
 		levels[lvl].offsetY = 135;
@@ -6168,7 +6175,6 @@ void defineWildWestLevels() {
 		levels[lvl].theme = THEME::WILDWEST;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainWildWestPlantTypes;
-		levels[lvl].zombie_types = { zombieMummy, zombieRa, zombieTorch, zombiePharaoh };
 		levels[lvl].targetZombie = 30;
 		levels[lvl].offsetX = 450;
 		levels[lvl].offsetY = 135;
