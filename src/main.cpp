@@ -3055,18 +3055,6 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				playZombotDragonDeath();
 				float s = zombie.scale;
 				zombie.DoAnimation(1, 1);
-				for (Entity& z : entities) {
-					if (z.category == ENTITY_CATEGORY::ZOMBIE && z.type != ENTITY_TYPE::ZOMBOT_DRAGON) {
-						attackZombie(z, 10000000, true);
-						//attackZombie(z, 10000000, true);
-					}
-					cout << "XXXXXX Killed remaining zombie\n";
-				}
-				currentWaveIndex = currentLevel->waves.size(); // no more waves
-				deadZombieCount = currentLevel->targetZombie;
-				//curWaveZombieCnt = currentLevel->waves[currentWaveIndex].zombieCount; // win this wave
-				//cout << "currentWaveIndex = " << currentWaveIndex << "\ncurWaveZombieCnt = " << curWaveZombieCnt << endl;
-
 				zombie.afterAnimation = [s](Entity& zombie) {
 					cout << "---------- 2 You killed Zombot\n";	// maybe message here to kill the boss
 					zombie.DoAnimation(1, 4);
@@ -3448,7 +3436,7 @@ void updateZombotDragon(Entity& zombie) {
 		inJump = true;
 		targetRow = rand() % (gridRows);	// do not come to last row [removed to try]
 		cout << "000 chose targetROW = " << targetRow << endl;
-		playZombotDragonRoar;
+		playZombotDragonRoar();
 	}
 	float targetRowY = gridCellPosition(targetRow, 0, zombie).y;
 	
@@ -3551,26 +3539,15 @@ void DrawZombies(RenderWindow& window) {
 		// lawnmowers
 		checkZombieHitByLawnmower(zombie);
 
-		// zombie Animation
-		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
-		IntRect frameRect = getFrameRect(zombie);
-		zombieSprite.setTextureRect(frameRect); // crop texture
-
 		// zombie dead - zombie dying
 		bool disappearedDead = false;
 		if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
 		if (disappearedDead) continue;
 		
-		//// zombie dead - zombie dying
-		//bool disappearedDead = false;
-		//if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
-		//if (disappearedDead) continue;
-
-		//// zombie Animation
-		//if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
-		//IntRect frameRect = getFrameRect(zombie);
-		//zombieSprite.setTextureRect(frameRect); // crop texture
-
+		// zombie Animation
+		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
+		IntRect frameRect = getFrameRect(zombie);
+		zombieSprite.setTextureRect(frameRect); // crop texture
 
 		// call update function if exists
 		if (zombie.updateEntity != nullptr) {
