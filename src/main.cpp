@@ -673,6 +673,19 @@ struct Entity {
 		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
 	}
 
+	int boostCycles = 10;
+	int boostAnimationIdx = 3;
+	void boost() {	// notice that attack clock is adapted to whether you are boosted or not
+		int orgAttackTimer = attackTimer;
+		attackTimer = boostAttackTimer;
+		isBoosted = true;
+		DoAnimation(boostCycles, boostAnimationIdx); // ntimes/eachcycletakes + boolmod
+		afterAnimation = [orgAttackTimer](Entity& p) {
+			p.attackTimer = orgAttackTimer;
+			p.isBoosted = false;
+		};
+	}
+
 	void (*updateEntity)(Entity& entity) = nullptr; // This function should not have problems with Global variables .. but local variables (on its definition) are probably not captured
 };
 
@@ -924,14 +937,7 @@ struct Booster {
 			return;
 		}
 		curBoosterCnt--;
-		int orgAttackTimer = plant.attackTimer;
-		plant.attackTimer = plant.boostAttackTimer;
-		plant.isBoosted = true;
-		plant.DoAnimation(10, 3); // TODO: ntimes/eachcycletakes + boolmod
-		plant.afterAnimation = [orgAttackTimer](Entity& p) {
-			p.attackTimer = orgAttackTimer;
-			p.isBoosted = false;
-			};
+		plant.boost();
 	}
 };
 Booster booster;
