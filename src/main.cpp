@@ -236,10 +236,11 @@ enum class ENTITY_TYPE : uint8_t {
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 
 
 	ENTITY_TYPE_COUNT	// keep it last
@@ -319,10 +320,11 @@ enum class TEXTURE_TYPE : uint8_t {
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -460,8 +462,8 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
 		break;
-	case ENTITY_TYPE::FireDragonBullet:
-		textureType = TEXTURE_TYPE::FireDragonBullet;
+	case ENTITY_TYPE::SnapDragonBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBullet;
 		break;
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
@@ -477,6 +479,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
 
+		break;
+	case ENTITY_TYPE::SnapDragonBoostBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBoostBullet;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -1007,7 +1012,7 @@ IntRect getFrameRect(Entity& entity) {
 
 	// next frame + check animation finish
 	// DEBUG: NOT SURE BUT IT'S REPEATED
-	// if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
+	 //if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -1256,20 +1261,39 @@ Entity defineShroomBullet() {
 
 	return bullet;
 }
-Entity defineFireDragonBullet() {
+Entity defineSnapDragonBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/fire.png");
-	textures[TEXTURE_TYPE::FireDragonBullet][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::SnapDragonBullet][Default_Texture_Index] = tex;
 
 	Entity dragon{};
 	dragon.category = ENTITY_CATEGORY::Bullet;
-	dragon.type = ENTITY_TYPE::FireDragonBullet;
+	dragon.type = ENTITY_TYPE::SnapDragonBullet;
 	dragon.attack = 500;
 	dragon.x_vel = -280.0f;
 	dragon.scale = 1.0f;
 
 	dragon.num_animations = 1;
 	dragon.animations[0].frames = 20;
+	dragon.animations[0].frameTimer = 0.1f;
+	dragon.setCurrentAnimation(0);
+
+	return dragon;
+}
+Entity defineSnapDragonBoostedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/snapdragon-bullet-boost.png");
+	textures[TEXTURE_TYPE::SnapDragonBoostBullet][Default_Texture_Index] = tex;
+
+	Entity dragon{};
+	dragon.category = ENTITY_CATEGORY::Bullet;
+	dragon.type = ENTITY_TYPE::SnapDragonBoostBullet;
+	dragon.attack = 500;
+	dragon.x_vel = -280.0f;
+	dragon.scale = 1.5f;
+
+	dragon.num_animations = 1;
+	dragon.animations[0].frames = 14;
 	dragon.animations[0].frameTimer = 0.1f;
 	dragon.setCurrentAnimation(0);
 
@@ -2213,8 +2237,41 @@ Entity defineSnapdragon() {
 
 	plants[ENTITY_TYPE::PLANT_SNAPDRAGON] = plant;
 
+	// Boost settings
+	plant.boostCycles = 1;
+	plant.boostAnimationIdx = 3;
+
 	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+
+			// Boost
+			if (p.isBoosted) {
+				p.attackClock.restart();
+				Entity newBullet = defineSnapDragonBoostedBullet();
+				newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//newBullet.x_vel *= 2;
+				bullets.push_back(newBullet);
+				
+				p.isBoosted = false;
+				//// shoot bullets
+				//if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
+				//	p.attackClock.restart();
+				//	Entity newBullet = defineNormalBullet();
+				//	//Bullet newBullet = defineNormalBullet();
+				//	newBullet.attack = p.attack;
+				//	newBullet.x_vel *= 2;
+				//	newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 200, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 300, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//}
+				return;	 // to not loop zombies
+			}
+
+			// Normal
+
 			bool zombieInRange = false;
 
 			for (Entity& zombie : entities) {
@@ -3686,6 +3743,7 @@ void DrawZombies(RenderWindow& window) {
 	}
 }
 
+// Stop and Damage (not start) of Bullets along the way + Draw and Animation of bullets
 void UpdateAndDrawBullets(RenderWindow& window) {
 	for (Entity& bullet : bullets) {
 		if (bullet.category != ENTITY_CATEGORY::Bullet) continue;
@@ -3697,7 +3755,8 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			continue;
 		}
 
-		// Zombot Dragon Bullet
+		
+		// Zombot Dragon Bullet (Out of zombie)
 		if (bullet.type == ENTITY_TYPE::ZombotDragonBullet) {
 			for (Entity& plant : entities) {
 				if (plant.category != ENTITY_CATEGORY::PLANT || plant.health <= 0) continue;
@@ -3713,7 +3772,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			}
 		} else {
 
-			// Plant Bullet
+		// Plant Bullet
 			for (Entity& zombie : entities) {
 
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;
@@ -3723,8 +3782,9 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 					bullet.position.x <= zombie.position.x + 100.0f) {
 
 					//cout << "bullet type " << int(bullet.type )<< " shot entity type " << int(zombie.type )<< endl;
+					//vector<ENTITY_TYPE> unkilled_bullets = {ENTITY_TYPE::SnapDragonBoostBullet};
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet && bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
 						bullet.category = ENTITY_CATEGORY::NONE;
 						break;
 					}
@@ -3743,6 +3803,8 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						continue;
 					}
 
+					// Damage Zombie
+
 					attackZombie(zombie, bullet.attack, true);
 					if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
 						zombie.diedByElectrocution = true;
@@ -3752,8 +3814,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						zombie.freezeTimer = 3.0f;
 					}
 
-					bullet.category = ENTITY_CATEGORY::NONE;
-					break;
+					// Unkilled bullets
+					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
+						// End of the bullet
+						bullet.category = ENTITY_CATEGORY::NONE;
+						break;
+					}
 				}
 			}
 
@@ -3765,7 +3831,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			bulletSprite.setTexture(bulletTex);
 
 			if (bullet.num_animations > 0 && bullet.animations[bullet.currentAnimationIndex].frames > 0) {
-				bulletSprite.setTextureRect(getFrameRect(bullet));
+				// Animation
+				if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer))
+					bullet.nextFrame(); // next frame
+				bulletSprite.setTextureRect(getFrameRect(bullet)); // crop textures
 			} else {
 				bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
 			}
