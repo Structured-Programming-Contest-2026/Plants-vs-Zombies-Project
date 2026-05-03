@@ -242,6 +242,7 @@ enum class ENTITY_TYPE : uint8_t {
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	FireTornadoBulletBoosted,
 
 
 	ENTITY_TYPE_COUNT	// keep it last
@@ -327,6 +328,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	FireTornadoBulletBoosted,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -478,6 +480,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::FireTornadoBullet:
 		textureType = TEXTURE_TYPE::FireTornadoBullet;
+		break;
+	case ENTITY_TYPE::FireTornadoBulletBoosted:
+		textureType = TEXTURE_TYPE::FireTornadoBulletBoosted;
 		break;
 
 	case ENTITY_TYPE::ShroomBullet:
@@ -1332,6 +1337,26 @@ Entity defineFireTornadoBullet() {
 
 	return tornado;
 }
+Entity defineFireTornadoBoostedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/FireTornadoBoosted.png");
+	textures[TEXTURE_TYPE::FireTornadoBulletBoosted][Default_Texture_Index] = tex;
+
+	Entity tornado{};
+	tornado.category = ENTITY_CATEGORY::Bullet;
+	tornado.type = ENTITY_TYPE::FireTornadoBulletBoosted;
+	tornado.attack = 1;
+	tornado.x_vel = -175.0f;
+	tornado.scale = 1.2f;
+
+	tornado.num_animations = 1;
+	tornado.animations[0].frames = 1;
+	tornado.animations[0].frameTimer = 0.05f;
+	tornado.setCurrentAnimation(0);
+
+	return tornado;
+}
+
 
 // plants
 Entity defineNormalPlant() {
@@ -2325,34 +2350,59 @@ Entity defineInfernoPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Inferno.png");
 	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE::PLANT_INFERNO][1].loadFromFile("assets/Inferno-attack.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boosted.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_INFERNO;
 	plant.health = 300;
-	plant.attack = 20;
+	plant.attack = 10;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
 	plant.scale = 1.0f;
 	plant.attackTimer = 6.0f;
+	plant.boostAttackTimer = 1.0f;
 
-	plant.num_animations = 2;
+	plant.num_animations = 3;
 	// Idle
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
 	// Attack
-	plant.animations[1].frames = 29;
-	plant.animations[1].frameTimer = 0.1f;
+	plant.animations[2].frames = 29;
+	plant.animations[2].frameTimer = 0.1f;
+	// Boosted
+	plant.animations[3].frames = 25;
+	plant.animations[3].frameTimer = 0.1;
 
 	plant.setCurrentAnimation(0);
 
 	plants[ENTITY_TYPE::PLANT_INFERNO] = plant;
 
 	plant.updateEntity = [](Entity& p) {
-		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
-			bool zombieInLane = false;
+		float currentTimer = p.isBoosted ? p.boostAttackTimer : p.attackTimer;
 
+		if (p.attackClock.getElapsedTime().asSeconds() >= currentTimer) {
+			// Boosted
+			if (p.isBoosted) {
+				p.attack = 60;
+				p.DoAnimation(1, 3);
+				if (p.currentAnimation.currentFrame == 22) {
+
+					p.attackClock.restart();
+
+					Entity newBullet = defineFireTornadoBoostedBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+					bullets.push_back(newBullet);
+					p.isBoosted = false;
+					p.attackClock.restart();
+				}
+				return;
+			}
+
+			// Normal 
+			bool zombieInLane = false;
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
@@ -2366,7 +2416,7 @@ Entity defineInfernoPlant() {
 
 			if (zombieInLane) {
 
-				p.DoAnimation(1, 1);
+				p.DoAnimation(1, 2);
 				if (p.currentAnimation.currentFrame == 22) {
 
 					p.attackClock.restart();
@@ -3816,6 +3866,20 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 					if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
 						if (zombie.type != ENTITY_TYPE::ZOMBOT_DRAGON) zombie.position.x -= bullet.x_vel * delta_time;
+						float expectedDamage = bullet.attack * delta_time;
+						int tickDamage = (int)expectedDamage;
+						float fractionalPart = expectedDamage - tickDamage;
+						if ((rand() % 100) / 100.0f < fractionalPart) {
+							tickDamage++;
+						}
+						if (tickDamage > 0) {
+							attackZombie(zombie, tickDamage, false);
+						}
+						continue;
+					}
+
+					if (bullet.type == ENTITY_TYPE::FireTornadoBulletBoosted) {
+						if (zombie.type != ENTITY_TYPE::ZOMBOT_DRAGON) zombie.position.x -= (bullet.x_vel - 50) * delta_time;
 						float expectedDamage = bullet.attack * delta_time;
 						int tickDamage = (int)expectedDamage;
 						float fractionalPart = expectedDamage - tickDamage;
