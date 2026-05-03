@@ -280,6 +280,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ITEM_CONE,
 	ITEM_NEWSPAPER,
 	ITEM_PHAROAH_CASKET,
+	ITEM_JAR,
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -667,7 +668,14 @@ struct Entity {
 		}
 	}
 	void DoAnimation(int forCycles = 1, int idx = 0) {
-		if (currentAnimationIndex == idx) return;
+		//if (currentAnimationIndex == idx) return;
+
+		// Add a log inside DoAnimation to verify it's actually switching:
+		if (type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+			cout << "DoAnimation called: idx=" << idx << " currentAnimationIndex=" << currentAnimationIndex << endl;
+			if (currentAnimationIndex == idx) { cout << "SKIPPED - same index\n"; return; }
+		}
+		else if (currentAnimationIndex == idx) return;
 
 		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
@@ -684,13 +692,23 @@ struct FallenItem {
 	Clock clock;
 	Vector2f fallPosition;
 };
+vector<FallenItem> fallenItems;
+
+FallenItem& SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position) {
+	FallenItem item;
+	item.texture = tex;
+	item.clock.restart();
+	item.fallPosition = position;
+	fallenItems.push_back(item);
+
+	return item;
+}
 
 map<ENTITY_TYPE, Entity> plants;
 
 vector<Entity> entities;
 vector<Entity> newBullets;	// test
 vector<Entity> bullets;
-vector<FallenItem> fallenItems;
 
 struct Reward {
 	enum {
@@ -992,7 +1010,8 @@ IntRect getFrameRect(Entity& entity) {
 	int frameHeight = tex.getSize().y;
 
 	// next frame + check animation finish
-	if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
+	// DEBUG: NOT SURE BUT IT'S REPEATED
+	// if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -2852,6 +2871,38 @@ Entity defineZombotDragon() {
 	return zombie;
 }
 
+// Character Sound Effects
+int playZombotDragonFireBall() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-fireball.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+int playZombotDragonRoar() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-roar.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+int playZombotDragonDeath() {
+	Music* music = new Music();
+	if (!music->openFromFile("assets/audio/zombot-dragon-death.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music->setLoop(false);
+	music->play();
+	return 0;
+}
+
 
 void UpdateSuns(RenderWindow& window) {
 	for (int i = 0; i < MAX_SUNS; i++) {
@@ -2968,7 +3019,7 @@ void DrawDebugGrid(RenderWindow& window) {
 void DrawPlantsGrid(RenderWindow& window) {
 	//vector<Entity> newBullets; //temporary vector
 	for (Entity& plant : entities) {
-		
+
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
 
 		// Animation
@@ -3056,19 +3107,24 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				} else {
 					zombie.DoAnimation(1, 2);
 				}
-			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)
+			{
 				// Zombot Dragon Death
+				cout << "---------- 1 You killed Zombot\n";	// maybe message here to kill the boss
+				playZombotDragonDeath();
 				float s = zombie.scale;
 				zombie.DoAnimation(1, 1);
 				zombie.afterAnimation = [s](Entity& zombie) {
+					cout << "---------- 2 You killed Zombot\n";	// maybe message here to kill the boss
 					zombie.DoAnimation(1, 4);
 					zombie.afterAnimation = [s](Entity& zombie) {
+						cout << "---------- 3 You killed Zombot\n";	// maybe message here to kill the boss
 						zombie.scale = s;
 						cout << "You killed Zombot\n";	// maybe message here to kill the boss
-						zombie.category = ENTITY_CATEGORY::NONE;
+						//zombie.category = ENTITY_CATEGORY::NONE;
 						attackZombie(zombie, 10000000, false);
-						};
 					};
+				};
 			} else {
 				zombie.DoAnimation(1, 1);
 			}
@@ -3269,11 +3325,7 @@ void updateZombieAllStars(Entity& zombie) {
 void updateNewspaperZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
 		zombie.setCurrentAnimation(2);
-		FallenItem item;
-		item.texture = TEXTURE_TYPE::ITEM_NEWSPAPER;
-		item.clock.restart();
-		item.fallPosition = zombie.position + Vector2f(100, 0);
-		fallenItems.push_back(item);
+		SpawnFallingItem(TEXTURE_TYPE::ITEM_NEWSPAPER, zombie.position + Vector2f(100, 0));
 		zombie.x_vel = 170.0f;
 		zombie.attackTimer = 0.4f;
 	}
@@ -3281,11 +3333,7 @@ void updateNewspaperZombie(Entity& zombie) {
 void updateConeheadZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
 		zombie.setCurrentAnimation(2);
-		FallenItem item;
-		item.texture = TEXTURE_TYPE::ITEM_CONE;
-		item.clock.restart();
-		item.fallPosition = zombie.position + Vector2f(100, 0);
-		fallenItems.push_back(item);
+		SpawnFallingItem(TEXTURE_TYPE::ITEM_CONE, zombie.position + Vector2f(100, 0));
 	}
 }
 
@@ -3294,11 +3342,7 @@ void updatePharaohZombie(Entity& zombie) {
 		zombie.shellDestroyed = true;
 		if (zombie.currentAnimationIndex != 2) {
 			zombie.setCurrentAnimation(2);
-			FallenItem item;
-			item.texture = TEXTURE_TYPE::ITEM_PHAROAH_CASKET;
-			item.clock.restart();
-			item.fallPosition = zombie.position + Vector2f(100, 0);
-			fallenItems.push_back(item);
+			SpawnFallingItem(TEXTURE_TYPE::ITEM_PHAROAH_CASKET, zombie.position + Vector2f(100, 0));
 		}
 		zombie.x_vel = 70;
 	}
@@ -3312,9 +3356,10 @@ void updatePianistZombie(Entity& zombie) {
 		zombie.scale = 1.0f;
 	}
 
-	if (zombie.health <= 250 && zombie.currentAnimationIndex == 0) {
+	if (zombie.health <= 250 && zombie.currentAnimationIndex != 2) {
 		zombie.scale = 1.0f;
 		zombie.setCurrentAnimation(2);
+		SpawnFallingItem(TEXTURE_TYPE::ITEM_JAR, zombie.position + Vector2f(50, -25));
 	}
 
 
@@ -3411,9 +3456,9 @@ Clock dragonJump, jumping;
 bool inJump = true;
 //bool inJump = false;
 int D = 1, U = -1;
-int prevR=0, direction=D;
+int prevR = 0, direction = D;
 float jumpTimer = 5.f;
-Vector2f gridCellPosition(int r, int c, Entity &e) {	// DONT USE
+Vector2f gridCellPosition(int r, int c, Entity& e) {	// DONT USE
 	float x = currentLevel->offsetX + (c * currentLevel->cellWidth); //+ ((currentLevel->cellWidth - e.width) / 2);
 	float y = currentLevel->offsetY + (r * currentLevel->cellHeight); //+ (currentLevel->cellHeight - e.height);
 	return { x,y };
@@ -3422,9 +3467,9 @@ Vector2f gridCellPosition(int r, int c, Entity &e) {	// DONT USE
 float v = 0.5;
 int targetRow = 3;
 void updateZombotDragon(Entity& zombie) {
-	Vector2f goodpos = {windowWidth-450, windowHeight/2};
+	Vector2f goodpos = { windowWidth - 450, windowHeight / 2 };
 	if (zombie.position.x <= goodpos.x) {
-		zombie.x_vel = 0; entered_zombotDragon=true;
+		zombie.x_vel = 0; entered_zombotDragon = true;
 	}
 
 	/*if (f && zombie.position.y > gridCellPosition(0, 0, zombie).y) {
@@ -3438,7 +3483,7 @@ void updateZombotDragon(Entity& zombie) {
 		return;
 	}
 
-	
+
 	// After entering, change the attackTimer
 	zombie.attackTimer = 30.f;
 
@@ -3446,16 +3491,17 @@ void updateZombotDragon(Entity& zombie) {
 		inJump = true;
 		targetRow = rand() % (gridRows);	// do not come to last row [removed to try]
 		cout << "000 chose targetROW = " << targetRow << endl;
+		playZombotDragonRoar();
 	}
 	float targetRowY = gridCellPosition(targetRow, 0, zombie).y;
-	
+
 	int comp = (targetRow - prevR);
 	if (comp > 0) direction = D;
 	else if (comp < 0) direction = U;
 	else direction = 0;
 	//cout << "directionw is "<<direction<<endl;
 
-	if (inJump && (direction == 0 || zombie.position.y >= targetRowY && direction==D || zombie.position.y <= targetRowY && direction == U) ){
+	if (inJump && (direction == 0 || zombie.position.y >= targetRowY && direction == D || zombie.position.y <= targetRowY && direction == U)) {
 		// stop
 		inJump = false;
 		dragonJump.restart();
@@ -3473,10 +3519,15 @@ void updateZombotDragon(Entity& zombie) {
 	}
 
 	// Attack
-	if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+	if (!zombie.isDead && zombie.health > 0 && zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 		float s = zombie.scale;
 		zombie.DoAnimation(1, 2);
+		zombie.afterAnimation = [](Entity& z) {
+			cout << "------- after zombot dragon attack\n";
+			};
 		zombie.scale = 1.25;
+		// Play sound effect
+		playZombotDragonFireBall();
 		// 1- Shoot a bullet
 		Entity newBullet = defineZombotDragonBullet();
 		newBullet.position = { zombie.position.x, zombie.position.y + 50 };
@@ -3484,12 +3535,12 @@ void updateZombotDragon(Entity& zombie) {
 		bullets.push_back(newBullet);
 		// 2- Push a wave
 		// Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombotDragon;
-		currentLevel->addWave(15, 20, {normalZombie, normalZombie, normalZombie, zombieAllStar, zombieRa, zombiePharaoh, zombieProspector, zombieNewspaper, zombieRedhair}, 20, false);
+		currentLevel->addWave(15, 20, { normalZombie, normalZombie, normalZombie, zombieAllStar, zombieRa, zombiePharaoh, zombieProspector, zombieNewspaper, zombieRedhair }, 20, false);
 		cout << "Dragon pushed a wave\n";
 		cout << "waves size = " << currentLevel->waves.size() << endl;
 		// Restart clock
 		zombie.attackClock.restart();
-		
+
 	}
 }
 
@@ -3552,7 +3603,7 @@ void DrawZombies(RenderWindow& window) {
 		bool disappearedDead = false;
 		if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
 		if (disappearedDead) continue;
-
+		
 		// zombie Animation
 		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
@@ -3654,8 +3705,8 @@ void DrawZombies(RenderWindow& window) {
 		}
 		// Change Origin For Zombot dragon as its huge
 		Vector2f orgOrg = zombieSprite.getOrigin();
-		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON && zombie.currentAnimationIndex == 0) zombieSprite.setOrigin(zombieSprite.getOrigin().x, - 2 * zombieSprite.getGlobalBounds().height / 5);
-		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON && zombie.currentAnimationIndex == 2) zombieSprite.setOrigin(zombieSprite.getOrigin().x + 35, - 2 * zombieSprite.getGlobalBounds().height / 5 + 30);
+		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON && zombie.currentAnimationIndex == 0) zombieSprite.setOrigin(zombieSprite.getOrigin().x, -2 * zombieSprite.getGlobalBounds().height / 5);
+		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON && zombie.currentAnimationIndex == 2) zombieSprite.setOrigin(zombieSprite.getOrigin().x + 35, -2 * zombieSprite.getGlobalBounds().height / 5 + 30);
 		//if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) zombieSprite.setOrigin(zombieSprite.getOrigin().x, - 270);
 
 		window.draw(zombieSprite);
@@ -3735,24 +3786,24 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						break;
 					}
 
-				if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
-					if(zombie.type!=ENTITY_TYPE::ZOMBOT_DRAGON) zombie.position.x -= bullet.x_vel * delta_time;
-					float expectedDamage = bullet.attack * delta_time;
-					int tickDamage = (int)expectedDamage;
-					float fractionalPart = expectedDamage - tickDamage;
-					if ((rand() % 100) / 100.0f < fractionalPart) {
-						tickDamage++;
+					if (bullet.type == ENTITY_TYPE::FireTornadoBullet) {
+						if (zombie.type != ENTITY_TYPE::ZOMBOT_DRAGON) zombie.position.x -= bullet.x_vel * delta_time;
+						float expectedDamage = bullet.attack * delta_time;
+						int tickDamage = (int)expectedDamage;
+						float fractionalPart = expectedDamage - tickDamage;
+						if ((rand() % 100) / 100.0f < fractionalPart) {
+							tickDamage++;
+						}
+						if (tickDamage > 0) {
+							attackZombie(zombie, tickDamage, false);
+						}
+						continue;
 					}
-					if (tickDamage > 0) {
-						attackZombie(zombie, tickDamage, false);
-					}
-					continue;
-				}
 
-				attackZombie(zombie, bullet.attack, true);
-				if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
-					zombie.diedByElectrocution = true;
-				}
+					attackZombie(zombie, bullet.attack, true);
+					if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
+						zombie.diedByElectrocution = true;
+					}
 
 					if (bullet.type == ENTITY_TYPE::IceBullet) {
 						zombie.freezeTimer = 3.0f;
@@ -3762,10 +3813,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 					break;
 				}
 			}
-		
+
 		}//
 		// Draw Bullet
-		
+
 		if (bullet.category == ENTITY_CATEGORY::Bullet) {
 			Texture& bulletTex = textures[getTextureType(bullet.type)][bullet.currentAnimationIndex];
 			bulletSprite.setTexture(bulletTex);
@@ -5992,8 +6043,6 @@ void playMusicForLevel(int level, Music& music) {
 	}
 }
 
-
-
 void defineDayLevels() {
 	//vector<Entity> mainDayPlantTypes = {normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon};
 	vector<Entity> mainDayPlantTypes = allPlantTypes;
@@ -6001,7 +6050,7 @@ void defineDayLevels() {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainDayPlantTypes;
-		levels[lvl].zombie_types = { normalZombie, zombieConehead, zombotDragon };
+		levels[lvl].zombie_types = { normalZombie, zombieConehead };
 		levels[lvl].targetZombie = 20;
 		//levels[1].targetZombie = 2;
 		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
@@ -6017,7 +6066,7 @@ void defineDayLevels() {
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
 	levels[1].addWave(1, 5, { normalZombie }, 5);
-	levels[1].addWave(3, 9, { zombotDragon }, 5);
+	levels[1].addWave(3, 9, { zombieConehead }, 5);
 	levels[1].addWave(3, 9, { normalZombie, zombieConehead }, 7);
 	levels[1].addWave(5, 15, { normalZombie }, 10);
 	levels[1].addWave(7, 20, { normalZombie, zombieConehead }, 15, true);
@@ -6208,8 +6257,13 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
-	levels[11].addWave(1, 5, { zombieChickenWrangler }, 10);
-	levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
+	// TODO: RETURN THIS
+	//levels[11].addWave(1, 5, { zombieChickenWrangler }, 10);
+	//levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
+	levels[11].addWave(1, 1, { zombiePianist }, 5);
+
+
+
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
@@ -6344,6 +6398,7 @@ int main() {
 	textures[TEXTURE_TYPE::ITEM_CONE][Default_Texture_Index].loadFromFile("assets/item_cone.png");
 	textures[TEXTURE_TYPE::ITEM_NEWSPAPER][Default_Texture_Index].loadFromFile("assets/item_newspaper.png");
 	textures[TEXTURE_TYPE::ITEM_PHAROAH_CASKET][Default_Texture_Index].loadFromFile("assets/item_pharoah_casket.png");
+	textures[TEXTURE_TYPE::ITEM_JAR][Default_Texture_Index].loadFromFile("assets/item_jar.png");
 	textures[TEXTURE_TYPE::RAIL][Default_Texture_Index].loadFromFile("assets/rail.png");
 	textures[TEXTURE_TYPE::CART][Default_Texture_Index].loadFromFile("assets/cart.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][0].loadFromFile("assets/prospector_walk.png");
