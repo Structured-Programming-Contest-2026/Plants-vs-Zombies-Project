@@ -141,6 +141,12 @@ int coinsMoney = 0;
 const int REQUEST_NONE = -1;
 const int REQUEST_SELECT_MUSIC = -2; // ask main loop to play select-levels background
 int requestedLevelMusic = REQUEST_NONE;
+bool loseMusicPlayed = false;
+int pause_music(Music& music);
+
+
+sf::Music* g_music = nullptr;
+sf::Music* pauseMusic = nullptr;
 
 float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
@@ -234,16 +240,20 @@ enum class ENTITY_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_RED_SHOOTER,
+	PLANT_POMEGRANATE,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
-
+	PomegranateBullet,
+	RedBullet,
 
 	ENTITY_TYPE_COUNT	// keep it last
 };
@@ -263,6 +273,9 @@ enum class TEXTURE_TYPE : uint8_t {
 	LEVEL_BACKGROUND_OPENDOOR,
 	LEVEL_PLAY_BUTTON,
 	LEVEL_ICON,
+	LEVEL_RIBBON_EASY,
+	LEVEL_RIBBON_MEDIUM,
+	LEVEL_RIBBON_HARD,
 	GRID_ROLL,
 	LUSTER,
 	SEED_CHOOSER,
@@ -320,15 +333,20 @@ enum class TEXTURE_TYPE : uint8_t {
 	PLANT_SNAPDRAGON,
 	PLANT_LIGHTNING_REED,
 	PLANT_INFERNO,
+	PLANT_POMEGRANATE,
+	PLANT_RED_SHOOTER,
 
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
+	PomegranateBullet, 
+	RedBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -341,6 +359,10 @@ enum class THEME : uint8_t {
 	NIGHT,
 	ANCIENT,
 	WILDWEST,
+	LOST_CITY,     
+	DARK_AGES,    
+	JURASSIC_AGE,
+	ROMAN,
 
 	COUNT	// keep it last
 };
@@ -464,6 +486,12 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PLANT_INFERNO:
 		textureType = TEXTURE_TYPE::PLANT_INFERNO;
 		break;
+	case ENTITY_TYPE::PLANT_POMEGRANATE:
+		textureType = TEXTURE_TYPE::PLANT_POMEGRANATE;
+		break;
+	case ENTITY_TYPE::PLANT_RED_SHOOTER:
+		textureType = TEXTURE_TYPE::PLANT_RED_SHOOTER;
+		break;
 
 		//other
 	case ENTITY_TYPE::NormalBullet:
@@ -472,8 +500,8 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
 		break;
-	case ENTITY_TYPE::FireDragonBullet:
-		textureType = TEXTURE_TYPE::FireDragonBullet;
+	case ENTITY_TYPE::SnapDragonBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBullet;
 		break;
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
@@ -487,11 +515,14 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 
 	case ENTITY_TYPE::ShroomBullet:
 		textureType = TEXTURE_TYPE::ShroomBullet;
-
 		break;
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
-
+	case ENTITY_TYPE::RedBullet:
+		textureType = TEXTURE_TYPE::RedBullet;
+		break;
+	case ENTITY_TYPE::SnapDragonBoostBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBoostBullet;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -691,14 +722,18 @@ struct Entity {
 
 	int boostCycles = 10;
 	int boostAnimationIdx = 3;
+	//float boostScale = 1.0;
 	void boost() {	// notice that attack clock is adapted to whether you are boosted or not
 		int orgAttackTimer = attackTimer;
 		attackTimer = boostAttackTimer;
 		isBoosted = true;
+		float orgScale = scale;
+		//scale = boostScale;
 		DoAnimation(boostCycles, boostAnimationIdx); // ntimes/eachcycletakes + boolmod
-		afterAnimation = [orgAttackTimer](Entity& p) {
+		afterAnimation = [orgAttackTimer, orgScale](Entity& p) {
 			p.attackTimer = orgAttackTimer;
 			p.isBoosted = false;
+			p.scale = orgScale;
 			};
 	}
 
@@ -859,7 +894,7 @@ struct Level {
 	}
 
 };
-const int number_levels = 20;
+const int number_levels = 24;
 vector<Level> levels(number_levels + 1);
 Level* currentLevel = nullptr;
 //Wave* currentLevel->waves[currentWaveIndex] = nullptr;   // Removed .. cuz when you push_back to waves (as in zombot), you get a dangling currentWave pointer
@@ -895,7 +930,8 @@ Sun suns[MAX_SUNS];
 // Booster
 int curBoosterCnt = 10;
 bool isBoostActive = false;
-int maxBoosterCnt = 20;
+int maxBoosterCnt = 200;	// For DEV
+//int maxBoosterCnt = 20;
 float boosterSpawnDuration = 10.0f;
 //float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
@@ -989,7 +1025,7 @@ ShopItem shopItems[2] = {
 };
 
 // Plants - zombies - allplanttypes
-Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
+Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno , redShooterPlant;
 Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon;
 vector<Entity> allPlantTypes;
 
@@ -1030,7 +1066,7 @@ IntRect getFrameRect(Entity& entity) {
 
 	// next frame + check animation finish
 	// DEBUG: NOT SURE BUT IT'S REPEATED
-	// if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
+	 //if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -1143,6 +1179,7 @@ void resetLevel() {
 	totalPauseTime = Time::Zero;
 	wcOffset = Time::Zero;
 	zombieClockOffset = 0;
+	loseMusicPlayed = false;
 	gamePaused = false;
 }
 
@@ -1279,20 +1316,40 @@ Entity defineShroomBullet() {
 
 	return bullet;
 }
-Entity defineFireDragonBullet() {
+Entity defineSnapDragonBullet() {
 	Texture tex;
-	tex.loadFromFile("assets/fire.png");
-	textures[TEXTURE_TYPE::FireDragonBullet][Default_Texture_Index] = tex;
+	tex.loadFromFile("assets/fire 38-150-1.png");
+	textures[TEXTURE_TYPE::SnapDragonBullet][Default_Texture_Index] = tex;
+
+	Entity fire{};
+	fire.category = ENTITY_CATEGORY::Bullet;
+	fire.type = ENTITY_TYPE::SnapDragonBullet;
+	fire.attack = 500;
+	fire.x_vel = -200.0f;
+	fire.scale = 1.0f;
+
+	fire.num_animations = 1;
+	fire.animations[0].frames = 1;
+	//fire.animations[0].frames = 20;
+	fire.animations[0].frameTimer = 10.f;
+	fire.setCurrentAnimation(0);
+
+	return fire;
+}
+Entity defineSnapDragonBoostedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/snapdragon-bullet-boost.png");
+	textures[TEXTURE_TYPE::SnapDragonBoostBullet][Default_Texture_Index] = tex;
 
 	Entity dragon{};
 	dragon.category = ENTITY_CATEGORY::Bullet;
-	dragon.type = ENTITY_TYPE::FireDragonBullet;
+	dragon.type = ENTITY_TYPE::SnapDragonBoostBullet;
 	dragon.attack = 500;
 	dragon.x_vel = -280.0f;
-	dragon.scale = 1.0f;
+	dragon.scale = 1.5f;
 
 	dragon.num_animations = 1;
-	dragon.animations[0].frames = 20;
+	dragon.animations[0].frames = 14;
 	dragon.animations[0].frameTimer = 0.1f;
 	dragon.setCurrentAnimation(0);
 
@@ -1316,7 +1373,6 @@ Entity defineZombotDragonBullet() {
 
 	return dragonBullet;
 }
-
 
 Entity defineFireTornadoBullet() {
 	Texture tex;
@@ -1355,6 +1411,12 @@ Entity defineFireTornadoBoostedBullet() {
 	tornado.setCurrentAnimation(0);
 
 	return tornado;
+}
+Entity definePomegranateBullet() {
+	textures[TEXTURE_TYPE::PomegranateBullet][Default_Texture_Index].loadFromFile("assets/pomegranate-bullet-normal.png");
+	Entity bullet;
+
+	return bullet;
 }
 
 
@@ -1462,6 +1524,21 @@ Entity defineLightningBullet() {
 
 	return bullet;
 }
+Entity defineRedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/red_bullet.png"); 
+	textures[TEXTURE_TYPE::RedBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::RedBullet;
+	bullet.attack = 40;
+	bullet.x_vel = -600.0f; 
+	bullet.scale = 0.2f; 
+
+	return bullet;
+}
+
 Entity defineRepeaterPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Repeater.png");
@@ -2229,7 +2306,8 @@ Entity defineIceShroom() {
 Entity defineSnapdragon() {
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][0].loadFromFile("assets/SnapdragonIdle.png");
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][1].loadFromFile("assets/SnapdragonAttack.png");
-	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost-ezgif.com-resize.png");
+	//textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2256,8 +2334,42 @@ Entity defineSnapdragon() {
 
 	plants[ENTITY_TYPE::PLANT_SNAPDRAGON] = plant;
 
+	// Boost settings
+	plant.boostCycles = 1;
+	plant.boostAnimationIdx = 3;
+	//plant.boostScale = 1.5;
+
 	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+
+			// Boost
+			if (p.isBoosted) {
+				p.attackClock.restart();
+				Entity newBullet = defineSnapDragonBoostedBullet();
+				newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//newBullet.x_vel *= 2;
+				bullets.push_back(newBullet);
+				
+				p.isBoosted = false;
+				//// shoot bullets
+				//if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
+				//	p.attackClock.restart();
+				//	Entity newBullet = defineNormalBullet();
+				//	//Bullet newBullet = defineNormalBullet();
+				//	newBullet.attack = p.attack;
+				//	newBullet.x_vel *= 2;
+				//	newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 200, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 300, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//}
+				return;	 // to not loop zombies
+			}
+
+			// Normal
+
 			bool zombieInRange = false;
 
 			for (Entity& zombie : entities) {
@@ -2265,7 +2377,7 @@ Entity defineSnapdragon() {
 					float diffY = abs(zombie.position.y - p.position.y);
 					float diffX = zombie.position.x - p.position.x;
 
-					if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+					if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
 						zombieInRange = true;
 						break;
 					}
@@ -2274,6 +2386,12 @@ Entity defineSnapdragon() {
 
 			if (zombieInRange) {
 				p.DoAnimation(1, 1);
+				Entity newFire = defineSnapDragonBullet();
+				newFire.position = { p.position.x + p.width, p.position.y };
+				//newFire.attack = 0; // already damaged below .. but too weak
+				//newFire.scale = 2;
+				bullets.push_back(newFire);
+				p.attackClock.restart();
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
 					p.attackClock.restart();
@@ -2283,7 +2401,8 @@ Entity defineSnapdragon() {
 							float diffY = abs(zombie.position.y - p.position.y);
 							float diffX = zombie.position.x - p.position.x;
 
-							if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+							if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
+								
 								attackZombie(zombie, p.attack, true);
 							}
 						}
@@ -2350,8 +2469,8 @@ Entity defineInfernoPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Inferno.png");
 	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack.png");
-	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boosted.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack-170-130-34.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boost-170-130-35.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2369,10 +2488,10 @@ Entity defineInfernoPlant() {
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
 	// Attack
-	plant.animations[2].frames = 29;
+	plant.animations[2].frames = 34;
 	plant.animations[2].frameTimer = 0.1f;
 	// Boosted
-	plant.animations[3].frames = 25;
+	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
 
 	plant.setCurrentAnimation(0);
@@ -2427,6 +2546,136 @@ Entity defineInfernoPlant() {
 					bullets.push_back(newBullet);
 				}
 
+			}
+		}
+		};
+
+	return plant;
+}
+Entity definePomegranatePlant() {
+	Texture tex;
+	tex.loadFromFile("assets/pomegranate-idle.png");
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][Default_Texture_Index] = tex;
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][2].loadFromFile("assets/pomegranate-attack.png");
+	textures[TEXTURE_TYPE::PLANT_POMEGRANATE][3].loadFromFile("assets/pomegranate-boost.png");
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_POMEGRANATE;
+	plant.health = 150;
+	plant.price = 150;
+	plant.attack = 50;
+
+	plant.num_animations = 3;
+	// Idle
+	plant.animations[0].frames = 0;
+	plant.animations[0].frameTimer = 0.1;
+	// Attack
+	plant.animations[2].frames = 0;
+	plant.animations[2].frameTimer = 0.1;
+	// Boosted
+	plant.animations[3].frames = 0;
+	plant.animations[3].frameTimer = 0.1;
+
+	plants[ENTITY_TYPE::PLANT_POMEGRANATE] = plant;
+
+	plant.updateEntity = [](Entity& p) {
+		float currentTimer = p.isBoosted ? p.boostAttackTimer : p.attackTimer;
+
+		if (p.attackClock.getElapsedTime().asSeconds() >= currentTimer) {
+			// Boosted
+			if (p.isBoosted) {
+				return;
+			}
+
+			//Normal
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f) {
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInLane) {
+				p.DoAnimation(1, 2);
+				if (p.currentAnimation.currentFrame == 22) {
+					p.attackClock.restart();
+
+					Entity newBullet = definePomegranateBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
+					bullets.push_back(newBullet);
+				}
+			}
+
+		}
+		};
+
+	return plant;
+}
+Entity defineRedShooter() 
+{
+	textures[TEXTURE_TYPE::PLANT_RED_SHOOTER][0].loadFromFile("assets/RedStingerIdle.png");
+	textures[TEXTURE_TYPE::PLANT_RED_SHOOTER][1].loadFromFile("assets/RedStingerAttack.png"); 
+
+	Entity plant;
+	plant.category = ENTITY_CATEGORY::PLANT;
+	plant.type = ENTITY_TYPE::PLANT_RED_SHOOTER;
+	plant.health = 150;
+	plant.attack = 40;
+	plant.price = 150;
+	plant.scale = 0.5f;
+	plant.attackTimer = 2.0f; 
+
+	plant.num_animations = 2;
+
+
+	plant.animations[0].frames = 19;
+	plant.animations[0].frameTimer = 0.15f;
+
+	plant.animations[1].frames = 15;
+	plant.animations[1].frameTimer = 0.15f;
+
+	plant.setCurrentAnimation(0);
+	plants[ENTITY_TYPE::PLANT_RED_SHOOTER] = plant;
+
+
+	plant.updateEntity = [](Entity& p)
+		{
+		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) 
+		{
+			bool zombieInLane = false;
+			for (Entity& zombie : entities) {
+				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) 
+				{
+		
+					if (abs(zombie.position.y - p.position.y) < 100.0f &&
+						zombie.position.x > p.position.x &&
+						zombie.position.x < windowWidth - 50.0f)
+					{
+						zombieInLane = true;
+						break;
+					}
+				}
+			}
+
+			if (zombieInLane) 
+			{
+				p.DoAnimation(1, 1);
+
+				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2)
+				{
+					p.attackClock.restart();
+					Entity newBullet = defineRedBullet();
+					newBullet.attack = p.attack;
+					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 30); 
+					bullets.push_back(newBullet);
+				}
 			}
 		}
 		};
@@ -3852,6 +4101,7 @@ void DrawZombies(RenderWindow& window) {
 	}
 }
 
+// Stop and Damage (not start) of Bullets along the way + Draw and Animation of bullets
 void UpdateAndDrawBullets(RenderWindow& window) {
 	for (Entity& bullet : bullets) {
 		if (bullet.category != ENTITY_CATEGORY::Bullet) continue;
@@ -3863,7 +4113,8 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			continue;
 		}
 
-		// Zombot Dragon Bullet
+		
+		// Zombot Dragon Bullet (Out of zombie)
 		if (bullet.type == ENTITY_TYPE::ZombotDragonBullet) {
 			for (Entity& plant : entities) {
 				if (plant.category != ENTITY_CATEGORY::PLANT || plant.health <= 0) continue;
@@ -3879,18 +4130,29 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			}
 		} else {
 
-			// Plant Bullet
+		// Plant Bullet
 			for (Entity& zombie : entities) {
 
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;
 
-				if (abs(bullet.position.y - zombie.position.y) < 100.0f &&
+
+				bool touchZombie = abs(bullet.position.y - zombie.position.y) < 100.0f &&
 					bullet.position.x >= zombie.position.x &&
-					bullet.position.x <= zombie.position.x + 100.0f) {
+					bullet.position.x <= zombie.position.x + 100.0f;
+				bool snapTouchZombie = bullet.type == ENTITY_TYPE::SnapDragonBullet &&
+					abs(bullet.position.y - zombie.position.y) < 100.0f &&
+					bullet.position.x >= zombie.position.x &&
+					bullet.position.x <= zombie.position.x + 10.0f;
+				
+				if (snapTouchZombie) {
+					// Stop at 3 cells
+				}
+				if (touchZombie) {
 
 					//cout << "bullet type " << int(bullet.type )<< " shot entity type " << int(zombie.type )<< endl;
+					//vector<ENTITY_TYPE> unkilled_bullets = {ENTITY_TYPE::SnapDragonBoostBullet};
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet && bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
 						bullet.category = ENTITY_CATEGORY::NONE;
 						break;
 					}
@@ -3923,6 +4185,11 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						continue;
 					}
 
+				}
+
+				if (touchZombie || snapTouchZombie) {
+					// Damage Zombie
+
 					attackZombie(zombie, bullet.attack, true);
 					if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
 						zombie.diedByElectrocution = true;
@@ -3932,8 +4199,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						zombie.freezeTimer = 3.0f;
 					}
 
-					bullet.category = ENTITY_CATEGORY::NONE;
-					break;
+					// Unkilled bullets
+					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
+						// End of the bullet
+						bullet.category = ENTITY_CATEGORY::NONE;
+						break;
+					}
 				}
 			}
 
@@ -3945,7 +4216,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			bulletSprite.setTexture(bulletTex);
 
 			if (bullet.num_animations > 0 && bullet.animations[bullet.currentAnimationIndex].frames > 0) {
-				bulletSprite.setTextureRect(getFrameRect(bullet));
+				// Animation
+				if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer))
+					bullet.nextFrame(); // next frame
+				bulletSprite.setTextureRect(getFrameRect(bullet)); // crop textures
 			} else {
 				bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
 			}
@@ -4993,8 +5267,39 @@ void SetGamePaused(bool paused) {
 	gamePaused = paused;
 
 	if (gamePaused) {
+		// Start pause clock as before
 		gamePauseClock.restart();
+
+		// Pause the background music (if any) and play pause sound on a separate Music instance.
+		if (g_music && g_music->getStatus() == sf::Music::Playing) {
+			g_music->pause();
+		}
+
+		// Create a temporary Music instance to play pause sound so it doesn't clobber the main music object.
+		if (!pauseMusic) {
+			pauseMusic = new sf::Music();
+			// Use the existing helper to open & play the pause sound into this Music object.
+			// pause_music opens the file and starts playback for the provided Music instance.
+			if (pause_music(*pauseMusic) != 0) {
+				// On failure free it
+				delete pauseMusic;
+				pauseMusic = nullptr;
+			}
+		}
+
 	} else {
+		// Unpausing: stop and free the temporary pause music, then resume the background music.
+		if (pauseMusic) {
+			pauseMusic->stop();
+			delete pauseMusic;
+			pauseMusic = nullptr;
+		}
+
+		if (g_music && g_music->getStatus() != sf::Music::Playing) {
+			g_music->play();
+		}
+
+		// adjust pause timing as before
 		totalPauseTime += gamePauseClock.getElapsedTime();
 		wcOffset -= gamePauseClock.getElapsedTime();
 		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
@@ -5432,6 +5737,21 @@ void UpdateLevel(RenderWindow& window) {
 				cout << "Zombies ate your brains!\n";
 				// request switching back to normal (select-levels) music
 				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
+				// Play lose music once when game over screen appears.
+				if (!loseMusicPlayed) {
+					// heap-allocated to keep playing (matches project pattern)
+					sf::Music* loseMusic = new sf::Music();
+					if (loseMusic->openFromFile("assets/audio/05. losemusic.ogg")) {
+						loseMusic->setLoop(false);
+						loseMusic->play();
+						loseMusicPlayed = true;
+					} else {
+						delete loseMusic;
+						std::cout << "Failed to load assets/audio/05. losemusic.ogg\n";
+					}
+				}
+
 				break;
 			}
 		}
@@ -5526,7 +5846,8 @@ void DrawLevelSelector(RenderWindow& window) {
 	}
 
 
-	for (int i = 0; i < number_levels; i++) {
+	for (int i = 0; i < number_levels; i++) 
+	{
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
 
 		bool selected = i == selectedLevel;
@@ -5590,6 +5911,36 @@ void DrawLevelSelector(RenderWindow& window) {
 		text.setPosition(pos + Vector2f(0, (1 + scale.y - 0.75) * 120));
 
 		window.draw(text);
+		Sprite ribbonSprite;
+		int levelNumberForMath = i + 1;
+
+		if (levelNumberForMath % 3 == 1)
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_EASY][Default_Texture_Index]);
+		} else if (levelNumberForMath % 3 == 2) 
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_MEDIUM][Default_Texture_Index]);
+		} else if (levelNumberForMath % 3 == 0) 
+		{
+			ribbonSprite.setTexture(textures[TEXTURE_TYPE::LEVEL_RIBBON_HARD][Default_Texture_Index]);
+		}
+
+		float ribbonScale = 0.2f * scale.x;
+		ribbonSprite.setScale(ribbonScale, ribbonScale);
+		float ribbonWidth = ribbonSprite.getGlobalBounds().width;
+		ribbonSprite.setPosition(pos.x - (ribbonWidth / 2.0f), pos.y - 250.0f * scale.y); //samaan
+
+		if (!selected && !hovered)
+		{
+			ribbonSprite.setColor(Color(128, 128, 128, 255));
+		}
+		else 
+		{
+			ribbonSprite.setColor(Color::White);
+		}
+
+		window.draw(ribbonSprite);
+
 	}
 
 	{
@@ -6094,6 +6445,67 @@ int level_6_music(Music& music) {
 	music.play();
 	return 0;
 }
+
+int level_7_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_7.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_8_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_8.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_9_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_9.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_10_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_10.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_11_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_12_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
 int huge_wave_music(Music& music) {
 	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -6196,6 +6608,12 @@ void playMusicForLevel(int level, Music& music) {
 	case 4: level_4_music(music); break;
 	case 5: level_5_music(music); break;
 	case 6: level_6_music(music); break;
+	case 7: level_7_music(music); break;
+	case 8: level_8_music(music); break;
+	case 9: level_9_music(music); break;
+	case 10: level_10_music(music); break;
+	case 11: level_11_music(music); break;
+	case 12: level_12_music(music); break;
 	default: /* fallback */ select_levels_background_music(music); break;
 	}
 }
@@ -6310,7 +6728,6 @@ void defineNightLevels() {
 	levels[6].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
 	levels[6].addWave(6, 20, { zombieAllStar }, 0, true);
 }
-
 void defineAncientLevels() {
 	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
 	vector<Entity> mainAncientPlantTypes = allPlantTypes;
@@ -6443,6 +6860,81 @@ void defineWildWestLevels() {
 }
 
 
+void defineLostCityLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainLostCityPlantTypes = allPlantTypes;
+
+
+	for (int lvl = 13; lvl <= 15; lvl++) {
+		levels[lvl].theme = THEME::LOST_CITY;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainLostCityPlantTypes;
+		levels[lvl].targetZombie = 30; 
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+
+	//to be continued
+}
+
+void defineDarkAgesLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainDarkAgesPlantTypes = allPlantTypes;
+
+	for (int lvl = 16; lvl <= 18; lvl++) 
+	{
+		levels[lvl].theme = THEME::DARK_AGES;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainDarkAgesPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+void defineJurassicAgeLevels() 
+{
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainJurassicPlantTypes = allPlantTypes;
+
+	for (int lvl = 19; lvl <= 21; lvl++) {
+		levels[lvl].theme = THEME::JURASSIC_AGE;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainJurassicPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+void defineRomanLevels()
+{
+	//vector<Entity> mainRomanPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	vector<Entity> mainRomanPlantTypes = allPlantTypes;
+
+	for (int lvl = 22; lvl <= 24; lvl++) {
+		levels[lvl].theme = THEME::ROMAN;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainRomanPlantTypes;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+}
+
+
+
 int main() {
 	srand(time(0));
 
@@ -6450,9 +6942,9 @@ int main() {
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
 	Music music;	// can't be global - OpenAL must be loaded first
+	g_music = &music; // let other code (SetGamePaused) pause/resume background music
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
-
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -6486,6 +6978,7 @@ int main() {
 	snapdragon = defineSnapdragon();
 	lightningReed = defineLightningReed();
 	inferno = defineInfernoPlant();
+	redShooterPlant = defineRedShooter();
 
 	// Zombies
 	normalZombie = defineNormalZombie();
@@ -6509,7 +7002,7 @@ int main() {
 	;
 	zombotDragon = defineZombotDragon();
 
-	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno };
+	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno ,redShooterPlant };
 
 	// Other Textures
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -6517,21 +7010,41 @@ int main() {
 	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
 	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
 	textures[TEXTURE_TYPE::STORE_WINDOW][Default_Texture_Index].loadFromFile("assets/mainmenu/store_window.png");
+
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_EASY][Default_Texture_Index].loadFromFile("assets/mainmenu/Easy.png");
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_MEDIUM][Default_Texture_Index].loadFromFile("assets/mainmenu/Medium.png");
+	textures[TEXTURE_TYPE::LEVEL_RIBBON_HARD][Default_Texture_Index].loadFromFile("assets/mainmenu/Hard.png");
+
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][1].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][2].loadFromFile("assets/mainmenu/level_selector_background.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][3].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][4].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][5].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][6].loadFromFile("assets/mainmenu/level_selector_background.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][7].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND][8].loadFromFile("assets/mainmenu/level_selector_background_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][Default_Texture_Index].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][1].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][2].loadFromFile("assets/mainmenu/level_selector_background_back.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][3].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][4].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][5].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][6].loadFromFile("assets/mainmenu/level_selector_background_back.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][7].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_SELECTOR_BACKGROUND_BACK][8].loadFromFile("assets/mainmenu/level_selector_background_back_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][1].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][2].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][3].loadFromFile("assets/mainmenu/level_option_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][4].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][7].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][8].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][5].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][6].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
 	textures[TEXTURE_TYPE::LUSTER][Default_Texture_Index].loadFromFile("assets/luster.png");
@@ -6590,6 +7103,7 @@ int main() {
 		isEntityUnlocked[snapdragon.type] =
 		isEntityUnlocked[lightningReed.type] =
 		isEntityUnlocked[inferno.type] =
+		isEntityUnlocked[redShooterPlant.type] = true;
 		true;
 
 	// Levels
@@ -6597,6 +7111,10 @@ int main() {
 	defineNightLevels();
 	defineAncientLevels();
 	defineWildWestLevels();
+	defineLostCityLevels();
+	defineDarkAgesLevels();
+	defineJurassicAgeLevels();
+	defineRomanLevels();
 
 	//---------------------------------------
 	//// Level 1: Day
@@ -6747,7 +7265,7 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	//for (int lvl = 1; lvl <= number_levels; lvl++) {
-	for (int theme = 1; theme <= int(THEME::COUNT); theme++) {
+	for (int theme = 1; theme < int(THEME::COUNT); theme++) {
 		cout << "Loading level " << theme << " files" << endl;
 		levels[theme].lvlNum = theme;
 
@@ -6778,18 +7296,13 @@ int main() {
 	gameWonScreen.setOrigin(250.0f, 350.0f);
 	gameWonScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
 
-	// Load storage
+
 	loadStorage();
 
-	// in main(), after creating resources:
 	onHugeWave = []() {
 		std::cout << "Custom huge-wave handler executed\n";
-		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
-		// e.g. you could toggle a game-state boolean or request a special sound
+
 		};
-
-	// Game Loop
-
 
 	Clock DeltaTimeClock;
 
@@ -6844,8 +7357,6 @@ int main() {
 			}
 		}
 
-		// Separate UI -> Main Menu and Level
-		// First, handle any queued music request (stop current music, play requested)
 		if (requestedLevelMusic != REQUEST_NONE) {
 			if (music.getStatus() == Music::Playing) music.stop();
 
