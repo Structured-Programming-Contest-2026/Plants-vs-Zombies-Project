@@ -695,14 +695,18 @@ struct Entity {
 
 	int boostCycles = 10;
 	int boostAnimationIdx = 3;
+	//float boostScale = 1.0;
 	void boost() {	// notice that attack clock is adapted to whether you are boosted or not
 		int orgAttackTimer = attackTimer;
 		attackTimer = boostAttackTimer;
 		isBoosted = true;
+		float orgScale = scale;
+		//scale = boostScale;
 		DoAnimation(boostCycles, boostAnimationIdx); // ntimes/eachcycletakes + boolmod
-		afterAnimation = [orgAttackTimer](Entity& p) {
+		afterAnimation = [orgAttackTimer, orgScale](Entity& p) {
 			p.attackTimer = orgAttackTimer;
 			p.isBoosted = false;
+			p.scale = orgScale;
 			};
 	}
 
@@ -899,7 +903,8 @@ Sun suns[MAX_SUNS];
 // Booster
 int curBoosterCnt = 10;
 bool isBoostActive = false;
-int maxBoosterCnt = 20;
+int maxBoosterCnt = 200;	// For DEV
+//int maxBoosterCnt = 20;
 float boosterSpawnDuration = 10.0f;
 //float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
@@ -1285,22 +1290,23 @@ Entity defineShroomBullet() {
 }
 Entity defineSnapDragonBullet() {
 	Texture tex;
-	tex.loadFromFile("assets/fire.png");
+	tex.loadFromFile("assets/fire 38-150-1.png");
 	textures[TEXTURE_TYPE::SnapDragonBullet][Default_Texture_Index] = tex;
 
-	Entity dragon{};
-	dragon.category = ENTITY_CATEGORY::Bullet;
-	dragon.type = ENTITY_TYPE::SnapDragonBullet;
-	dragon.attack = 500;
-	dragon.x_vel = -280.0f;
-	dragon.scale = 1.0f;
+	Entity fire{};
+	fire.category = ENTITY_CATEGORY::Bullet;
+	fire.type = ENTITY_TYPE::SnapDragonBullet;
+	fire.attack = 500;
+	fire.x_vel = -200.0f;
+	fire.scale = 1.0f;
 
-	dragon.num_animations = 1;
-	dragon.animations[0].frames = 20;
-	dragon.animations[0].frameTimer = 0.1f;
-	dragon.setCurrentAnimation(0);
+	fire.num_animations = 1;
+	fire.animations[0].frames = 1;
+	//fire.animations[0].frames = 20;
+	fire.animations[0].frameTimer = 10.f;
+	fire.setCurrentAnimation(0);
 
-	return dragon;
+	return fire;
 }
 Entity defineSnapDragonBoostedBullet() {
 	Texture tex;
@@ -2252,7 +2258,8 @@ Entity defineIceShroom() {
 Entity defineSnapdragon() {
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][0].loadFromFile("assets/SnapdragonIdle.png");
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][1].loadFromFile("assets/SnapdragonAttack.png");
-	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost-ezgif.com-resize.png");
+	//textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2282,6 +2289,7 @@ Entity defineSnapdragon() {
 	// Boost settings
 	plant.boostCycles = 1;
 	plant.boostAnimationIdx = 3;
+	//plant.boostScale = 1.5;
 
 	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
@@ -2321,7 +2329,7 @@ Entity defineSnapdragon() {
 					float diffY = abs(zombie.position.y - p.position.y);
 					float diffX = zombie.position.x - p.position.x;
 
-					if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+					if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
 						zombieInRange = true;
 						break;
 					}
@@ -2330,6 +2338,12 @@ Entity defineSnapdragon() {
 
 			if (zombieInRange) {
 				p.DoAnimation(1, 1);
+				Entity newFire = defineSnapDragonBullet();
+				newFire.position = { p.position.x + p.width, p.position.y };
+				//newFire.attack = 0; // already damaged below .. but too weak
+				//newFire.scale = 2;
+				bullets.push_back(newFire);
+				p.attackClock.restart();
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
 					p.attackClock.restart();
@@ -2339,7 +2353,8 @@ Entity defineSnapdragon() {
 							float diffY = abs(zombie.position.y - p.position.y);
 							float diffX = zombie.position.x - p.position.x;
 
-							if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+							if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
+								
 								attackZombie(zombie, p.attack, true);
 							}
 						}
@@ -3911,9 +3926,19 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;
 
-				if (abs(bullet.position.y - zombie.position.y) < 100.0f &&
+
+				bool touchZombie = abs(bullet.position.y - zombie.position.y) < 100.0f &&
 					bullet.position.x >= zombie.position.x &&
-					bullet.position.x <= zombie.position.x + 100.0f) {
+					bullet.position.x <= zombie.position.x + 100.0f;
+				bool snapTouchZombie = bullet.type == ENTITY_TYPE::SnapDragonBullet &&
+					abs(bullet.position.y - zombie.position.y) < 100.0f &&
+					bullet.position.x >= zombie.position.x &&
+					bullet.position.x <= zombie.position.x + 10.0f;
+				
+				if (snapTouchZombie) {
+					// Stop at 3 cells
+				}
+				if (touchZombie) {
 
 					//cout << "bullet type " << int(bullet.type )<< " shot entity type " << int(zombie.type )<< endl;
 					//vector<ENTITY_TYPE> unkilled_bullets = {ENTITY_TYPE::SnapDragonBoostBullet};
@@ -3951,6 +3976,9 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						continue;
 					}
 
+				}
+
+				if (touchZombie || snapTouchZombie) {
 					// Damage Zombie
 
 					attackZombie(zombie, bullet.attack, true);
