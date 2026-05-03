@@ -990,7 +990,7 @@ ShopItem shopItems[2] = {
 
 // Plants - zombies - allplanttypes
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
-Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombotDragon;
+Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon;
 vector<Entity> allPlantTypes;
 
 // Suns
@@ -2817,6 +2817,34 @@ Entity defineChickenWranglerZombie() {
 	return zombie;
 }
 
+Entity defineChickenZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][0].loadFromFile("assets/ChickenZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][1].loadFromFile("assets/ChickenZombieDeath.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_CHICKEN;
+	zombie.health = 30;
+	zombie.attack = 5;
+	zombie.x_vel = 200;
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 2;
+	Animation anim;
+	// walk
+	anim.frames = 30;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 44;
+	anim.frameTimer = 0.05f;
+	zombie.animations[1] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
+
 Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
@@ -3518,6 +3546,7 @@ void updatePianistZombie(Entity& zombie) {
 void updateChickenWranglerZombie(Entity& zombie) {
 	if (zombie.health <= 150 && zombie.currentAnimationIndex == 0) {
 		zombie.setCurrentAnimation(3);
+		currentLevel->addWave(10, 5, { zombieChicken });
 	}
 }
 
@@ -3752,6 +3781,8 @@ void DrawZombies(RenderWindow& window) {
 						zombie.x_vel = 260;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST) {
 						zombie.x_vel = 20;
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKEN) {
+						zombie.x_vel = 200;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
 						zombie.x_vel = 135;
 					} else {
@@ -6380,7 +6411,7 @@ void defineWildWestLevels() {
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
 	levels[11].addWave(1, 5, { zombieChickenWrangler }, 10);
-	levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
+	//levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
 
 
 
@@ -6474,6 +6505,7 @@ int main() {
 	zombiePogo = definePogoZombie();
 	zombiePianist = definePianistZombie();
 	zombieChickenWrangler = defineChickenWranglerZombie();
+	zombieChicken = defineChickenZombie();
 	;
 	zombotDragon = defineZombotDragon();
 
@@ -6532,8 +6564,7 @@ int main() {
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][1].loadFromFile("assets/cowboy_die.png");
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][2].loadFromFile("assets/cowboy_eat.png");
 	textures[TEXTURE_TYPE::ZOMBIE_ELECTROCUTED][0].loadFromFile("assets/ZombieElectrocuted.png");
-	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][0].loadFromFile("assets/ChickenZombie.png");
-	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][1].loadFromFile("assets/ChickenZombieDeath.png");
+	
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
