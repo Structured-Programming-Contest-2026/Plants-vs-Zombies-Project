@@ -141,6 +141,12 @@ int coinsMoney = 0;
 const int REQUEST_NONE = -1;
 const int REQUEST_SELECT_MUSIC = -2; // ask main loop to play select-levels background
 int requestedLevelMusic = REQUEST_NONE;
+bool loseMusicPlayed = false;
+int pause_music(Music& music);
+
+
+sf::Music* g_music = nullptr;
+sf::Music* pauseMusic = nullptr;
 
 float wincooldowntimer = 2.f;
 bool isGameWonCoolDownStarted = false;
@@ -239,13 +245,13 @@ enum class ENTITY_TYPE : uint8_t {
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
-
 
 	ENTITY_TYPE_COUNT	// keep it last
 };
@@ -327,10 +333,11 @@ enum class TEXTURE_TYPE : uint8_t {
 	NormalBullet,
 	IceBullet,
 	ShroomBullet,
-	FireDragonBullet,
+	SnapDragonBullet,
 	LightningBullet,
 	ZombotDragonBullet,
 	FireTornadoBullet,
+	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
 
@@ -479,8 +486,8 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::IceBullet:
 		textureType = TEXTURE_TYPE::IceBullet;
 		break;
-	case ENTITY_TYPE::FireDragonBullet:
-		textureType = TEXTURE_TYPE::FireDragonBullet;
+	case ENTITY_TYPE::SnapDragonBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBullet;
 		break;
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
@@ -499,6 +506,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
 
+		break;
+	case ENTITY_TYPE::SnapDragonBoostBullet:
+		textureType = TEXTURE_TYPE::SnapDragonBoostBullet;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -663,6 +673,7 @@ struct Entity {
 	}
 	void nextFrame() {
 		if (gamePaused) return;
+		if (isSuperFrozen) return;
 		// next frame + check animation finish
 		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
 			currentAnimation.clock.restart();
@@ -697,14 +708,18 @@ struct Entity {
 
 	int boostCycles = 10;
 	int boostAnimationIdx = 3;
+	//float boostScale = 1.0;
 	void boost() {	// notice that attack clock is adapted to whether you are boosted or not
 		int orgAttackTimer = attackTimer;
 		attackTimer = boostAttackTimer;
 		isBoosted = true;
+		float orgScale = scale;
+		//scale = boostScale;
 		DoAnimation(boostCycles, boostAnimationIdx); // ntimes/eachcycletakes + boolmod
-		afterAnimation = [orgAttackTimer](Entity& p) {
+		afterAnimation = [orgAttackTimer, orgScale](Entity& p) {
 			p.attackTimer = orgAttackTimer;
 			p.isBoosted = false;
+			p.scale = orgScale;
 			};
 	}
 
@@ -901,7 +916,8 @@ Sun suns[MAX_SUNS];
 // Booster
 int curBoosterCnt = 10;
 bool isBoostActive = false;
-int maxBoosterCnt = 20;
+int maxBoosterCnt = 200;	// For DEV
+//int maxBoosterCnt = 20;
 float boosterSpawnDuration = 10.0f;
 //float boosterSpawnDuration = 1.0f;
 float boosterLifeDuration = 3.0f;
@@ -1036,7 +1052,7 @@ IntRect getFrameRect(Entity& entity) {
 
 	// next frame + check animation finish
 	// DEBUG: NOT SURE BUT IT'S REPEATED
-	// if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
+	 //if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || entity.enteredHome) entity.nextFrame();
 
 	// crop current frame
 	IntRect textureRect = {
@@ -1149,6 +1165,7 @@ void resetLevel() {
 	totalPauseTime = Time::Zero;
 	wcOffset = Time::Zero;
 	zombieClockOffset = 0;
+	loseMusicPlayed = false;
 	gamePaused = false;
 }
 
@@ -1285,20 +1302,40 @@ Entity defineShroomBullet() {
 
 	return bullet;
 }
-Entity defineFireDragonBullet() {
+Entity defineSnapDragonBullet() {
 	Texture tex;
-	tex.loadFromFile("assets/fire.png");
-	textures[TEXTURE_TYPE::FireDragonBullet][Default_Texture_Index] = tex;
+	tex.loadFromFile("assets/fire 38-150-1.png");
+	textures[TEXTURE_TYPE::SnapDragonBullet][Default_Texture_Index] = tex;
+
+	Entity fire{};
+	fire.category = ENTITY_CATEGORY::Bullet;
+	fire.type = ENTITY_TYPE::SnapDragonBullet;
+	fire.attack = 500;
+	fire.x_vel = -200.0f;
+	fire.scale = 1.0f;
+
+	fire.num_animations = 1;
+	fire.animations[0].frames = 1;
+	//fire.animations[0].frames = 20;
+	fire.animations[0].frameTimer = 10.f;
+	fire.setCurrentAnimation(0);
+
+	return fire;
+}
+Entity defineSnapDragonBoostedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/snapdragon-bullet-boost.png");
+	textures[TEXTURE_TYPE::SnapDragonBoostBullet][Default_Texture_Index] = tex;
 
 	Entity dragon{};
 	dragon.category = ENTITY_CATEGORY::Bullet;
-	dragon.type = ENTITY_TYPE::FireDragonBullet;
+	dragon.type = ENTITY_TYPE::SnapDragonBoostBullet;
 	dragon.attack = 500;
 	dragon.x_vel = -280.0f;
-	dragon.scale = 1.0f;
+	dragon.scale = 1.5f;
 
 	dragon.num_animations = 1;
-	dragon.animations[0].frames = 20;
+	dragon.animations[0].frames = 14;
 	dragon.animations[0].frameTimer = 0.1f;
 	dragon.setCurrentAnimation(0);
 
@@ -2238,7 +2275,8 @@ Entity defineIceShroom() {
 Entity defineSnapdragon() {
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][0].loadFromFile("assets/SnapdragonIdle.png");
 	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][1].loadFromFile("assets/SnapdragonAttack.png");
-	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
+	textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost-ezgif.com-resize.png");
+	//textures[TEXTURE_TYPE::PLANT_SNAPDRAGON][3].loadFromFile("assets/SnapdragonBoost.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2265,8 +2303,42 @@ Entity defineSnapdragon() {
 
 	plants[ENTITY_TYPE::PLANT_SNAPDRAGON] = plant;
 
+	// Boost settings
+	plant.boostCycles = 1;
+	plant.boostAnimationIdx = 3;
+	//plant.boostScale = 1.5;
+
 	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= p.attackTimer) {
+
+			// Boost
+			if (p.isBoosted) {
+				p.attackClock.restart();
+				Entity newBullet = defineSnapDragonBoostedBullet();
+				newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//newBullet.x_vel *= 2;
+				bullets.push_back(newBullet);
+				
+				p.isBoosted = false;
+				//// shoot bullets
+				//if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
+				//	p.attackClock.restart();
+				//	Entity newBullet = defineNormalBullet();
+				//	//Bullet newBullet = defineNormalBullet();
+				//	newBullet.attack = p.attack;
+				//	newBullet.x_vel *= 2;
+				//	newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 200, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//	newBullet.position = Vector2f(p.position.x + 300, p.position.y + 50);
+				//	bullets.push_back(newBullet);
+				//}
+				return;	 // to not loop zombies
+			}
+
+			// Normal
+
 			bool zombieInRange = false;
 
 			for (Entity& zombie : entities) {
@@ -2274,7 +2346,7 @@ Entity defineSnapdragon() {
 					float diffY = abs(zombie.position.y - p.position.y);
 					float diffX = zombie.position.x - p.position.x;
 
-					if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+					if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
 						zombieInRange = true;
 						break;
 					}
@@ -2283,6 +2355,12 @@ Entity defineSnapdragon() {
 
 			if (zombieInRange) {
 				p.DoAnimation(1, 1);
+				Entity newFire = defineSnapDragonBullet();
+				newFire.position = { p.position.x + p.width, p.position.y };
+				//newFire.attack = 0; // already damaged below .. but too weak
+				//newFire.scale = 2;
+				bullets.push_back(newFire);
+				p.attackClock.restart();
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
 					p.attackClock.restart();
@@ -2292,7 +2370,8 @@ Entity defineSnapdragon() {
 							float diffY = abs(zombie.position.y - p.position.y);
 							float diffX = zombie.position.x - p.position.x;
 
-							if (diffY < 200.0f && diffX >= -30.0f && diffX < 250.0f) {
+							if (diffY <= 2 * currentLevel->cellHeight && diffX >= -30.0f && diffX <= 3 * currentLevel->cellWidth) {
+								
 								attackZombie(zombie, p.attack, true);
 							}
 						}
@@ -2359,8 +2438,8 @@ Entity defineInfernoPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Inferno.png");
 	textures[TEXTURE_TYPE::PLANT_INFERNO][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack.png");
-	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boosted.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][2].loadFromFile("assets/Inferno-attack-170-130-34.png");
+	textures[TEXTURE_TYPE::PLANT_INFERNO][3].loadFromFile("assets/Inferno-attack-boost-170-130-35.png");
 
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
@@ -2378,10 +2457,10 @@ Entity defineInfernoPlant() {
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
 	// Attack
-	plant.animations[2].frames = 29;
+	plant.animations[2].frames = 34;
 	plant.animations[2].frameTimer = 0.1f;
 	// Boosted
-	plant.animations[3].frames = 25;
+	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
 
 	plant.setCurrentAnimation(0);
@@ -2435,10 +2514,10 @@ Entity defineInfernoPlant() {
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
 					bullets.push_back(newBullet);
 				}
-			
+
 			}
 		}
-	};
+		};
 
 	return plant;
 }
@@ -3854,7 +3933,7 @@ void DrawZombies(RenderWindow& window) {
 
 		if (!isGameOver) {
 			int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
-			zombieSprite.setColor(Color(255, damage, damage));
+			zombieSprite.setColor(zombieSprite.getColor() * Color(255, damage, damage));
 		}
 		// Change Origin For Zombot dragon as its huge
 		Vector2f orgOrg = zombieSprite.getOrigin();
@@ -3896,6 +3975,7 @@ void DrawZombies(RenderWindow& window) {
 	}
 }
 
+// Stop and Damage (not start) of Bullets along the way + Draw and Animation of bullets
 void UpdateAndDrawBullets(RenderWindow& window) {
 	for (Entity& bullet : bullets) {
 		if (bullet.category != ENTITY_CATEGORY::Bullet) continue;
@@ -3907,7 +3987,8 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			continue;
 		}
 
-		// Zombot Dragon Bullet
+		
+		// Zombot Dragon Bullet (Out of zombie)
 		if (bullet.type == ENTITY_TYPE::ZombotDragonBullet) {
 			for (Entity& plant : entities) {
 				if (plant.category != ENTITY_CATEGORY::PLANT || plant.health <= 0) continue;
@@ -3923,18 +4004,29 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			}
 		} else {
 
-			// Plant Bullet
+		// Plant Bullet
 			for (Entity& zombie : entities) {
 
 				if (zombie.category != ENTITY_CATEGORY::ZOMBIE || zombie.isDead || zombie.health <= 0) continue;
 
-				if (abs(bullet.position.y - zombie.position.y) < 100.0f &&
+
+				bool touchZombie = abs(bullet.position.y - zombie.position.y) < 100.0f &&
 					bullet.position.x >= zombie.position.x &&
-					bullet.position.x <= zombie.position.x + 100.0f) {
+					bullet.position.x <= zombie.position.x + 100.0f;
+				bool snapTouchZombie = bullet.type == ENTITY_TYPE::SnapDragonBullet &&
+					abs(bullet.position.y - zombie.position.y) < 100.0f &&
+					bullet.position.x >= zombie.position.x &&
+					bullet.position.x <= zombie.position.x + 10.0f;
+				
+				if (snapTouchZombie) {
+					// Stop at 3 cells
+				}
+				if (touchZombie) {
 
 					//cout << "bullet type " << int(bullet.type )<< " shot entity type " << int(zombie.type )<< endl;
+					//vector<ENTITY_TYPE> unkilled_bullets = {ENTITY_TYPE::SnapDragonBoostBullet};
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet) {
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet && bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
 						bullet.category = ENTITY_CATEGORY::NONE;
 						break;
 					}
@@ -3967,6 +4059,11 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						continue;
 					}
 
+				}
+
+				if (touchZombie || snapTouchZombie) {
+					// Damage Zombie
+
 					attackZombie(zombie, bullet.attack, true);
 					if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
 						zombie.diedByElectrocution = true;
@@ -3976,8 +4073,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						zombie.freezeTimer = 3.0f;
 					}
 
-					bullet.category = ENTITY_CATEGORY::NONE;
-					break;
+					// Unkilled bullets
+					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
+						// End of the bullet
+						bullet.category = ENTITY_CATEGORY::NONE;
+						break;
+					}
 				}
 			}
 
@@ -3989,7 +4090,10 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			bulletSprite.setTexture(bulletTex);
 
 			if (bullet.num_animations > 0 && bullet.animations[bullet.currentAnimationIndex].frames > 0) {
-				bulletSprite.setTextureRect(getFrameRect(bullet));
+				// Animation
+				if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer))
+					bullet.nextFrame(); // next frame
+				bulletSprite.setTextureRect(getFrameRect(bullet)); // crop textures
 			} else {
 				bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
 			}
@@ -4203,7 +4307,11 @@ void DrawSeeds(RenderWindow& window) {
 
 		Color packetColor = Color::White;
 		if ((currentLevel->arePlantsSelected && sunsMoney < plant.price) || plant.currentSeedCooldown > 0) {
-			packetColor = Color(100, 100, 100, 255);
+			packetColor = Color(64, 64, 64, 255);
+		} else if (currentLevel->arePlantsSelected && selectedPlant == i) {
+			if (!isShovelActive && !isRelocateActive && !isBoostActive) {
+				packetColor = Color(190, 255, 190, 255);
+			}
 		}
 
 		Sprite sprite = DrawSeedPacket(window, plant, spritePos, true, 0.9f, packetColor);
@@ -4228,6 +4336,9 @@ void DrawSeeds(RenderWindow& window) {
 				if (currentLevel->arePlantsSelected) {
 					if (plant.currentSeedCooldown <= 0 && sunsMoney >= plant.price) {
 						selectedPlant = i;
+						isShovelActive = false;
+						isRelocateActive = false;
+						isBoostActive = false;
 					}
 				} else {
 					removePlant = i;
@@ -4753,22 +4864,6 @@ void uiCollectBooster(RenderWindow& window) {
 		}
 	}
 }
-void uiAddBooster(RenderWindow& window) {
-	if (isClicked(addBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
-		if (mouseJustClicked[0]) {
-			uiInteracted = true;
-			if (curBoosterCnt < maxBoosterCnt && coinsMoney >= booster.cost) {
-				curBoosterCnt++;
-				coinsMoney -= booster.cost;
-			} else if (coinsMoney < booster.cost) {
-				// message that you dont have enough coins
-			} else if (curBoosterCnt >= maxBoosterCnt) {
-				// maybe show some message that you cant have more boosters
-			}
-		}
-	}
-
-}
 
 //	UI interaction - Buttons click, Collect Items, Click plants ... etc
 void UI_DrawClick(RenderWindow& window) {
@@ -4785,6 +4880,8 @@ void UI_DrawClick(RenderWindow& window) {
 	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 		if (mouseJustClicked[0]) {
 			isShovelActive = !isShovelActive;
+			isRelocateActive = false;
+			isBoostActive = false;
 			uiInteracted = true;
 		}
 	}
@@ -4808,11 +4905,37 @@ void UI_DrawClick(RenderWindow& window) {
 		if (mouseJustClicked[0]) {
 			isRelocateActive = !isRelocateActive;
 			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
+			isBoostActive = false;
 
 			if (!isRelocateActive) {
 				isRelocating = false;
 				selectedPlantIndex = -1;
 			}
+			uiInteracted = true;
+		}
+	}
+	window.draw(uiSprite);
+	uiSprite.setColor(Color::White);
+	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
+
+	// Boost
+	Texture& boostTex = getTexture(TEXTURE_TYPE::BOOSTER);
+	uiSprite.setTexture(boostTex);
+	resizeSpriteToTex(uiSprite, boostTex);
+	uiSprite.setScale(Vector2f(1, 1));
+	uiSprite.setPosition(1020.0f, 20.0f);
+
+	if (isBoostActive) uiSprite.setColor(Color(150, 150, 150));
+	else uiSprite.setColor(Color::White);
+
+	if (curBoosterCnt <= 0) {
+		uiSprite.setColor(Color(100, 100, 100, 255));
+	} else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (mouseJustClicked[0]) {
+			isBoostActive = !isBoostActive;
+			isShovelActive = false;
+			isRelocateActive = false;
+
 			uiInteracted = true;
 		}
 	}
@@ -4832,8 +4955,6 @@ void UI_Interaction(RenderWindow& window) {
 		uiCollectBooster(window);
 		// Active boost
 		uiBoostActive(window);
-		// Add booster
-		uiAddBooster(window);
 
 		// Other
 		if (!uiInteracted) {
@@ -5020,8 +5141,39 @@ void SetGamePaused(bool paused) {
 	gamePaused = paused;
 
 	if (gamePaused) {
+		// Start pause clock as before
 		gamePauseClock.restart();
+
+		// Pause the background music (if any) and play pause sound on a separate Music instance.
+		if (g_music && g_music->getStatus() == sf::Music::Playing) {
+			g_music->pause();
+		}
+
+		// Create a temporary Music instance to play pause sound so it doesn't clobber the main music object.
+		if (!pauseMusic) {
+			pauseMusic = new sf::Music();
+			// Use the existing helper to open & play the pause sound into this Music object.
+			// pause_music opens the file and starts playback for the provided Music instance.
+			if (pause_music(*pauseMusic) != 0) {
+				// On failure free it
+				delete pauseMusic;
+				pauseMusic = nullptr;
+			}
+		}
+
 	} else {
+		// Unpausing: stop and free the temporary pause music, then resume the background music.
+		if (pauseMusic) {
+			pauseMusic->stop();
+			delete pauseMusic;
+			pauseMusic = nullptr;
+		}
+
+		if (g_music && g_music->getStatus() != sf::Music::Playing) {
+			g_music->play();
+		}
+
+		// adjust pause timing as before
 		totalPauseTime += gamePauseClock.getElapsedTime();
 		wcOffset -= gamePauseClock.getElapsedTime();
 		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
@@ -5459,6 +5611,21 @@ void UpdateLevel(RenderWindow& window) {
 				cout << "Zombies ate your brains!\n";
 				// request switching back to normal (select-levels) music
 				requestedLevelMusic = REQUEST_SELECT_MUSIC;
+
+				// Play lose music once when game over screen appears.
+				if (!loseMusicPlayed) {
+					// heap-allocated to keep playing (matches project pattern)
+					sf::Music* loseMusic = new sf::Music();
+					if (loseMusic->openFromFile("assets/audio/05. losemusic.ogg")) {
+						loseMusic->setLoop(false);
+						loseMusic->play();
+						loseMusicPlayed = true;
+					} else {
+						delete loseMusic;
+						std::cout << "Failed to load assets/audio/05. losemusic.ogg\n";
+					}
+				}
+
 				break;
 			}
 		}
@@ -6121,6 +6288,67 @@ int level_6_music(Music& music) {
 	music.play();
 	return 0;
 }
+
+int level_7_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_7.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_8_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_8.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_9_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_9.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_10_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_10.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_11_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_11.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
+int level_12_music(Music& music) {
+	if (!music.openFromFile("assets/audio/level_12.ogg")) {
+		std::cout << "Error loading file!" << std::endl;
+		return -1;
+	}
+	music.setLoop(true);
+	music.play();
+	return 0;
+}
+
 int huge_wave_music(Music& music) {
 	if (!music.openFromFile("assets/audio/03. hugewave.ogg")) {
 		std::cout << "Error loading file!" << std::endl;
@@ -6223,6 +6451,12 @@ void playMusicForLevel(int level, Music& music) {
 	case 4: level_4_music(music); break;
 	case 5: level_5_music(music); break;
 	case 6: level_6_music(music); break;
+	case 7: level_7_music(music); break;
+	case 8: level_8_music(music); break;
+	case 9: level_9_music(music); break;
+	case 10: level_10_music(music); break;
+	case 11: level_11_music(music); break;
+	case 12: level_12_music(music); break;
 	default: /* fallback */ select_levels_background_music(music); break;
 	}
 }
@@ -6477,9 +6711,9 @@ int main() {
 	screenFlashOverlay.setSize(Vector2f(windowWidth, windowHeight));
 
 	Music music;	// can't be global - OpenAL must be loaded first
+	g_music = &music; // let other code (SetGamePaused) pause/resume background music
 	RenderWindow window(VideoMode(windowWidth, windowHeight), "Plants vs Zombies");
 	//window.setFramerateLimit(120);
-
 	bool fullscreen = false;
 	Vector2i oldPos;
 	Vector2u oldSize;
@@ -6805,18 +7039,13 @@ int main() {
 	gameWonScreen.setOrigin(250.0f, 350.0f);
 	gameWonScreen.setPosition(Vector2f(windowWidth / 2.0, windowHeight / 2.0));
 
-	// Load storage
+
 	loadStorage();
 
-	// in main(), after creating resources:
 	onHugeWave = []() {
 		std::cout << "Custom huge-wave handler executed\n";
-		// any immediate custom action here (spawn effects, UI flag, increase music volume, etc.)
-		// e.g. you could toggle a game-state boolean or request a special sound
+
 		};
-
-	// Game Loop
-
 
 	Clock DeltaTimeClock;
 
@@ -6871,8 +7100,6 @@ int main() {
 			}
 		}
 
-		// Separate UI -> Main Menu and Level
-		// First, handle any queued music request (stop current music, play requested)
 		if (requestedLevelMusic != REQUEST_NONE) {
 			if (music.getStatus() == Music::Playing) music.stop();
 
