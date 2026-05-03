@@ -2674,7 +2674,7 @@ Entity defineZombotDragon() {
 	//textures[TEXTURE_TYPE::ZOMBOT_DRAGON][1].loadFromFile("assets/zombot-dragon-die-1.png");
 	textures[TEXTURE_TYPE::ZOMBOT_DRAGON][4].loadFromFile("assets/zombot-dragon-die-2-still-400-295-1.png");
 	//textures[TEXTURE_TYPE::ZOMBOT_DRAGON][4].loadFromFile("assets/zombot-dragon-die-2.png");
-	textures[TEXTURE_TYPE::ZOMBOT_DRAGON][2].loadFromFile("assets/zombat-dragon-attack-400-290-14.png");
+	textures[TEXTURE_TYPE::ZOMBOT_DRAGON][2].loadFromFile("assets/zombot-dragon-attack-400-290-14.png");
 	//textures[TEXTURE_TYPE::ZOMBOT_DRAGON][2].loadFromFile("assets/zombot-dragon-attack.png");
 
 	Entity zombie{};
