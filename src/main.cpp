@@ -664,8 +664,7 @@ struct Entity {
 		if (type == ENTITY_TYPE::ZOMBOT_DRAGON) {
 			cout << "DoAnimation called: idx=" << idx << " currentAnimationIndex=" << currentAnimationIndex << endl;
 			if (currentAnimationIndex == idx) { cout << "SKIPPED - same index\n"; return; }
-		}
-		else if (currentAnimationIndex == idx) return;
+		} else if (currentAnimationIndex == idx) return;
 
 		// forCycles = (-1)  ---> Infinite / Manual change
 		AnimationForCycles = forCycles;
@@ -3059,8 +3058,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				} else {
 					zombie.DoAnimation(1, 2);
 				}
-			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)
-			{
+			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
 				// Zombot Dragon Death
 				cout << "---------- 1 You killed Zombot\n";	// maybe message here to kill the boss
 				playZombotDragonDeath();
@@ -3075,8 +3073,8 @@ bool healthDone_DyingZombie(Entity& zombie) {
 						cout << "You killed Zombot\n";	// maybe message here to kill the boss
 						//zombie.category = ENTITY_CATEGORY::NONE;
 						attackZombie(zombie, 10000000, false);
+						};
 					};
-				};
 			} else {
 				zombie.DoAnimation(1, 1);
 			}
@@ -3506,6 +3504,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
+			plant.lastDamaged = currentLevel->clock.getElapsedTime();
 
 			if (plant.health <= 0) {
 				if (zombie.health > 0) {
@@ -3543,7 +3542,7 @@ void DrawZombies(RenderWindow& window) {
 		bool disappearedDead = false;
 		if (zombie.health <= 0) disappearedDead = healthDone_DyingZombie(zombie); // no need for condition but for clarification
 		if (disappearedDead) continue;
-		
+
 		// zombie Animation
 		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
 		IntRect frameRect = getFrameRect(zombie);
@@ -6194,9 +6193,7 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
-	// TODO: RETURN THIS
-	//levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
-	levels[11].addWave(1, 1, { zombiePianist }, 5);
+	levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
 
 
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
