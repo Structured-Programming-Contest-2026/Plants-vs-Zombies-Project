@@ -214,6 +214,8 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_REDHAIR,
 	ZOMBIE_COWBOY,
 	ZOMBIE_PIANIST,
+	ZOMBIE_CHICKENWRANGLER,
+	ZOMBIE_CHICKEN,
 	ZOMBOT_DRAGON,
 
 	PLANT_NORMAL,
@@ -296,6 +298,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_COWBOY,
 	ZOMBIE_ELECTROCUTED,//only death not real zombie
 	ZOMBIE_PIANIST,
+	ZOMBIE_CHICKENWRANGLER,
+	ZOMBIE_CHICKEN,
 	ZOMBOT_DRAGON,
 
 	PLANT_NORMAL,
@@ -397,6 +401,12 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_PIANIST:
 		textureType = TEXTURE_TYPE::ZOMBIE_PIANIST;
+		break;
+	case ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER:
+		textureType = TEXTURE_TYPE::ZOMBIE_CHICKENWRANGLER;
+		break;
+	case ENTITY_TYPE::ZOMBIE_CHICKEN:
+		textureType = TEXTURE_TYPE::ZOMBIE_CHICKEN;
 		break;
 	case ENTITY_TYPE::ZOMBOT_DRAGON:
 		textureType = TEXTURE_TYPE::ZOMBOT_DRAGON;
@@ -943,7 +953,7 @@ ShopItem shopItems[2] = {
 
 // Plants - zombies - allplanttypes
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno;
-Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombotDragon;
+Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombotDragon;
 vector<Entity> allPlantTypes;
 
 // Suns
@@ -2675,6 +2685,43 @@ Entity definePianistZombie() {
 	return zombie;
 }
 
+Entity defineChickenWranglerZombie() {
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKENWRANGLER][0].loadFromFile("assets/ChickenWranglerZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKENWRANGLER][1].loadFromFile("assets/redhair_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKENWRANGLER][2].loadFromFile("assets/redhair_eat.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKENWRANGLER][3].loadFromFile("assets/redhair_walk.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER;
+	zombie.health = 300;
+	zombie.attack = 10;
+	zombie.x_vel = 70;
+
+	zombie.num_animations = 4;
+	Animation anim;
+	// walk
+	anim.frames = 44;
+	anim.frameTimer = 0.05f;
+	zombie.animations[0] = anim;
+	// death
+	anim.frames = 25;
+	anim.frameTimer = 0.1f;
+	zombie.animations[1] = anim;
+	// eat
+	anim.frames = 25;
+	anim.frameTimer = 0.07f;
+	zombie.animations[2] = anim;
+	// no chicken walk
+	anim.frames = 25;
+	anim.frameTimer = 0.07f;
+	zombie.animations[3] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	return zombie;
+}
+
 Entity defineProspectorZombie() {
 	Entity zombie = { ENTITY_CATEGORY::ZOMBIE, ENTITY_TYPE::ZOMBIE_PROSPECTOR };
 	zombie.health = 150;
@@ -2977,6 +3024,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR && zombie.currentAnimationIndex == 3)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex ==3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -3346,6 +3394,13 @@ void updatePianistZombie(Entity& zombie) {
 		}
 	}
 }
+
+void updateChickenWranglerZombie(Entity& zombie) {
+	if (zombie.health <= 150 && zombie.currentAnimationIndex == 0) {
+		zombie.setCurrentAnimation(3);
+	}
+}
+
 //int rowToBeBurnt = -1;
 // Zombot Dragon Shot
 void burnRow(int r) {
@@ -3444,7 +3499,12 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 
 		if ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
+			zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0) {
+			zombie.setCurrentAnimation(2);
+		}
+
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) {
 			zombie.setCurrentAnimation(2);
 		}
 
@@ -3525,6 +3585,9 @@ void DrawZombies(RenderWindow& window) {
 		}
 		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON && zombie.health > 0) { // for pianist
 			updateZombotDragon(zombie);
+		}
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.health > 0) {
+			updateChickenWranglerZombie(zombie);
 		}
 
 		// zombie move
@@ -6145,6 +6208,7 @@ void defineWildWestLevels() {
 	// Level 8
 	levels[11].plantReward = icePeashooter;
 	levels[11].coinReward = 300;
+	levels[11].addWave(1, 5, { zombieChickenWrangler }, 10);
 	levels[11].addWave(6, 5, { zombieProspector, zombiePianist }, 5);
 	/*levels[11].addWave(2, 5, { zombieRedhair, zombieProspector }, 10);
 	levels[11].addWave(4, 12, { zombieRedhair, zombieProspector }, 10);
@@ -6235,6 +6299,7 @@ int main() {
 	zombieProspector = defineProspectorZombie();
 	zombiePogo = definePogoZombie();
 	zombiePianist = definePianistZombie();
+	zombieChickenWrangler = defineChickenWranglerZombie();
 	;
 	zombotDragon = defineZombotDragon();
 
@@ -6292,6 +6357,8 @@ int main() {
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][1].loadFromFile("assets/cowboy_die.png");
 	textures[TEXTURE_TYPE::ZOMBIE_COWBOY][2].loadFromFile("assets/cowboy_eat.png");
 	textures[TEXTURE_TYPE::ZOMBIE_ELECTROCUTED][0].loadFromFile("assets/ZombieElectrocuted.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][0].loadFromFile("assets/ChickenZombie.png");
+	textures[TEXTURE_TYPE::ZOMBIE_CHICKEN][1].loadFromFile("assets/ChickenZombieDeath.png");
 	// Font
 	font = new Font();
 	font->loadFromFile("assets/impact.ttf");
