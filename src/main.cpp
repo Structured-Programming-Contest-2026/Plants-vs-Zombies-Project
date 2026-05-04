@@ -230,6 +230,8 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_ROMAN_ODESSA,
 	ZOMBIE_ROMAN_SHIELD,
 	ZOMBIE_ROMAN_NORMAL,
+	ZOMBIE_ROMAN_GARGANTUAR,
+	ZOMBIE_LOSTCITY_GARGANTUAR,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -330,6 +332,8 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_ROMAN_ODESSA,
 	ZOMBIE_ROMAN_SHIELD,
 	ZOMBIE_ROMAN_NORMAL,
+	ZOMBIE_ROMAN_GARGANTUAR,
+	ZOMBIE_LOSTCITY_GARGANTUAR,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -467,6 +471,12 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL:
 		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_NORMAL;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_GARGANTUAR;
+		break;
+	case ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR:
+		textureType = TEXTURE_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR;
 		break;
 	
 
@@ -1062,7 +1072,7 @@ ShopItem shopItems[2] = {
 
 // Plants - zombies - allplanttypes
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno , redShooterPlant , Pomegranate;
-Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon , zombieRomanConehead, zombieRomanBuckethead, zombieRomanCenturion, zombieRomanBusthead , zombieRomanOdessa, zombieRomanShield, zombieRomanNormal;
+Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon , zombieRomanConehead, zombieRomanBuckethead, zombieRomanCenturion, zombieRomanBusthead , zombieRomanOdessa, zombieRomanShield, zombieRomanNormal , zombieRomanGargantuar, zombieLostCityGargantuar;
 vector<Entity> allPlantTypes;
 
 // Suns
@@ -2109,7 +2119,10 @@ Entity defineChomperPlant() {
 				bool inFront = zombie.position.x > plant.position.x &&
 					zombie.position.x < plant.position.x + plant.width * 0.55;
 
-				if (sameRow && inFront && zombie.type != ENTITY_TYPE::ZOMBIE_BIG) {
+				if (sameRow && inFront && zombie.type != ENTITY_TYPE::ZOMBIE_BIG
+					&& zombie.type != ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD
+					&& zombie.type != ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR
+					&& zombie.type != ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
 					plant.targetId = zombie.id;
 					zombie.x_vel = 0;
 
@@ -2223,7 +2236,7 @@ Entity definePOTATO_MINE() {
 							}
 						}
 					}
-					p.category = ENTITY_CATEGORY::NONE; // النبات يختفي
+					p.category = ENTITY_CATEGORY::NONE;
 					};
 				break;
 			}
@@ -2247,12 +2260,9 @@ Entity defineDOOM_SHROOM() {
 	shroom.height = 120;
 
 	shroom.num_animations = 2;
-
-	// animation 0 = النبتة العادية
 	shroom.animations[0].frames = 41;
 	shroom.animations[0].frameTimer = 0.1f;
 
-	// animation 1 = الانفجار
 	shroom.animations[1].frames = 14;
 	shroom.animations[1].frameTimer = 0.05f;
 
@@ -2296,7 +2306,7 @@ Entity defineDOOM_SHROOM() {
 							}
 						}
 					}
-					p.category = ENTITY_CATEGORY::NONE; // النبات يختفي
+					p.category = ENTITY_CATEGORY::NONE;
 					};
 				break;
 			}
@@ -3548,8 +3558,78 @@ Entity defineRomanNormal() {
 	zombie.setCurrentAnimation(0);
 	return zombie;
 }
-//samaan
-void UpdateBooster(RenderWindow& window) {
+
+Entity defineRomanGargantuar() 
+{
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_GARGANTUAR][0].loadFromFile("assets/roman_gargantuar_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_GARGANTUAR][1].loadFromFile("assets/roman_gargantuar_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_GARGANTUAR][2].loadFromFile("assets/roman_gargantuar_attack.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR;
+	zombie.health = 3000;
+	zombie.attack = 50; 
+	zombie.x_vel = 40;
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 3;
+	Animation anim;
+	anim.frames = 18;
+	anim.frameTimer = 0.08f; 
+
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	zombie.updateEntity = [](Entity& z)
+		{
+		if (z.health <= 0 && z.currentAnimationIndex == 9)
+		{
+			z.setCurrentAnimation(1);
+			z.x_vel = 0;
+		}
+		};
+
+	return zombie;
+}
+Entity defineLostCityGargantuar() 
+{
+	textures[TEXTURE_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR][0].loadFromFile("assets/lostcity_gargantuar_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR][1].loadFromFile("assets/lostcity_gargantuar_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR][2].loadFromFile("assets/lostcity_gargantuar_attack.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR;
+	zombie.health = 3000;
+	zombie.attack = 50;  
+	zombie.x_vel = 40; 
+	zombie.scale = 1.0f;
+
+	zombie.num_animations = 3;
+	Animation anim;
+	anim.frames = 18;
+	anim.frameTimer = 0.08f;
+
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+	zombie.animations[2] = anim;
+
+	zombie.setCurrentAnimation(0);
+	zombie.updateEntity = [](Entity& z) {
+		if (z.health <= 0 && z.currentAnimationIndex == 9) {
+			z.setCurrentAnimation(1);
+			z.x_vel = 0;
+		}
+		};
+
+	return zombie;
+}
+
+void UpdateBooster(RenderWindow& window)
+{
 	if (!booster.isAlive) return;
 	ariseSprite.setPosition(booster.position);
 	ariseSprite.setTexture(textures[TEXTURE_TYPE::BOOSTER][Default_Texture_Index]);
@@ -3570,7 +3650,8 @@ void DrawDebugGrid(RenderWindow& window) {
 		}
 	}
 }
-void DrawPlantsGrid(RenderWindow& window) {
+void DrawPlantsGrid(RenderWindow& window)
+{
 	//vector<Entity> newBullets; //temporary vector
 	for (Entity& plant : entities) {
 
@@ -3642,7 +3723,9 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_SHIELD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
-			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9))
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9))
 		{
 
 			// for ra
@@ -4105,51 +4188,84 @@ void updateZombotDragon(Entity& zombie) {
 
 	}
 }
-
-void zombieEatPlant(Entity& zombie, Entity& plant) {
+void zombieEatPlant(Entity& zombie, Entity& plant)
+{
 	if (gamePaused) return;
 
-	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
+	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0)
+	{
 		zombie.x_vel = 0;
 
 		if ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER ||
-			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0) {
+			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0) 
+		{
+			zombie.setCurrentAnimation(2);
+		} 
+		else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) 
+		{
+			if (zombie.currentAnimationIndex == 0)
+			{
+				zombie.setCurrentAnimation(2);
+			}
+		} 
+		else if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3)
+		{
 			zombie.setCurrentAnimation(2);
 		}
-
-		}
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) {
-			zombie.setCurrentAnimation(2);
-		}
-
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0) {
+		else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0) 
+		{
 			zombie.setCurrentAnimation(1);
 		}
-
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
+		else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
 			zombie.setCurrentAnimation(3);
-
-		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
+		}
+		else if (zombie.currentAnimationIndex == 0)
+		{
+			if (zombie.num_animations > 3) 
+			{
+				zombie.setCurrentAnimation(3);
+			}
+		}
+		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) 
+		{
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
 			plant.lastDamaged = currentLevel->clock.getElapsedTime();
 
-			if (plant.health <= 0) 
+			if (plant.health <= 0)
 			{
-				if (zombie.health > 0)
+				if (zombie.health > 0) 
 				{
-					zombie.x_vel = 70;
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA)
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR)
+					{
+						zombie.x_vel = 40;
+					} else {
+						zombie.x_vel = 70;
+					}
+
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA) 
 					{
 						if (zombie.health <= 200) zombie.setCurrentAnimation(2);
 						else zombie.setCurrentAnimation(0);
 					}
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO)
+					{
+						zombie.setCurrentAnimation(0);
+					}
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY)
+					{
+						zombie.setCurrentAnimation(0);
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
+						if (zombie.currentAnimationIndex == 2)
+						{
+							zombie.setCurrentAnimation(0);
+						}
+					}
+					else
 					{
 						zombie.setCurrentAnimation(0);
 					}
@@ -4240,7 +4356,8 @@ void DrawZombies(RenderWindow& window) {
 						zombie.x_vel = 2.8f;
 					} else if (zombie.freezeTimer > 0) {
 						zombie.x_vel = 28;
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) 
+					{
 						if (zombie.currentAnimationIndex == 3) zombie.x_vel = 170;
 						else if (zombie.currentAnimationIndex == 0) zombie.x_vel = 70;
 						else zombie.x_vel = 0.0f;
@@ -4254,7 +4371,8 @@ void DrawZombies(RenderWindow& window) {
 						zombie.x_vel = 200;
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.shellDestroyed) {
 						zombie.x_vel = 135;
-					} else {
+					} else 
+					{
 						zombie.x_vel = 70; // no plant - has health - move normally
 					}
 				}
@@ -6165,7 +6283,7 @@ void DrawLevelSelector(RenderWindow& window) {
 		float ribbonScale = 0.2f * scale.x;
 		ribbonSprite.setScale(ribbonScale, ribbonScale);
 		float ribbonWidth = ribbonSprite.getGlobalBounds().width;
-		ribbonSprite.setPosition(pos.x - (ribbonWidth / 2.0f), pos.y - 250.0f * scale.y); //samaan
+		ribbonSprite.setPosition(pos.x - (ribbonWidth / 2.0f), pos.y - 250.0f * scale.y); 
 
 		if (!selected && !hovered)
 		{
@@ -7186,9 +7304,10 @@ void defineRomanLevels()
 
 	levels[24].coinReward = 500;
 	levels[24].addWave(2, 5, { zombieRomanConehead }, 5);
+	levels[24].addWave(16, 25, { zombieRomanBuckethead, /*zombieRomanOdessa*/ zombieRomanCenturion, zombieRomanBusthead ,zombieRomanGargantuar }, 20, true);
 	levels[24].addWave(5, 10, { zombieRomanBuckethead, zombieRomanShield }, 10);
 	levels[24].addWave(6, 12, { zombieRomanOdessa, zombieRomanCenturion }, 15);
-	levels[24].addWave(15, 25, { zombieRomanBuckethead, zombieRomanOdessa, zombieRomanCenturion, zombieRomanBusthead }, 20, true); 
+	levels[24].addWave(16, 25, { zombieRomanBuckethead, /*zombieRomanOdessa*/ zombieRomanCenturion, zombieRomanBusthead ,zombieRomanGargantuar }, 20, true);
 }
 
 
@@ -7238,7 +7357,7 @@ int main() {
 	redShooterPlant = defineRedShooter();
 	Pomegranate = definePomegranatePlant();
 
-	// Zombies samaan
+	// Zombies
 	normalZombie = defineNormalZombie();
 	zombieJapanese = defineJapaneseZombie();
 	zombieBig = defineBigZombie();
@@ -7265,6 +7384,8 @@ int main() {
 	zombieRomanOdessa = defineRomanOdessa();
 	zombieRomanShield = defineRomanShield();
 	zombieRomanNormal = defineRomanNormal();
+	zombieRomanGargantuar = defineRomanGargantuar();
+	zombieLostCityGargantuar = defineLostCityGargantuar();
 
 	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno ,redShooterPlant, Pomegranate };
 
