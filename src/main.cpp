@@ -275,6 +275,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	ITEM_NEWSPAPER,
 	ITEM_PHAROAH_CASKET,
 	ITEM_JAR,
+	ITEM_HEAD,
 
 	ZOMBIE_NORMAL,
 	ZOMBIE_JAPANESE,
@@ -766,14 +767,16 @@ struct FallenItem {
 	TEXTURE_TYPE texture;
 	Clock clock;
 	Vector2f fallPosition;
+	Color color;
 };
 vector<FallenItem> fallenItems;
 
-void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position) {
+void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::White) {
 	FallenItem item;
 	item.texture = tex;
 	item.clock.restart();
 	item.fallPosition = position;
+	item.color = color;
 	fallenItems.push_back(item);
 }
 
@@ -3731,6 +3734,23 @@ bool healthDone_DyingZombie(Entity& zombie) {
 					};
 			} else {
 				zombie.DoAnimation(1, 1);
+
+				if (zombie.type == ENTITY_TYPE::ZOMBIE_NORMAL
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_MUMMY
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_MUMMY
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_RA
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_TORCHLIGHT
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR
+					) {
+
+					SpawnFallingItem(TEXTURE_TYPE::ITEM_HEAD, zombie.position + Vector2f(75, 75));
+				}
 			}
 
 
@@ -5505,13 +5525,14 @@ void UpdateFallenItems(RenderWindow& window) {
 		sprite.setTexture(textures[item.texture][0]);
 		sprite.setPosition(item.fallPosition + offsetPos);
 		sprite.setOrigin(sprite.getGlobalBounds().getSize() / 2.0f);
+		sprite.setColor(item.color);
 
 		sprite.setRotation(std::min(time, 1.0f) * 270);
 
 		if (time > 2.5f) {
 			float progress = (time - 2.5f) / 1.0f;
 			if (progress > 1) progress = 1;
-			sprite.setColor(Color(255, 255, 255, (int)(255 * (1 - progress))));
+			sprite.setColor(sprite.getColor() * Color(255, 255, 255, (int)(255 * (1 - progress))));
 		}
 
 		window.draw(sprite);
@@ -6157,6 +6178,7 @@ void DrawLevelSelector(RenderWindow& window) {
 		if (levels[i].theme == THEME::NONE) {
 			levels[i].isUnlocked = false; continue;
 		}
+		//levels[i].isUnlocked = i <= 12;
 		levels[i].isUnlocked = true;
 	}
 
@@ -7390,6 +7412,7 @@ int main() {
 	textures[TEXTURE_TYPE::ITEM_NEWSPAPER][Default_Texture_Index].loadFromFile("assets/item_newspaper.png");
 	textures[TEXTURE_TYPE::ITEM_PHAROAH_CASKET][Default_Texture_Index].loadFromFile("assets/item_pharoah_casket.png");
 	textures[TEXTURE_TYPE::ITEM_JAR][Default_Texture_Index].loadFromFile("assets/item_jar.png");
+	textures[TEXTURE_TYPE::ITEM_HEAD][Default_Texture_Index].loadFromFile("assets/item_head.png");
 	textures[TEXTURE_TYPE::RAIL][Default_Texture_Index].loadFromFile("assets/rail.png");
 	textures[TEXTURE_TYPE::CART][Default_Texture_Index].loadFromFile("assets/cart.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PROSPECTOR][0].loadFromFile("assets/prospector_walk.png");
