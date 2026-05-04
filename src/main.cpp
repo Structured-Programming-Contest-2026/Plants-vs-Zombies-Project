@@ -2949,7 +2949,6 @@ Entity definePharaohZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][0].loadFromFile("assets/PharaohZombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][1].loadFromFile("assets/PharaohZombieDeath.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][2].loadFromFile("assets/PharaohZombie2.png");
-	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3].loadFromFile("assets/ShellBreak.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -2958,7 +2957,7 @@ Entity definePharaohZombie() {
 	zombie.attack = 10;
 	zombie.x_vel = 70;
 	// Animations
-	zombie.num_animations = 4;
+	zombie.num_animations = 3;
 	Animation anim;
 	// walk
 	anim.frames = 66;
@@ -2972,10 +2971,6 @@ Entity definePharaohZombie() {
 	anim.frames = 65;
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
-	// shell break
-	anim.frames = 41;
-	anim.frameTimer = 0.05f;
-	zombie.animations[3] = anim;
 
 	zombie.setCurrentAnimation(0);
 
@@ -4351,33 +4346,6 @@ void DrawZombies(RenderWindow& window) {
 
 		// For Zombot as its huge
 		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) zombieSprite.setOrigin(orgOrg);
-
-
-		// to play pharaoh zombie's shell breaking animation
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.playingShellAnim) {
-			if (zombie.shellAnim.clock.getElapsedTime().asSeconds() >= zombie.shellAnim.frameTimer) {
-				zombie.shellAnim.clock.restart();
-				zombie.shellAnim.currentFrame++;
-				if (zombie.shellAnim.currentFrame >= zombie.shellAnim.frames) {
-					zombie.playingShellAnim = false;     // all frames done and only 1 cycle so stop animation
-				}
-			}
-
-			Texture& shellTex = textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3];
-			float frameWidth = shellTex.getSize().x / zombie.shellAnim.frames;
-			float frameHeight = shellTex.getSize().y;
-
-			uiSprite.setTexture(shellTex);
-			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame * frameWidth, 0, frameWidth, shellTex.getSize().y));
-			// (x initial position for each frame, 0 is top of frame)
-
-			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
-			uiSprite.setScale(3.0f, 3.0f);
-			uiSprite.setPosition(zombie.position.x + 100, zombie.position.y + 130);
-			window.draw(uiSprite);
-			uiSprite.setOrigin(0.0f, 0.0f); // reset
-			uiSprite.setScale(1.0f, 1.0f);  // reset
-		}
 	}
 }
 
