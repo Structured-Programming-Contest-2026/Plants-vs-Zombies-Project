@@ -6963,22 +6963,22 @@ void defineDayLevels()
 	}
 	// Level 1 Easy
 	levels[1].isUnlocked = true;
-	levels[1].plantReward = chomper;      levels[1].coinReward = 100;
+	levels[1].plantReward = repeaterPlant;      levels[1].coinReward = 100;
 	levels[1].addWave(2, 10, { normalZombie }, 5);
 	levels[1].addWave(3, 12, { normalZombie }, 5);
 	levels[1].addWave(4, 15, { normalZombie, zombieConehead }, 8);
 	levels[1].addWave(11, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 2 Med
-	levels[2].plantReward = chomper;      levels[2].coinReward = 200;
+	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
 	levels[2].addWave(2, 10, { normalZombie }, 5);
 	levels[2].addWave(4, 15, { normalZombie, zombieConehead }, 5);
 	levels[2].addWave(6, 15, { normalZombie, zombieConehead }, 8);
-	levels[2].addWave(10, 15, { normalZombie, zombieConehead, zombieBig }, 0);
-	levels[2].addWave(12, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
+	levels[2].addWave(10, 15, { normalZombie, zombieConehead }, 0);
+	levels[2].addWave(12, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 3 Hard
-	levels[3].plantReward = chomper;      levels[3].coinReward = 300;
+	levels[3].plantReward = sunshroom;      levels[3].coinReward = 600;
 	levels[3].startingSuns = 1000;
 	levels[3].addWave(3, 12, { normalZombie }, 5);
 	levels[3].addWave(4, 8, { normalZombie }, 5);
@@ -7014,7 +7014,7 @@ void defineNightLevels()
 	levels[4].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper }, 0, true); 
 
 	// Level 5
-	levels[5].plantReward = sunshroom;    levels[5].coinReward = 300;
+	levels[5].plantReward = iceShroom;    levels[5].coinReward = 300;
 	levels[5].addWave(2, 10, { normalZombie }, 5);
 	levels[5].addWave(5, 15, { normalZombie, zombieNewspaper }, 8);
 	levels[5].addWave(6, 15, { zombieConehead, zombieNewspaper }, 10);
