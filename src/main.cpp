@@ -6953,10 +6953,10 @@ void defineDayLevels() {
 
 	// Level 2 Med
 	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
-	levels[2].addWave(2, 10, { normalZombie }, 5);
-	levels[2].addWave(4, 15, { normalZombie, zombieConehead }, 5);
-	levels[2].addWave(6, 15, { normalZombie, zombieConehead }, 8);
-	levels[2].addWave(10, 15, { normalZombie, zombieConehead }, 0);
+	levels[2].addWave(2, 10, { normalZombie }, 10);
+	levels[2].addWave(4, 5, { normalZombie, zombieConehead }, 10);
+	levels[2].addWave(6, 15, { normalZombie, normalZombie, zombieConehead }, 8);
+	levels[2].addWave(10, 15, { normalZombie, normalZombie, normalZombie, zombieConehead }, 0, true);
 	levels[2].addWave(12, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 3 Hard
