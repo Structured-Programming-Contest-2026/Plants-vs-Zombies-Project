@@ -51,70 +51,41 @@ bool isGameOver = false, isGameWon = false;
 // Dragon
 bool f_zombotDragon = true, entered_zombotDragon = false;
 
-// Game-won action hook
 bool gameWonActionExecuted = false;
-std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
-
-// Huge-wave hook: called once when a huge wave starts.
-// Assignable by user code (example: assign in main()).
 bool hugeWaveTriggered = false;
-std::function<void()> onHugeWave = []() {};
 
 void TriggerHugeWave() {
-	if (hugeWaveTriggered) return; // ensure runs once per huge wave
+	if (hugeWaveTriggered) return;
 	hugeWaveTriggered = true;
 
-	// keep original message
 	std::cout << "HUGE WAVE\n";
 
-	// run user callback
-	if (onHugeWave) onHugeWave();
-
-	// optional: play huge wave sound (short-lived Music as in ExecuteGameWonAction)
 	sf::Music* hw = new sf::Music();
 	if (hw->openFromFile("assets/audio/03. hugewave.ogg")) {
 		hw->setLoop(false);
 		hw->play();
-		// note: left intentionally not deleted to keep it alive while playing
 	}
 }
 
-// --- ADD: one-shot first-zombie hook (place below TriggerHugeWave)
 bool firstZombieTriggered = false;
-std::function<void()> onFirstZombie = []() {};
 
 void TriggerFirstZombie() {
 	if (firstZombieTriggered) return;
 	firstZombieTriggered = true;
 
-	// keep existing terminal message opportunity (optional)
-	std::cout << "FIRST ZOMBIE HOOK\n";
-
-	// Play the "zombies are coming" sound using the existing helper.
-	// Use a heap-allocated sf::Music so it lives while playing (matches project pattern).
 	sf::Music* sfx = new sf::Music();
 	if (sfx->openFromFile("assets/audio/Voices awooga.ogg")) {
 		sfx->setLoop(false);
 		sfx->play();
 	}
-	// run user callback if assigned
-	if (onFirstZombie) onFirstZombie();
 }
 
 void ExecuteGameWonAction() {
-	// Run the user-configurable callback first
-	if (onGameWonAction) onGameWonAction();
-
-	// Example: play the existing win music immediately (optional).
-	// This creates a short-lived Music instance to play the sound.
 	sf::Music* winMusic = new sf::Music();
 	if (winMusic->openFromFile("assets/audio/26. winmusic.ogg")) {
 		winMusic->setLoop(false);
 		winMusic->play();
-		// intentionally not deleted here to avoid lifetime issues while sound plays;
-		// if you want clean lifetime management, store Music pointer globally and delete after finished.
 	}
-	std::cout << "ExecuteGameWonAction called\n";
 }
 
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
@@ -3904,7 +3875,7 @@ void updateZombieAllStars(Entity& zombie) {
 			if (entities[i].isDead)
 				continue;
 			if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-				zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+				zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 150) {
 				plantAhead = true;
 				break;
 			}
@@ -3929,12 +3900,13 @@ void updateZombieAllStars(Entity& zombie) {
 				if (entities[i].isDead)
 					continue;
 				if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-					zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+					zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 150) {
 					entities[i].health = 0;
 					entities[i].category = ENTITY_CATEGORY::NONE;
 					entities[i].isDead = true;
 					zombie.isTackling = false;
 					zombie.hasTackled = true;
+					zombie.health += 200;
 					break;
 				}
 			}
@@ -6947,12 +6919,10 @@ void playMusicForLevel(int level, Music& music) {
 	default: /* fallback */ select_levels_background_music(music); break;
 	}
 }
-void defineDayLevels()
-{
+void defineDayLevels() {
 	//vector<Entity> mainDayPlantTypes = {normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, snapdragon};
 	vector<Entity> mainDayPlantTypes = allPlantTypes;
-	for (int lvl = 1; lvl <= 3; lvl++) 
-	{
+	for (int lvl = 1; lvl <= 3; lvl++) {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainDayPlantTypes;
@@ -6989,11 +6959,10 @@ void defineDayLevels()
 	levels[3].addWave(4, 8, { normalZombie }, 5);
 	levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
 	levels[3].addWave(1, 5, { zombotDragon }, 10);
-	levels[3].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true); 
+	levels[3].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
 }
 
-void defineNightLevels() 
-{
+void defineNightLevels() {
 	//vector<Entity> mainNightPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
 	vector<Entity> mainNightPlantTypes = allPlantTypes;
 
@@ -7016,7 +6985,7 @@ void defineNightLevels()
 	levels[4].addWave(2, 10, { normalZombie }, 5);
 	levels[4].addWave(3, 12, { normalZombie, zombieNewspaper }, 8);
 	levels[4].addWave(5, 15, { normalZombie, zombieConehead, zombieNewspaper }, 10);
-	levels[4].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper }, 0, true); 
+	levels[4].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper }, 0, true);
 
 	// Level 5
 	levels[5].plantReward = sunshroom;    levels[5].coinReward = 300;
@@ -7024,8 +6993,8 @@ void defineNightLevels()
 	levels[5].addWave(5, 15, { normalZombie, zombieNewspaper }, 8);
 	levels[5].addWave(6, 15, { zombieConehead, zombieNewspaper }, 10);
 	levels[5].addWave(2, 10, { zombieAllStar }, 5);
-	levels[5].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true); 
-	
+	levels[5].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true);
+
 	// Level 6
 	levels[6].plantReward = doomShroom;   levels[6].coinReward = 400;
 	levels[6].addWave(3, 12, { normalZombie, zombieNewspaper }, 5);
@@ -7171,8 +7140,8 @@ void defineDarkAgesLevels() {
 	// Level 17
 	levels[17].addWave(4, 15, { zombieJapanese, zombieShieldGuard }, 8);
 	levels[17].addWave(6, 15, { zombieTorch, zombiePogo }, 10);
-	levels[17].addWave(25, 20, { zombieJapanese, zombieShieldGuard, zombieTorch, zombiePogo }, 0, true); 
-	
+	levels[17].addWave(25, 20, { zombieJapanese, zombieShieldGuard, zombieTorch, zombiePogo }, 0, true);
+
 	// Level 18
 	levels[18].addWave(5, 15, { zombieJapanese, zombieShieldGuard }, 8);
 	levels[18].addWave(8, 15, { zombieTorch, zombiePogo }, 10);
@@ -7232,7 +7201,7 @@ void defineRomanLevels() {
 	levels[22].addWave(3, 12, { zombieRomanNormal }, 5);
 	levels[22].addWave(5, 15, { zombieRomanNormal, zombieRomanConehead }, 10);
 	levels[22].addWave(7, 15, { zombieRomanNormal, zombieRomanShield }, 10);
-	levels[22].addWave(20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true); 
+	levels[22].addWave(20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true);
 
 	//Level 23
 	levels[23].plantReward = inferno;     levels[23].coinReward = 5000;
@@ -7240,7 +7209,7 @@ void defineRomanLevels() {
 	levels[23].addWave(6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
 	levels[23].addWave(8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
 	levels[23].addWave(25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
-	
+
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
 	levels[24].coinReward = 10000;
@@ -7267,6 +7236,32 @@ int main() {
 
 	window.setSize(Vector2u(1280, 720));
 	Event event;
+
+	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
+	font = new Font();
+	font->loadFromFile("assets/impact.ttf");
+
+	{
+		window.clear();
+		Sprite logo;
+		logo.setTexture(textures[TEXTURE_TYPE::LOGO][Default_Texture_Index]);
+		logo.setOrigin(logo.getGlobalBounds().getSize() / 2.0f);
+		logo.setPosition(windowWidth / 2.0f, windowHeight / 2.0f - 128.0f);
+		logo.setScale(0.5f, 0.5f);
+		window.draw(logo);
+
+		Text text;
+		text.setFont(*font);
+		text.setString("Loading Game Assets");
+		text.setCharacterSize(48);
+		text.setOutlineThickness(8);
+		text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+		text.setPosition(windowWidth / 2.0f, windowHeight / 2.0f + 256.0f);
+		window.draw(text);
+
+		window.display();
+	}
+
 	// Characters
 	Texture groundTex, lawnTex;
 	ground = defineGroundSprite(groundTex);
@@ -7346,7 +7341,7 @@ int main() {
 	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno ,redShooterPlant, Pomegranate };
 
 	// Other Textures
-	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
+
 	textures[TEXTURE_TYPE::GREEN_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/green_button.png");
 	textures[TEXTURE_TYPE::WOOD_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/wood_button.png");
 	textures[TEXTURE_TYPE::MAINMENU_BACKGROUND][Default_Texture_Index].loadFromFile("assets/mainmenu/mainmenu_background.png");
@@ -7420,8 +7415,6 @@ int main() {
 	textures[TEXTURE_TYPE::ZOMBIE_ELECTROCUTED][0].loadFromFile("assets/ZombieElectrocuted.png");
 
 	// Font
-	font = new Font();
-	font->loadFromFile("assets/impact.ttf");
 
 	loudFont = new Font();
 	loudFont->loadFromFile("assets/loud.ttf");
@@ -7643,11 +7636,6 @@ int main() {
 
 	loadStorage();
 
-	onHugeWave = []() {
-		std::cout << "Custom huge-wave handler executed\n";
-
-		};
-
 	Clock DeltaTimeClock;
 
 	gameClock.restart();
@@ -7699,6 +7687,11 @@ int main() {
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
 				SetGamePaused(!gamePaused);
 			}
+		}
+
+		if (gameClock.getElapsedTime().asSeconds() < 0.1f) {
+			mouseJustClicked[0] = false;
+			mouseJustClicked[1] = false;
 		}
 
 		if (requestedLevelMusic != REQUEST_NONE) {
