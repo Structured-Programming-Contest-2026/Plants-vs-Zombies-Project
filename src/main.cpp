@@ -6945,7 +6945,7 @@ void defineDayLevels() {
 		levels[lvl].sunSpawnInterval = 8.0f;
 		levels[lvl].targetZombie = 20;
 		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
-		levels[lvl].startingSuns = 3050;
+		levels[lvl].startingSuns = 50;
 		levels[lvl].offsetX = 450;
 		levels[lvl].offsetY = 135;
 		levels[lvl].cellWidth = 150;
