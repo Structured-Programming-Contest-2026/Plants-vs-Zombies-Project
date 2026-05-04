@@ -51,70 +51,41 @@ bool isGameOver = false, isGameWon = false;
 // Dragon
 bool f_zombotDragon = true, entered_zombotDragon = false;
 
-// Game-won action hook
 bool gameWonActionExecuted = false;
-std::function<void()> onGameWonAction = []() {}; // can be assigned in main() if you want custom behavior
-
-// Huge-wave hook: called once when a huge wave starts.
-// Assignable by user code (example: assign in main()).
 bool hugeWaveTriggered = false;
-std::function<void()> onHugeWave = []() {};
 
 void TriggerHugeWave() {
-	if (hugeWaveTriggered) return; // ensure runs once per huge wave
+	if (hugeWaveTriggered) return;
 	hugeWaveTriggered = true;
 
-	// keep original message
 	std::cout << "HUGE WAVE\n";
 
-	// run user callback
-	if (onHugeWave) onHugeWave();
-
-	// optional: play huge wave sound (short-lived Music as in ExecuteGameWonAction)
 	sf::Music* hw = new sf::Music();
 	if (hw->openFromFile("assets/audio/03. hugewave.ogg")) {
 		hw->setLoop(false);
 		hw->play();
-		// note: left intentionally not deleted to keep it alive while playing
 	}
 }
 
-// --- ADD: one-shot first-zombie hook (place below TriggerHugeWave)
 bool firstZombieTriggered = false;
-std::function<void()> onFirstZombie = []() {};
 
 void TriggerFirstZombie() {
 	if (firstZombieTriggered) return;
 	firstZombieTriggered = true;
 
-	// keep existing terminal message opportunity (optional)
-	std::cout << "FIRST ZOMBIE HOOK\n";
-
-	// Play the "zombies are coming" sound using the existing helper.
-	// Use a heap-allocated sf::Music so it lives while playing (matches project pattern).
 	sf::Music* sfx = new sf::Music();
 	if (sfx->openFromFile("assets/audio/Voices awooga.ogg")) {
 		sfx->setLoop(false);
 		sfx->play();
 	}
-	// run user callback if assigned
-	if (onFirstZombie) onFirstZombie();
 }
 
 void ExecuteGameWonAction() {
-	// Run the user-configurable callback first
-	if (onGameWonAction) onGameWonAction();
-
-	// Example: play the existing win music immediately (optional).
-	// This creates a short-lived Music instance to play the sound.
 	sf::Music* winMusic = new sf::Music();
 	if (winMusic->openFromFile("assets/audio/26. winmusic.ogg")) {
 		winMusic->setLoop(false);
 		winMusic->play();
-		// intentionally not deleted here to avoid lifetime issues while sound plays;
-		// if you want clean lifetime management, store Music pointer globally and delete after finished.
 	}
-	std::cout << "ExecuteGameWonAction called\n";
 }
 
 int leftEdgeForZombies = 225;	// TODO: Adjust with lawnmower and stuff
@@ -7660,11 +7631,6 @@ int main() {
 
 
 	loadStorage();
-
-	onHugeWave = []() {
-		std::cout << "Custom huge-wave handler executed\n";
-
-		};
 
 	Clock DeltaTimeClock;
 
