@@ -3930,9 +3930,7 @@ void updateZombieAllStars(Entity& zombie) {
 			zombie.x_vel = 0;
 			zombie.DoAnimation(1, 3);
 			zombie.afterAnimation = [](Entity& entity) {
-				entity.isTackling = false;
-				entity.hasTackled = true;
-				entity.x_vel = 110.0f;
+				entity.x_vel = 70;
 				entity.setCurrentAnimation(0);
 				};
 		}
@@ -3950,6 +3948,8 @@ void updateZombieAllStars(Entity& zombie) {
 					entities[i].health = 0;
 					entities[i].category = ENTITY_CATEGORY::NONE;
 					entities[i].isDead = true;
+					zombie.isTackling = false;
+					zombie.hasTackled = true;
 					break;
 				}
 			}
