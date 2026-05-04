@@ -131,7 +131,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>deps\lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>
@@ -193,7 +193,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>deps\lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ws2_32.lib;winmm.lib;gdi32.lib;sfml-system-s.lib;sfml-window-s.lib;freetype.lib;sfml-graphics-s.lib;openal32.lib;FLAC.lib;vorbisenc.lib;vorbisfile.lib;vorbis.lib;ogg.lib;sfml-audio-s.lib;;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>
