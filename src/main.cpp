@@ -521,9 +521,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		textureType = TEXTURE_TYPE::PLANT_RED_SHOOTER;
 		break;
 
-	case ENTITY_TYPE::FireDragonBullet:
+	/*case ENTITY_TYPE::FireDragonBullet:
 		textureType = TEXTURE_TYPE::FireDragonBullet;
-		break;
+		break;*/
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
 		break;
@@ -2174,7 +2174,7 @@ Entity definePOTATO_MINE() {
 			float diffX = abs(zombie.position.x - plant.position.x);
 
 
-			float triggerRange = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 200.0f : 50.0f;
+			float triggerRange = 50.0f;
 
 			if (diffY < 60.0f && diffX < triggerRange) {
 
@@ -2182,25 +2182,12 @@ Entity definePOTATO_MINE() {
 
 
 				plant.afterAnimation = [&](Entity& p) {
-
-					plant.afterAnimation = [&](Entity& p) {
-						float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
-
-						for (Entity& z : entities) {
-							if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
-								if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-
-								}
-							}
-						}
-						p.category = ENTITY_CATEGORY::NONE; 
-						};
-					float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
+					float damageRange =  80.0f;
 
 					for (Entity& z : entities) {
 						if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 							if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-								z.health -= p.attack;
+								attackZombie(z, p.attack, true);	
 							}
 						}
 					}
