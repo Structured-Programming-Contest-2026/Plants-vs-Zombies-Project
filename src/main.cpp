@@ -3919,7 +3919,7 @@ void updateZombieAllStars(Entity& zombie) {
 			if (entities[i].isDead)
 				continue;
 			if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-				zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+				zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 150) {
 				plantAhead = true;
 				break;
 			}
@@ -3944,12 +3944,13 @@ void updateZombieAllStars(Entity& zombie) {
 				if (entities[i].isDead)
 					continue;
 				if (abs(entities[i].position.y - zombie.position.y) < 100.0f &&
-					zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 90) {
+					zombie.position.x - (entities[i].position.x + entities[i].width) <= eatDistance - 150) {
 					entities[i].health = 0;
 					entities[i].category = ENTITY_CATEGORY::NONE;
 					entities[i].isDead = true;
 					zombie.isTackling = false;
 					zombie.hasTackled = true;
+					zombie.health += 200;
 					break;
 				}
 			}
