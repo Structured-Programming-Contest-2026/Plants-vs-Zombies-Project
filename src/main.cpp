@@ -235,6 +235,7 @@ enum class ENTITY_TYPE : uint8_t {
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
 	RedBullet,
+	FireDragonBullet,
 
 	ENTITY_TYPE_COUNT	// keep it last
 };
@@ -339,6 +340,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
 	RedBullet,
+	FireDragonBullet,
 
 	SHOVEL,
 	MAGIC_SHOVEL,
@@ -2164,7 +2166,7 @@ Entity definePOTATO_MINE() {
 		if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE && plant.currentAnimationIndex == 0) {
 			// ready to exp
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 1.0f) {
-				plant.setCurrentAnimation(1); 
+				plant.setCurrentAnimation(1);
 			}
 			return; //cant exp under ground
 		}
@@ -2195,7 +2197,7 @@ Entity definePOTATO_MINE() {
 								}
 							}
 						}
-						p.category = ENTITY_CATEGORY::NONE; 
+						p.category = ENTITY_CATEGORY::NONE;
 						};
 					float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
 
@@ -2206,7 +2208,7 @@ Entity definePOTATO_MINE() {
 							}
 						}
 					}
-					p.category = ENTITY_CATEGORY::NONE; 
+					p.category = ENTITY_CATEGORY::NONE;
 					};
 				break;
 			}
@@ -2231,12 +2233,12 @@ Entity defineDOOM_SHROOM() {
 
 	shroom.num_animations = 2;
 
-	
-	shroom.animations[0].frames = 41;  
+
+	shroom.animations[0].frames = 41;
 	shroom.animations[0].frameTimer = 0.1f;
 
-	
-	shroom.animations[1].frames = 14;  
+
+	shroom.animations[1].frames = 14;
 	shroom.animations[1].frameTimer = 0.01f;
 
 	shroom.setCurrentAnimation(0);
@@ -2277,8 +2279,7 @@ Entity defineDOOM_SHROOM() {
 		};
 	return shroom;
 }
-Entity defineIceShroom()
-{
+Entity defineIceShroom() {
 	// Load the texture into index 0
 	textures[TEXTURE_TYPE::PLANT_ICESHROOM][0].loadFromFile("assets/IceShroom.png");
 
@@ -3732,6 +3733,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 					|| zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY
 					|| zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR
 					|| zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR
+					|| zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER
 					) {
 
 					SpawnFallingItem(TEXTURE_TYPE::ITEM_HEAD, zombie.position + Vector2f(75, 75));
