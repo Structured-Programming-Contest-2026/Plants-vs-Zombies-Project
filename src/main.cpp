@@ -660,6 +660,8 @@ struct Entity {
 	int maxSunValue = 350; // for ra
 	int id = -1; // for ra
 
+	bool boostedBulletHitZombot = false;	// for dragon zombot
+
 	bool hasTackled = false; // for allstar
 	bool isTackling = false; // for allstar
 
@@ -700,7 +702,7 @@ struct Entity {
 	}
 	void setCurrentAnimation(int idx) {
 		// You MUST change both
-		cout << "set current animation idx to " << idx << " which has " << animations[idx].frames << " frames , by entity of type " << int(type) << endl;
+		//cout << "set current animation idx to " << idx << " which has " << animations[idx].frames << " frames , by entity of type " << int(type) << endl;
 		currentAnimationIndex = idx;
 		currentAnimation = animations[currentAnimationIndex];
 		updateDimensions();
@@ -835,7 +837,7 @@ struct Level {
 	THEME theme = THEME::NONE;
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
-	int startingSuns = 3000;
+	int startingSuns = 50;
 	float sunSpawnInterval = 7.0f;
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
@@ -1152,8 +1154,13 @@ Entity& getEntity(Vector2i gridPos) {
 bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation = true) {
 	if (zombie.type == ENTITY_TYPE::NONE || zombie.isDead) return false; // already dead
 
+	//if (zombie.boostedBulletHitZombot && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) return false; // for dragon - dont hit zombie twice same bullet
+
 	zombie.health -= attack;
 	zombie.lastDamaged = currentLevel->clock.getElapsedTime();
+
+	if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) cout << "------------------------ damaged zombot daragon attack " << attack << " health " << zombie.health << endl;
+
 	//cout << "from `attackzombie` Zombie attacked! health now: " << zombie.health << endl;
 	if (zombie.health <= 0 && !withDyingAnimation) {
 		zombie.category = ENTITY_CATEGORY::NONE;
@@ -1164,6 +1171,8 @@ bool attackZombie(Entity& zombie, int attack = 1000000, bool withDyingAnimation 
 	// Arise a Booster if time is good
 	if (zombie.health <= 0) CheckTimer_AddBooster(true, zombie.position);
 
+
+	//if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) zombie.boostedBulletHitZombot = true;	// for dragon
 	return true;
 }
 
@@ -1377,7 +1386,7 @@ Entity defineSnapDragonBoostedBullet() {
 	dragon.category = ENTITY_CATEGORY::Bullet;
 	dragon.type = ENTITY_TYPE::SnapDragonBoostBullet;
 	dragon.attack = 500;
-	dragon.x_vel = -280.0f;
+	dragon.x_vel = -350;
 	dragon.scale = 1.5f;
 
 	dragon.num_animations = 1;
@@ -1472,6 +1481,7 @@ Entity defineNormalPlant() {
 	plant.health = 100;
 	plant.attack = 30;
 	plant.attackTimer = 3.0f;
+	plant.boostAttackTimer = 0.5f;	// 6 * 30 per second = 360
 	//planet.attack = 5000;
 	plant.price = 25;
 	plant.scale = 0.75;
@@ -2949,7 +2959,6 @@ Entity definePharaohZombie() {
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][0].loadFromFile("assets/PharaohZombie.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][1].loadFromFile("assets/PharaohZombieDeath.png");
 	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][2].loadFromFile("assets/PharaohZombie2.png");
-	textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3].loadFromFile("assets/ShellBreak.png");
 
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
@@ -2958,7 +2967,7 @@ Entity definePharaohZombie() {
 	zombie.attack = 10;
 	zombie.x_vel = 70;
 	// Animations
-	zombie.num_animations = 4;
+	zombie.num_animations = 3;
 	Animation anim;
 	// walk
 	anim.frames = 66;
@@ -2972,10 +2981,6 @@ Entity definePharaohZombie() {
 	anim.frames = 65;
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
-	// shell break
-	anim.frames = 41;
-	anim.frameTimer = 0.05f;
-	zombie.animations[3] = anim;
 
 	zombie.setCurrentAnimation(0);
 
@@ -4351,33 +4356,6 @@ void DrawZombies(RenderWindow& window) {
 
 		// For Zombot as its huge
 		if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) zombieSprite.setOrigin(orgOrg);
-
-
-		// to play pharaoh zombie's shell breaking animation
-		if (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.playingShellAnim) {
-			if (zombie.shellAnim.clock.getElapsedTime().asSeconds() >= zombie.shellAnim.frameTimer) {
-				zombie.shellAnim.clock.restart();
-				zombie.shellAnim.currentFrame++;
-				if (zombie.shellAnim.currentFrame >= zombie.shellAnim.frames) {
-					zombie.playingShellAnim = false;     // all frames done and only 1 cycle so stop animation
-				}
-			}
-
-			Texture& shellTex = textures[TEXTURE_TYPE::ZOMBIE_PHARAOH][3];
-			float frameWidth = shellTex.getSize().x / zombie.shellAnim.frames;
-			float frameHeight = shellTex.getSize().y;
-
-			uiSprite.setTexture(shellTex);
-			uiSprite.setTextureRect(IntRect(zombie.shellAnim.currentFrame * frameWidth, 0, frameWidth, shellTex.getSize().y));
-			// (x initial position for each frame, 0 is top of frame)
-
-			uiSprite.setOrigin(frameWidth / 2.0, frameHeight / 2.0); // to scale from center
-			uiSprite.setScale(3.0f, 3.0f);
-			uiSprite.setPosition(zombie.position.x + 100, zombie.position.y + 130);
-			window.draw(uiSprite);
-			uiSprite.setOrigin(0.0f, 0.0f); // reset
-			uiSprite.setScale(1.0f, 1.0f);  // reset
-		}
 	}
 }
 
@@ -4469,12 +4447,23 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						continue;
 					}
 
+					if (bullet.type == ENTITY_TYPE::SnapDragonBoostBullet && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+						//zombie.boostedBulletHitZombot = false;
+						// to hit once only
+					}
+
 				}
 
 				if (touchZombie || snapTouchZombie) {
 					// Damage Zombie
 
+					if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) bullet.attack /= 3;		// TODO: change .. a bad fix for bullet keeps damaging the zombie
+
 					attackZombie(zombie, bullet.attack, true);
+
+					/*if (bullet.type == ENTITY_TYPE::SnapDragonBoostBullet && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)
+						cout << "XXXXCCCCCCCcXXXXXXX ----- zombot hit by snapboosted, health now is " << zombie.health << endl;*/
+
 					if (bullet.type == ENTITY_TYPE::LightningBullet && zombie.health <= 0) {
 						zombie.diedByElectrocution = true;
 					}
@@ -4483,10 +4472,12 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						zombie.freezeTimer = 3.0f;
 					}
 
-					// Unkilled bullets
-					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
+
+					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet || (bullet.type == ENTITY_TYPE::SnapDragonBoostBullet && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)) {
+						// [ if boosted snapdragon bullet touch zombot dragon it disappears, so that it damages it only once, otherwise it continues ]
 						// End of the bullet
 						bullet.category = ENTITY_CATEGORY::NONE;
+						if (bullet.type == ENTITY_TYPE::SnapDragonBoostBullet && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)cout << "=============== Removed bullet ----- zombot hit by snapboosted, health now is " << zombie.health << endl;
 						break;
 					}
 				}
@@ -6955,27 +6946,28 @@ void defineDayLevels() {
 	}
 	// Level 1 Easy
 	levels[1].isUnlocked = true;
-	levels[1].plantReward = chomper;      levels[1].coinReward = 100;
-	levels[1].addWave(2, 10, { normalZombie }, 5);
-	levels[1].addWave(3, 12, { normalZombie }, 5);
-	levels[1].addWave(4, 15, { normalZombie, zombieConehead }, 8);
+	levels[1].plantReward = repeaterPlant;      levels[1].coinReward = 100;
+	levels[1].addWave(2, 5, { normalZombie }, 10);
+	levels[1].addWave(3, 5, { normalZombie }, 10);
+	levels[1].addWave(4, 15, { normalZombie, zombieConehead }, 10);
 	levels[1].addWave(11, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 2 Med
-	levels[2].plantReward = chomper;      levels[2].coinReward = 200;
-	levels[2].addWave(2, 10, { normalZombie }, 5);
-	levels[2].addWave(4, 15, { normalZombie, zombieConehead }, 5);
-	levels[2].addWave(6, 15, { normalZombie, zombieConehead }, 8);
-	levels[2].addWave(10, 15, { normalZombie, zombieConehead, zombieBig }, 0);
-	levels[2].addWave(12, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
+	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
+	levels[2].addWave(2, 10, { normalZombie }, 10);
+	levels[2].addWave(4, 5, { normalZombie, zombieConehead }, 10);
+	levels[2].addWave(6, 15, { normalZombie, normalZombie, zombieConehead }, 8);
+	levels[2].addWave(10, 15, { normalZombie, normalZombie, normalZombie, zombieConehead }, 0, true);
+	levels[2].addWave(12, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 3 Hard
-	levels[3].plantReward = chomper;      levels[3].coinReward = 300;
+	levels[3].plantReward = sunshroom;      levels[3].coinReward = 600;
+	levels[3].sunSpawnInterval = 3.f;
 	levels[3].addWave(3, 12, { normalZombie }, 5);
-	levels[3].addWave(4, 8, { normalZombie }, 5);
-	levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
+	//levels[3].addWave(4, 8, { normalZombie, zombieBig }, 5);
+	//levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
 	levels[3].addWave(1, 5, { zombotDragon }, 10);
-	levels[3].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
+	//levels[3].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true); // moved to level 6
 }
 
 void defineNightLevels() {
@@ -7004,7 +6996,7 @@ void defineNightLevels() {
 	levels[4].addWave(15, 20, { normalZombie, zombieConehead, zombieNewspaper }, 0, true);
 
 	// Level 5
-	levels[5].plantReward = sunshroom;    levels[5].coinReward = 300;
+	levels[5].plantReward = iceShroom;    levels[5].coinReward = 300;
 	levels[5].addWave(2, 10, { normalZombie }, 5);
 	levels[5].addWave(5, 15, { normalZombie, zombieNewspaper }, 8);
 	levels[5].addWave(6, 15, { zombieConehead, zombieNewspaper }, 10);
@@ -7013,10 +7005,13 @@ void defineNightLevels() {
 
 	// Level 6
 	levels[6].plantReward = doomShroom;   levels[6].coinReward = 400;
-	levels[6].addWave(3, 12, { normalZombie, zombieNewspaper }, 5);
+	levels[6].addWave(5, 15, { normalZombie, zombieBig }, 0);
+	levels[6].addWave(1, 5, { zombotDragon }, 10);
+	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
+	/*levels[6].addWave(3, 12, {normalZombie, zombieNewspaper}, 5);
 	levels[6].addWave(5, 15, { zombieConehead, zombieNewspaper }, 8);
 	levels[6].addWave(6, 15, { zombieNewspaper, zombieAllStar }, 10);
-	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true);
+	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true);*/
 }
 
 void defineAncientLevels() {
