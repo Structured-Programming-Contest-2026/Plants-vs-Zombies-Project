@@ -7251,6 +7251,10 @@ int main() {
 	Vector2u oldSize;
 
 	window.setSize(Vector2u(1280, 720));
+
+	VideoMode desktop = VideoMode::getDesktopMode();
+	window.setPosition(Vector2i((desktop.width - window.getSize().x) / 2.0f, (desktop.height - window.getSize().y) / 2.0f));
+
 	Event event;
 
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
