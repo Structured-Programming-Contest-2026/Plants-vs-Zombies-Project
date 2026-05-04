@@ -4878,7 +4878,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	screenFade(window, 0.5f * std::min((diff - 4.5f) / 1.0f, 1.0f));
 
-	if (unlockedPlant) window.draw(text);
+	window.draw(text);
 
 	float progress = (diff - 5.0f) / 0.5f;
 	if (progress < 0) progress = 0;
@@ -4904,6 +4904,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 	}
 
 	packetBg.setPosition(Vector2f(960 + 200, 540));
+	if (!unlockedPlant) packetBg.setPosition(Vector2f(960, 540));
 	window.draw(packetBg);
 
 	{
@@ -6970,7 +6971,6 @@ void defineDayLevels() {
 
 	// Level 3 Hard
 	levels[3].plantReward = chomper;      levels[3].coinReward = 300;
-	levels[3].startingSuns = 1000;
 	levels[3].addWave(3, 12, { normalZombie }, 5);
 	levels[3].addWave(4, 8, { normalZombie }, 5);
 	levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
@@ -7291,20 +7291,6 @@ int main() {
 	// Loading Textures + Defining entities
 
 	// Plants
-	Entity normalPlant = defineNormalPlant();
-	Entity repeaterPlant = defineRepeaterPlant();
-	Entity shroom = defineShroomPlant();
-	Entity sunflower = defineSunflower();
-	Entity wallnut = defineWallnut();
-	Entity chomper = defineChomperPlant();
-	Entity sunshroom = defineSunShroom();
-	Entity icePeashooter = defineIcePeaShooter();
-	Entity miniShroom = defineMiniShroom();
-	Entity POTATOMINE = definePOTATO_MINE();
-	Entity doomShroom = defineDOOM_SHROOM();
-	Entity CHEERY_BOMB = defineCherryBomb();
-	Entity iceShroom = defineIceShroom();
-
 
 	normalPlant = defineNormalPlant();
 	repeaterPlant = defineRepeaterPlant();
