@@ -524,9 +524,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		textureType = TEXTURE_TYPE::PLANT_RED_SHOOTER;
 		break;
 
-	/*case ENTITY_TYPE::FireDragonBullet:
+	case ENTITY_TYPE::FireDragonBullet:
 		textureType = TEXTURE_TYPE::FireDragonBullet;
-		break;*/
+		break;
 	case ENTITY_TYPE::LightningBullet:
 		textureType = TEXTURE_TYPE::LightningBullet;
 		break;
