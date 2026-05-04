@@ -561,6 +561,8 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
+		break;
+
 	case ENTITY_TYPE::RedBullet:
 		textureType = TEXTURE_TYPE::RedBullet;
 		break;
@@ -5913,8 +5915,10 @@ void UpdateLevel(RenderWindow& window) {
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
 				roll.setTexture(rollTex);
 
-				int frameLength = rollTex.getSize().x / 5;
-				roll.setTextureRect(IntRect(int(realProgress * 5) * frameLength, 0, frameLength, rollTex.getSize().y));
+				int frameCount = 10;
+
+				int frameLength = rollTex.getSize().x / frameCount;
+				roll.setTextureRect(IntRect(int(realProgress * frameCount) * frameLength, 0, frameLength, rollTex.getSize().y));
 
 				roll.setOrigin(frameLength / 2, 0);
 				roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
