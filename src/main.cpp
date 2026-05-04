@@ -223,6 +223,13 @@ enum class ENTITY_TYPE : uint8_t {
 	ZOMBIE_CHICKENWRANGLER,
 	ZOMBIE_CHICKEN,
 	ZOMBOT_DRAGON,
+	ZOMBIE_ROMAN_CONEHEAD,
+	ZOMBIE_ROMAN_BUCKETHEAD,
+	ZOMBIE_ROMAN_CENTURION,
+	ZOMBIE_ROMAN_BUSTHEAD,
+	ZOMBIE_ROMAN_ODESSA,
+	ZOMBIE_ROMAN_SHIELD,
+	ZOMBIE_ROMAN_NORMAL,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -316,6 +323,13 @@ enum class TEXTURE_TYPE : uint8_t {
 	ZOMBIE_CHICKENWRANGLER,
 	ZOMBIE_CHICKEN,
 	ZOMBOT_DRAGON,
+	ZOMBIE_ROMAN_CONEHEAD,
+	ZOMBIE_ROMAN_BUCKETHEAD,
+	ZOMBIE_ROMAN_CENTURION,
+	ZOMBIE_ROMAN_BUSTHEAD,
+	ZOMBIE_ROMAN_ODESSA,
+	ZOMBIE_ROMAN_SHIELD,
+	ZOMBIE_ROMAN_NORMAL,
 
 	PLANT_NORMAL,
 	PLANT_REPEATER,
@@ -433,9 +447,28 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBIE_CHICKEN:
 		textureType = TEXTURE_TYPE::ZOMBIE_CHICKEN;
 		break;
-	case ENTITY_TYPE::ZOMBOT_DRAGON:
-		textureType = TEXTURE_TYPE::ZOMBOT_DRAGON;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_CONEHEAD;
 		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_BUCKETHEAD;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_CENTURION;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_BUSTHEAD;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_ODESSA;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_SHIELD:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_SHIELD;
+		break;
+	case ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL:
+		textureType = TEXTURE_TYPE::ZOMBIE_ROMAN_NORMAL;
+		break;
+	
 
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -1026,7 +1059,7 @@ ShopItem shopItems[2] = {
 
 // Plants - zombies - allplanttypes
 Entity normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon, lightningReed, inferno , redShooterPlant;
-Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon;
+Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombieChickenWrangler, zombieChicken, zombotDragon , zombieRomanConehead, zombieRomanBuckethead, zombieRomanCenturion, zombieRomanBusthead , zombieRomanOdessa, zombieRomanShield, zombieRomanNormal;
 vector<Entity> allPlantTypes;
 
 // Suns
@@ -2092,10 +2125,10 @@ Entity defineChomperPlant() {
 			if (plant.targetId != -1) {
 				for (Entity& z : entities) {
 					if (z.id == plant.targetId && !z.isDead) {
-
 						if (currentF >= 3 && currentF <= 4) {
 
-							z.scale = plant.scale * 0.60f;
+						
+							z.scale *= 0.90f;
 
 							z.position.x = plant.position.x + 35;
 							z.position.y = plant.position.y - 10;
@@ -3348,6 +3381,163 @@ Entity definePogoZombie() {
 
 	return zombie;
 }
+Entity defineRomanConehead()
+{
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CONEHEAD][0].loadFromFile("assets/roman_conehead_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CONEHEAD][1].loadFromFile("assets/roman_conehead_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CONEHEAD][2].loadFromFile("assets/roman_conehead_walk_no_helmet.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CONEHEAD][3].loadFromFile("assets/roman_conehead_helmet_fly.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD;
+	zombie.health = 300;
+	zombie.attack = 10;
+	zombie.x_vel = 70;
+	zombie.scale = 0.50f;
+
+	zombie.num_animations = 4;
+	Animation anim;
+	anim.frames = 18; 
+	anim.frameTimer = 0.07f;
+
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+	zombie.animations[2] = anim;
+	zombie.animations[3] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	zombie.updateEntity = [](Entity& z)
+		{
+		if (z.health <= 100 && z.health > 0 && !z.shellDestroyed) {
+			z.shellDestroyed = true;
+			z.DoAnimation(1, 3);
+			z.afterAnimation = [](Entity& entity) {
+				entity.setCurrentAnimation(2);
+				};
+		}
+		};
+	return zombie;
+}
+
+Entity defineRomanBuckethead() {
+	
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUCKETHEAD][0].loadFromFile("assets/roman_buckethead_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUCKETHEAD][1].loadFromFile("assets/roman_buckethead_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUCKETHEAD][2].loadFromFile("assets/roman_buckethead_walk_no_helmet.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUCKETHEAD][3].loadFromFile("assets/roman_buckethead_helmet_fly.png");
+
+	Entity zombie = defineRomanConehead();
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD;
+	zombie.health = 550;
+	return zombie;
+}
+
+Entity defineRomanCenturion() {
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CENTURION][0].loadFromFile("assets/roman_centurion_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CENTURION][1].loadFromFile("assets/roman_centurion_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CENTURION][2].loadFromFile("assets/roman_centurion_walk_no_helmet.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_CENTURION][3].loadFromFile("assets/roman_centurion_helmet_fly.png");
+
+	Entity zombie = defineRomanConehead();
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION;
+	zombie.health = 800;
+	return zombie;
+}
+
+Entity defineRomanBusthead() {
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUSTHEAD][0].loadFromFile("assets/roman_busthead_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUSTHEAD][1].loadFromFile("assets/roman_busthead_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUSTHEAD][2].loadFromFile("assets/roman_busthead_walk_no_helmet.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_BUSTHEAD][3].loadFromFile("assets/roman_busthead_helmet_fly.png");
+
+	Entity zombie = defineRomanConehead();
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD;
+	zombie.health = 1200; 
+	return zombie;
+}
+Entity defineRomanOdessa()
+{
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_ODESSA][0].loadFromFile("assets/odessa_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_ODESSA][1].loadFromFile("assets/odessa_die.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_ODESSA][2].loadFromFile("assets/odessa_low_health.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_ODESSA][3].loadFromFile("assets/odessa_eat.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA;
+	zombie.health = 500; 
+	zombie.attack = 10;
+	zombie.x_vel = 70;
+	zombie.scale = 0.50f;
+
+	zombie.num_animations = 4;
+	Animation anim;
+	anim.frames = 18;
+	anim.frameTimer = 0.07f;
+
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+	zombie.animations[2] = anim;
+	zombie.animations[3] = anim;
+
+	zombie.setCurrentAnimation(0);
+
+	zombie.updateEntity = [](Entity& z)
+		{
+		if (z.health <= 200 && z.health > 0 && z.currentAnimationIndex == 0) {
+			z.setCurrentAnimation(2);
+		}
+		};
+	return zombie;
+}
+
+Entity defineRomanShield() {
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_SHIELD][0].loadFromFile("assets/roman_shield_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_SHIELD][1].loadFromFile("assets/roman_shield_die.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_SHIELD;
+	zombie.health = 400;
+	zombie.attack = 10;
+	zombie.x_vel = 70;
+	zombie.scale = 0.50f;
+
+	zombie.num_animations = 2;
+	Animation anim;
+	anim.frames = 18;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
+Entity defineRomanNormal() {
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_NORMAL][0].loadFromFile("assets/roman_normal_walk.png");
+	textures[TEXTURE_TYPE::ZOMBIE_ROMAN_NORMAL][1].loadFromFile("assets/roman_normal_die.png");
+
+	Entity zombie{};
+	zombie.category = ENTITY_CATEGORY::ZOMBIE;
+	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL;
+	zombie.health = 150;
+	zombie.attack = 10;
+	zombie.x_vel = 70;
+	zombie.scale = 0.5f;
+
+	zombie.num_animations = 2;
+	Animation anim;
+	anim.frames = 18;
+	anim.frameTimer = 0.07f;
+	zombie.animations[0] = anim;
+	zombie.animations[1] = anim;
+
+	zombie.setCurrentAnimation(0);
+	return zombie;
+}
+//samaan
 void UpdateBooster(RenderWindow& window) {
 	if (!booster.isAlive) return;
 	ariseSprite.setPosition(booster.position);
@@ -3434,7 +3624,15 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility)
-			|| ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR || zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR || zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 2))) {
+			|| ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR || zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR || zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 2))
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_SHIELD && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_NORMAL && zombie.currentAnimationIndex != 1 && zombie.currentAnimationIndex != 9))
+		{
 
 			// for ra
 			if (zombie.type == ENTITY_TYPE::ZOMBIE_RA && zombie.isUsingAbility) {
@@ -3910,6 +4108,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 			zombie.setCurrentAnimation(2);
 		}
 
+		}
 		if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) {
 			zombie.setCurrentAnimation(2);
 		}
@@ -3918,19 +4117,29 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 			zombie.setCurrentAnimation(1);
 		}
 
+		if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
+			zombie.setCurrentAnimation(3);
+
 		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
 			plant.lastDamaged = currentLevel->clock.getElapsedTime();
 
-			if (plant.health <= 0) {
-				if (zombie.health > 0) {
+			if (plant.health <= 0) 
+			{
+				if (zombie.health > 0)
+				{
 					zombie.x_vel = 70;
-
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA)
+					{
+						if (zombie.health <= 200) zombie.setCurrentAnimation(2);
+						else zombie.setCurrentAnimation(0);
+					}
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) zombie.setCurrentAnimation(0);
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
-						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) {
+						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY)
+					{
 						zombie.setCurrentAnimation(0);
 					}
 				}
@@ -4152,7 +4361,8 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 					//cout << "bullet type " << int(bullet.type )<< " shot entity type " << int(zombie.type )<< endl;
 					//vector<ENTITY_TYPE> unkilled_bullets = {ENTITY_TYPE::SnapDragonBoostBullet};
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD && bullet.type != ENTITY_TYPE::ShroomBullet && bullet.type != ENTITY_TYPE::SnapDragonBoostBullet) {
+					if ((zombie.type == ENTITY_TYPE::ZOMBIE_SHIELDGUARD || zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_SHIELD) && bullet.type != ENTITY_TYPE::ShroomBullet)
+					{
 						bullet.category = ENTITY_CATEGORY::NONE;
 						break;
 					}
@@ -5521,7 +5731,10 @@ void UpdateLevel(RenderWindow& window) {
 		float scale = (float)windowHeight / actualTexHeight;
 		ground.setScale(scale, scale);
 		int visibleWidth = windowWidth / scale;
+
 		int maxPan = std::max(0, actualTexWidth - visibleWidth);
+		float panRatio = (maxPan == 0) ? 0 : (ground.getTextureRect().left / (float)maxPan);
+		pos.x = windowWidth - panRatio * 685;
 
 		pos.x = windowWidth - (ground.getTextureRect().left / (float)maxPan) * 685;
 
@@ -5596,8 +5809,17 @@ void UpdateLevel(RenderWindow& window) {
 		ground.setOrigin(0, 0);
 		ground.setPosition(Vector2f(0, 0));
 
-		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) {
-			if (currentLevel->theme != THEME::WILDWEST) {
+		if (rolling && (1400 * progress) >= 250 && (1400 * progress) <= 1000) 
+		{
+			int currentThemeNum = int(currentLevel->theme);
+
+			if (currentThemeNum != 4 &&
+				currentThemeNum != 5 &&
+				currentThemeNum != 6 &&
+				currentThemeNum != 7 &&
+				currentThemeNum != 8)
+			{
+
 				float realProgress = (progress - 0.15f) / 0.57f;
 
 				Sprite roll;
@@ -5838,7 +6060,7 @@ void DrawLevelSelector(RenderWindow& window) {
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 75.0f);
 
 	//For TESTING
-	for (int i = 0; i < number_levels; i++) {
+	for (int i = 1; i <= number_levels; i++) {
 		if (levels[i].theme == THEME::NONE) {
 			levels[i].isUnlocked = false; continue;
 		}
@@ -6915,13 +7137,13 @@ void defineJurassicAgeLevels()
 		setupLevelLawnmowers(levels[lvl]);
 	}
 }
-
 void defineRomanLevels()
 {
-	//vector<Entity> mainRomanPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
+	//vector<Entity> mainAncientPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower };
 	vector<Entity> mainRomanPlantTypes = allPlantTypes;
 
-	for (int lvl = 22; lvl <= 24; lvl++) {
+	for (int lvl = 22; lvl <= 24; lvl++)
+	{
 		levels[lvl].theme = THEME::ROMAN;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainRomanPlantTypes;
@@ -6931,8 +7153,28 @@ void defineRomanLevels()
 		levels[lvl].cellHeight = 170;
 		setupLevelLawnmowers(levels[lvl]);
 	}
-}
 
+
+	levels[22].coinReward = 300;
+	levels[22].addWave(1, 5, { zombieRomanNormal }, 5);
+	levels[22].addWave(3, 10, { zombieRomanNormal, zombieRomanConehead }, 10);
+	levels[22].addWave(5, 15, { zombieRomanNormal, zombieRomanShield }, 10);
+	levels[22].addWave(10, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 15, true); 
+
+
+	levels[23].coinReward = 400;
+	levels[23].addWave(2, 5, { zombieRomanNormal }, 5);
+	levels[23].addWave(4, 10, { zombieRomanConehead, zombieRomanShield }, 10);
+	levels[23].addWave(5, 12, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
+	levels[23].addWave(12, 25, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 15, true); 
+
+
+	levels[24].coinReward = 500;
+	levels[24].addWave(2, 5, { zombieRomanConehead }, 5);
+	levels[24].addWave(5, 10, { zombieRomanBuckethead, zombieRomanShield }, 10);
+	levels[24].addWave(6, 12, { zombieRomanOdessa, zombieRomanCenturion }, 15);
+	levels[24].addWave(15, 25, { zombieRomanBuckethead, zombieRomanOdessa, zombieRomanCenturion, zombieRomanBusthead }, 20, true); 
+}
 
 
 int main() {
@@ -6980,7 +7222,7 @@ int main() {
 	inferno = defineInfernoPlant();
 	redShooterPlant = defineRedShooter();
 
-	// Zombies
+	// Zombies samaan
 	normalZombie = defineNormalZombie();
 	zombieJapanese = defineJapaneseZombie();
 	zombieBig = defineBigZombie();
@@ -6999,8 +7241,14 @@ int main() {
 	zombiePianist = definePianistZombie();
 	zombieChickenWrangler = defineChickenWranglerZombie();
 	zombieChicken = defineChickenZombie();
-	;
 	zombotDragon = defineZombotDragon();
+	zombieRomanConehead = defineRomanConehead();
+	zombieRomanBuckethead = defineRomanBuckethead();
+	zombieRomanCenturion = defineRomanCenturion();
+	zombieRomanBusthead = defineRomanBusthead();
+	zombieRomanOdessa = defineRomanOdessa();
+	zombieRomanShield = defineRomanShield();
+	zombieRomanNormal = defineRomanNormal();
 
 	allPlantTypes = { normalPlant, repeaterPlant, wallnut, POTATOMINE, sunflower, chomper, shroom, sunshroom, icePeashooter, miniShroom, doomShroom, CHEERY_BOMB, iceShroom, snapdragon ,lightningReed ,inferno ,redShooterPlant };
 
@@ -7040,10 +7288,10 @@ int main() {
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][2].loadFromFile("assets/mainmenu/level_option_background.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][3].loadFromFile("assets/mainmenu/level_option_background_desert.png");
 	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][4].loadFromFile("assets/mainmenu/level_option_background_desert.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][7].loadFromFile("assets/mainmenu/level_option_background_green.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][8].loadFromFile("assets/mainmenu/level_option_background_green.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][5].loadFromFile("assets/mainmenu/level_option_background_desert.png");
-	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][6].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][5].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][6].loadFromFile("assets/mainmenu/level_option_background_green.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][7].loadFromFile("assets/mainmenu/level_option_background_desert.png");
+	textures[TEXTURE_TYPE::LEVEL_OPTION_BACKGROUND][8].loadFromFile("assets/mainmenu/level_option_background_desert.png");
 
 	textures[TEXTURE_TYPE::LEVEL_PLAY_BUTTON][Default_Texture_Index].loadFromFile("assets/mainmenu/play_button.png");
 	textures[TEXTURE_TYPE::GRID_ROLL][Default_Texture_Index].loadFromFile("assets/grid_roll.png");
