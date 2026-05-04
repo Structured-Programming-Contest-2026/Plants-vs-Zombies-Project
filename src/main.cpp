@@ -481,7 +481,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBOT_DRAGON:
 		textureType = TEXTURE_TYPE::ZOMBOT_DRAGON;
 		break;
-	
+
 
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -565,6 +565,7 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZombotDragonBullet:
 		textureType = TEXTURE_TYPE::ZombotDragonBullet;
 		break;
+
 	case ENTITY_TYPE::RedBullet:
 		textureType = TEXTURE_TYPE::RedBullet;
 		break;
@@ -3240,6 +3241,8 @@ Entity defineZombotDragon() {
 	//textures[TEXTURE_TYPE::ZOMBOT_DRAGON][2].loadFromFile("assets/zombot-dragon-attack.png");
 
 	Entity zombie{};
+	zombie.scale = 1.25f;
+
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBOT_DRAGON;
 	zombie.health = 5000;
@@ -4096,9 +4099,11 @@ Vector2f gridCellPosition(int r, int c, Entity& e) {	// DONT USE
 	return { x,y };
 }
 
-float v = 0.5;
+float v = 550;
 int targetRow = 3;
 void updateZombotDragon(Entity& zombie) {
+	if (gamePaused) return;
+
 	Vector2f goodpos = { windowWidth - 450, windowHeight / 2 };
 	if (zombie.position.x <= goodpos.x) {
 		zombie.x_vel = 0; entered_zombotDragon = true;
@@ -4144,7 +4149,7 @@ void updateZombotDragon(Entity& zombie) {
 	else if (inJump) {
 		// move
 		//v += acc;
-		zombie.position.y += direction * v;
+		zombie.position.y += direction * v * delta_time;
 		//zombie.position.y += direction * 0.5;
 		//cout << "Zombot moving to y = " << zombie.position.y << " row [x] col [y]= "<< gridCell(zombie.position).x << " "<<gridCell(zombie.position).y << endl;
 		//cout << "direction is " << direction << endl;
@@ -5562,6 +5567,7 @@ void DrawRailsAndCarts(RenderWindow& window) {
 void SetGamePaused(bool paused) {
 	if (gamePaused == paused) return;
 	if (currentLevel == nullptr) return;
+	if (paused && isGameOver) return;
 
 	if (!currentLevel->arePlantsSelected || (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f)) {
 		return;
@@ -5831,6 +5837,8 @@ void UpdateLevel(RenderWindow& window) {
 
 		pos.x = windowWidth - (ground.getTextureRect().left / (float)maxPan) * 685;
 
+		bool dragonShown = false;
+
 		if (currentLevel->zombie_types.size() > 0) {
 
 			float offsetX[5] = { 0, 90, 40, 130, 70 };
@@ -5840,6 +5848,10 @@ void UpdateLevel(RenderWindow& window) {
 
 					int zomIndex = (raw + col) % currentLevel->zombie_types.size();
 					Entity dummyZombie = currentLevel->zombie_types[zomIndex];
+					if (dummyZombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+						if (dragonShown) continue;
+						dragonShown = true;
+					}
 
 					int previewAnimIdx = 0;
 					if (dummyZombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
@@ -5863,6 +5875,11 @@ void UpdateLevel(RenderWindow& window) {
 						float actualHeight = zomTex.getSize().y * dummyZombie.scale;
 						float zomY = currentLevel->offsetY + (raw * currentLevel->cellHeight) - (actualHeight - currentLevel->cellHeight);
 						float zomX = offsetX[raw] + (col * 130);
+
+						if (dummyZombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+							zomY = -250;
+							zomX = 210;
+						}
 
 						zombieSprite.setPosition(pos + Vector2f(zomX, zomY));
 						window.draw(zombieSprite);
@@ -5917,8 +5934,10 @@ void UpdateLevel(RenderWindow& window) {
 				Texture& rollTex = textures[TEXTURE_TYPE::GRID_ROLL][0];
 				roll.setTexture(rollTex);
 
-				int frameLength = rollTex.getSize().x / 5;
-				roll.setTextureRect(IntRect(int(realProgress * 5) * frameLength, 0, frameLength, rollTex.getSize().y));
+				int frameCount = 10;
+
+				int frameLength = rollTex.getSize().x / frameCount;
+				roll.setTextureRect(IntRect(int(realProgress * frameCount) * frameLength, 0, frameLength, rollTex.getSize().y));
 
 				roll.setOrigin(frameLength / 2, 0);
 				roll.setPosition(Vector2f(dirtLeft, currentLevel->offsetY - 75));
