@@ -123,8 +123,8 @@ int curWaveZombieCnt = 0;	// each wave zombie counter
 int lawnmower_backoff = 150,	// from beginning edge
 lawnmower_endline = windowWidth; // which x pos to stop at
 //Sending Zombies
-//float nextZombieTimer = 10; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
-float nextZombieTimer = 1; // For TESTING
+float nextZombieTimer = 10; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
+//float nextZombieTimer = 1; // For TESTING
 float zombieClockOffset = 0;
 float ZombieMinGapTime = 7,
 //float nextZombieTimer = 1; // First zombie timer - it's assigned, current value is only used for FIRST ZOMBIE
@@ -478,7 +478,10 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR:
 		textureType = TEXTURE_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR;
 		break;
-
+	case ENTITY_TYPE::ZOMBOT_DRAGON:
+		textureType = TEXTURE_TYPE::ZOMBOT_DRAGON;
+		break;
+	
 
 		//plantes
 	case ENTITY_TYPE::PLANT_NORMAL:
@@ -6941,7 +6944,7 @@ void defineDayLevels() {
 		levels[lvl].cellHeight = 170;
 		setupLevelLawnmowers(levels[lvl]);
 	}
-	// Level 1
+	// Level 1 Easy
 	levels[1].isUnlocked = true;
 	levels[1].plantReward = chomper;
 	levels[1].coinReward = 200;
@@ -6952,19 +6955,17 @@ void defineDayLevels() {
 	levels[1].addWave(7, 20, { normalZombie, zombieConehead }, 15, true);
 	levels[1].addWave(5, 15, { normalZombie }, 5);
 	levels[1].addWave(9, 20, { normalZombie, zombieConehead }, 0, true);
-	// Level 2
+	// Level 2 Med
 	levels[2].plantReward = iceShroom;
 	levels[2].coinReward = 300;
 	levels[2].addWave(1, 5, { normalZombie }, 5);
-	levels[2].addWave(3, 9, { normalZombie }, 5);
-	levels[2].addWave(3, 9, { normalZombie, zombieConehead }, 7);
-	levels[2].addWave(5, 15, { normalZombie }, 10);
-	levels[2].addWave(7, 20, { normalZombie, zombieConehead }, 15, true);
-	levels[2].addWave(5, 15, { normalZombie }, 5);
-	levels[2].addWave(9, 20, { normalZombie, zombieConehead }, 0, true);
-	// Level 3
+	levels[2].addWave(10, 20, { normalZombie, normalZombie, normalZombie, zombieConehead }, 20, true);
+	levels[2].addWave(10, 20, { normalZombie, zombieConehead, zombieConehead, zombieConehead }, 20, true);
+	levels[2].addWave(20, 30, { normalZombie, normalZombie, zombieConehead, zombieConehead }, 0, true);
+	// Level 3 Hard
 	levels[3].plantReward = sunshroom;
 	levels[3].coinReward = 400;
+	levels[3].startingSuns = 1000;
 	levels[3].addWave(5, 12, { normalZombie, zombieConehead }, 0);
 	levels[3].addWave(1, 5, { zombotDragon }, 5);
 	/*levels[3].addWave(1, 5, { normalZombie }, 5);
@@ -7010,7 +7011,7 @@ void defineNightLevels() {
 	levels[5].plantReward = miniShroom;
 	levels[5].coinReward = 300;
 	levels[5].addWave(1, 5, { normalZombie }, 5);
-	levels[5].addWave(3, 9, { normalZombie }, 10);
+	levels[5].addWave(3, 9, { normalZombie }, 5);
 	levels[5].addWave(3, 9, { normalZombie, zombieNewspaper }, 5);
 	levels[5].addWave(3, 9, { normalZombie, zombieConehead }, 10);
 	levels[5].addWave(3, 12, { normalZombie, zombieAllStar }, 10);
