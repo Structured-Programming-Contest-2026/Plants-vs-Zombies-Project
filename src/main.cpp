@@ -6946,9 +6946,9 @@ void defineDayLevels() {
 	// Level 1 Easy
 	levels[1].isUnlocked = true;
 	levels[1].plantReward = repeaterPlant;      levels[1].coinReward = 100;
-	levels[1].addWave(2, 10, { normalZombie }, 5);
-	levels[1].addWave(3, 12, { normalZombie }, 5);
-	levels[1].addWave(4, 15, { normalZombie, zombieConehead }, 8);
+	levels[1].addWave(2, 5, { normalZombie }, 10);
+	levels[1].addWave(3, 5, { normalZombie }, 10);
+	levels[1].addWave(4, 15, { normalZombie, zombieConehead }, 10);
 	levels[1].addWave(11, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 2 Med
