@@ -1968,7 +1968,6 @@ Entity defineMiniShroom() {
 			bool zombieInFront = false;
 
 			for (Entity& zombie : entities) {
-				// Check if it is actually a living zombie!
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 					bool sameRow = abs(zombie.position.y - plant.position.y) < 100.0f;
 					bool inFront = zombie.position.x > plant.position.x &&
@@ -5567,28 +5566,22 @@ void SetGamePaused(bool paused) {
 	gamePaused = paused;
 
 	if (gamePaused) {
-		// Start pause clock as before
 		gamePauseClock.restart();
 
-		// Pause the background music (if any) and play pause sound on a separate Music instance.
 		if (g_music && g_music->getStatus() == sf::Music::Playing) {
 			g_music->pause();
 		}
 
-		// Create a temporary Music instance to play pause sound so it doesn't clobber the main music object.
 		if (!pauseMusic) {
 			pauseMusic = new sf::Music();
-			// Use the existing helper to open & play the pause sound into this Music object.
-			// pause_music opens the file and starts playback for the provided Music instance.
+
 			if (pause_music(*pauseMusic) != 0) {
-				// On failure free it
 				delete pauseMusic;
 				pauseMusic = nullptr;
 			}
 		}
 
 	} else {
-		// Unpausing: stop and free the temporary pause music, then resume the background music.
 		if (pauseMusic) {
 			pauseMusic->stop();
 			delete pauseMusic;
@@ -5599,7 +5592,6 @@ void SetGamePaused(bool paused) {
 			g_music->play();
 		}
 
-		// adjust pause timing as before
 		totalPauseTime += gamePauseClock.getElapsedTime();
 		wcOffset -= gamePauseClock.getElapsedTime();
 		zombieClockOffset -= gamePauseClock.getElapsedTime().asSeconds();
