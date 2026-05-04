@@ -5301,12 +5301,18 @@ void uiCollectBooster(RenderWindow& window) {
 
 //	UI interaction - Buttons click, Collect Items, Click plants ... etc
 void UI_DrawClick(RenderWindow& window) {
+	Text text;
+	text.setFont(*font);
+	text.setCharacterSize(36);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(2);
+
 	//Normal_Shovel
 	Texture& shovelTex = getTexture(TEXTURE_TYPE::SHOVEL);
 	uiSprite.setTexture(shovelTex);
 	resizeSpriteToTex(uiSprite, shovelTex);
 	uiSprite.setScale(Vector2f(0.8f, 0.8f));
-	uiSprite.setPosition(900.0f, 20.0f);
+	uiSprite.setPosition(780.0f, 20.0f);
 
 	if (isShovelActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -5328,7 +5334,7 @@ void UI_DrawClick(RenderWindow& window) {
 	uiSprite.setTexture(relocateTex);
 	resizeSpriteToTex(uiSprite, relocateTex);
 	uiSprite.setScale(Vector2f(0.09f, 0.09f));
-	uiSprite.setPosition(780.0f, 20.0f);
+	uiSprite.setPosition(900.0f, 20.0f);
 
 	if (isRelocateActive) uiSprite.setColor(Color(150, 150, 150));
 	else uiSprite.setColor(Color::White);
@@ -5348,7 +5354,14 @@ void UI_DrawClick(RenderWindow& window) {
 			uiInteracted = true;
 		}
 	}
+
+	text.setString(std::to_string(curMagicShovelCnt));
+	text.setFillColor(curMagicShovelCnt != 0 ? Color::White : Color::Red);
+	text.setPosition(uiSprite.getPosition() + Vector2f(75, 75));
+
 	window.draw(uiSprite);
+	window.draw(text);
+
 	uiSprite.setColor(Color::White);
 	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
 
@@ -5373,7 +5386,14 @@ void UI_DrawClick(RenderWindow& window) {
 			uiInteracted = true;
 		}
 	}
+
+	text.setString(std::to_string(curBoosterCnt));
+	text.setFillColor(curBoosterCnt != 0 ? Color::White : Color::Red);
+	text.setPosition(uiSprite.getPosition() + Vector2f(75, 75));
+
 	window.draw(uiSprite);
+	window.draw(text);
+
 	uiSprite.setColor(Color::White);
 	uiSprite.setScale(Vector2f(1.0f, 1.0f)); // return to normal scale for next use
 
