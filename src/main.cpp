@@ -7107,7 +7107,7 @@ void defineWildWestLevels() {
 	levels[12].addWave(4, 15, { zombieCowboy, zombieRedhair }, 5);
 	levels[12].addWave(6, 15, { zombieChickenWrangler, zombieProspector }, 10);
 	levels[12].addWave(15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
-	levels[12].addWave(15, 20, { zombiePogo, zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
+	levels[12].addWave(15, 20, { /*zombiePogo*/ zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
 }
 
 void defineLostCityLevels() {
@@ -7235,6 +7235,7 @@ void defineRomanLevels() {
 	levels[23].addWave(6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
 	levels[23].addWave(8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
 	levels[23].addWave(25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
+	
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
 	levels[24].coinReward = 10000;
