@@ -10,6 +10,9 @@
 using namespace std;
 using namespace sf;
 
+// Memory
+#define MAX_ENTITIES 512
+
 #define gridraws 5
 #define gridcols 9
 //#define cellWidth 150
@@ -585,7 +588,7 @@ struct Bullet {
 	Vector2f velocity;
 	int attack = 0;
 	int idx = -1;
-	int x_vel = 0.05f;
+	float x_vel = 0.05f;
 	// type
 	// Animation
 
@@ -796,7 +799,19 @@ void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::
 
 map<ENTITY_TYPE, Entity> plants;
 
-vector<Entity> entities;
+Entity entities[MAX_ENTITIES];
+
+int addEntity(Entity& entity) {
+	for (int i = 0; i < MAX_ENTITIES; i++) {
+		if (entities[i].category == ENTITY_CATEGORY::NONE) {
+			entities[i] = entity;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 vector<Entity> newBullets;	// test
 vector<Entity> bullets;
 
@@ -1212,7 +1227,9 @@ void resetLevel() {
 	for (int i = 0; i < gridRows; i++) {
 		currentLevel->lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
 	}
-	entities.clear();
+	for (int i = 0; i < MAX_ENTITIES; i++) {
+		entities[i] = Entity{};
+	}
 	bullets.clear();
 	zombieClock.restart();
 	waveClockX.restart();
@@ -1514,7 +1531,7 @@ Entity defineNormalPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE ::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
+	textures[TEXTURE_TYPE::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][3].loadFromFile("assets/peashooter-boost.png");
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
@@ -1653,14 +1670,12 @@ Entity defineRepeaterPlant() {
 				newBullet1.position = Vector2f(pos.x + 100, pos.y + 50);
 				bullets.push_back(newBullet1);
 				//newBullets.push_back(newBullet1);
-				//entities.push_back(newBullet1);
 
 				Entity newBullet2 = defineNormalBullet();
 				newBullet2.attack = atk;
 				newBullet2.position = Vector2f(pos.x + 50, pos.y + 50);
 				bullets.push_back(newBullet2);
 				//newBullets.push_back(newBullet2);
-				//entities.push_back(newBullet2);
 
 				// Commented By Omar Hadidi - Missing Attack Animation
 				// plant attack animation
@@ -1717,7 +1732,6 @@ Entity defineShroomPlant() {
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 				bullets.push_back(newBullet);
 				//newBullets.push_back(newBullet);
-				//entities.push_back(newBullet)
 			}
 		}
 
@@ -1891,7 +1905,6 @@ Entity defineIcePeaShooter() {
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y);
 				bullets.push_back(newBullet);
 				//newBullets.push_back(newBullet);
-				//entities.push_back(newBullet);
 			}
 		}
 		};
@@ -2212,12 +2225,12 @@ Entity definePOTATO_MINE() {
 
 
 				plant.afterAnimation = [&](Entity& p) {
-					float damageRange =  80.0f;
+					float damageRange = 80.0f;
 
 					for (Entity& z : entities) {
 						if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 							if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-								attackZombie(z, p.attack, true);	
+								attackZombie(z, p.attack, true);
 							}
 						}
 					}
@@ -2632,7 +2645,7 @@ Entity definePomegranatePlant() {
 					p.afterAnimation(p);
 					p.afterAnimation = [](Entity&) {};
 
-					p.AnimationForCycles = -1; 
+					p.AnimationForCycles = -1;
 					p.setCurrentAnimation(0);
 				}
 				return;
@@ -3917,7 +3930,7 @@ void updateZombieRa(Entity& zombie) {
 void updateZombieAllStars(Entity& zombie) {
 	if (!zombie.hasTackled && !zombie.isTackling) {
 		bool plantAhead = false;
-		for (int i = 0; i < entities.size(); i++) {
+		for (int i = 0; i < MAX_ENTITIES; i++) {
 			if (entities[i].category != ENTITY_CATEGORY::PLANT)
 				continue;
 			if (entities[i].isDead)
@@ -3942,7 +3955,7 @@ void updateZombieAllStars(Entity& zombie) {
 
 	if (zombie.isTackling) {
 		if (zombie.currentAnimation.currentFrame >= 8) {
-			for (int i = 0; i < entities.size(); i++) {
+			for (int i = 0; i < MAX_ENTITIES; i++) {
 				if (entities[i].category != ENTITY_CATEGORY::PLANT)
 					continue;
 				if (entities[i].isDead)
@@ -4185,42 +4198,29 @@ void updateZombotDragon(Entity& zombie) {
 
 	}
 }
-void zombieEatPlant(Entity& zombie, Entity& plant) 
-{
+void zombieEatPlant(Entity& zombie, Entity& plant) {
 	if (gamePaused) return;
 
-	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) 
-	{
+	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		zombie.x_vel = 0;
 
-	
+
 		if ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER ||
-			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0)
-		{
+			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0) {
 			zombie.setCurrentAnimation(2);
-		} 
-		else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR)
-		{
-			if (zombie.currentAnimationIndex == 0)
-			{
+		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
+			if (zombie.currentAnimationIndex == 0) {
 				zombie.setCurrentAnimation(2);
 			}
-		} 
-		else if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) 
-		{
+		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) {
 			zombie.setCurrentAnimation(2);
-		} 
-		else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0)
-		{
+		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0) {
 			zombie.setCurrentAnimation(1);
-		}
-		else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
+		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
 			zombie.setCurrentAnimation(3);
-		}
-		else if (zombie.currentAnimationIndex == 0) 
-		{
+		} else if (zombie.currentAnimationIndex == 0) {
 			bool isRomanWithHelmet = (
 				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD ||
 				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD ||
@@ -4228,8 +4228,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant)
 				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD
 				);
 
-			if (zombie.num_animations > 3 && !isRomanWithHelmet) 
-			{
+			if (zombie.num_animations > 3 && !isRomanWithHelmet) {
 				zombie.setCurrentAnimation(3);
 			}
 		}
@@ -4240,56 +4239,40 @@ void zombieEatPlant(Entity& zombie, Entity& plant)
 			plant.lastDamaged = currentLevel->clock.getElapsedTime();
 
 
-			if (plant.health <= 0) 
-			{
-				if (zombie.health > 0)
-				{
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR)
-					{
+			if (plant.health <= 0) {
+				if (zombie.health > 0) {
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
 						zombie.x_vel = 40;
-					} 
-					else 
-					{
+					} else {
 						zombie.x_vel = 70;
 					}
 
-					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA) 
-					{
+					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA) {
 						if (zombie.health <= 200)
 							zombie.setCurrentAnimation(2);
-						else 
+						else
 							zombie.setCurrentAnimation(0);
-					} 
-					else if 
-						(zombie.type == ENTITY_TYPE::ZOMBIE_POGO) 
-					{
+					} else if
+						(zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 						zombie.setCurrentAnimation(0);
-					}
-					else if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
-						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY)
-					{
+						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) {
 						zombie.setCurrentAnimation(0);
-					} 
-					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR)
-					{
-						if (zombie.currentAnimationIndex == 2) 
-						{
+					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
+						if (zombie.currentAnimationIndex == 2) {
 							zombie.setCurrentAnimation(0);
 						}
 					}
-	
+
 					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION ||
-						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD)
-					{
+						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD) {
 						if (zombie.shellDestroyed)
 							zombie.setCurrentAnimation(2);
-						else zombie.setCurrentAnimation(0); 
-					} 
-					else
-					{
+						else zombie.setCurrentAnimation(0);
+					} else {
 						zombie.setCurrentAnimation(0);
 					}
 				}
@@ -4655,10 +4638,11 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 	auto [raw, column] = gridCell(newZombie.position);
 	newZombie.id = nextEntityId++;
 	newZombie.gridRow = raw, newZombie.gridCol = column;
-	entities.push_back(newZombie);
-	createdZombiesCount++;
-	curWaveZombieCnt++;
-	dz++;
+	if (addEntity(newZombie) != -1) {
+		createdZombiesCount++;
+		curWaveZombieCnt++;
+		dz++;
+	}
 }
 void CheckTimer_AddSun(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
@@ -5241,7 +5225,7 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 		return;
 	}
 	if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT) {
-		for (int i = 0; i < entities.size(); i++) {
+		for (int i = 0; i < MAX_ENTITIES; i++) {
 			if (entities[i].category == ENTITY_CATEGORY::PLANT &&
 				entities[i].gridRow == row && entities[i].gridCol == col && !entities[i].isDead) {
 				selectedPlantIndex = i;
@@ -5286,9 +5270,10 @@ void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col)
 
 		plant.position = Vector2f(x, y);
 		plant.attackClock.restart();
-		entities.push_back(plant);
-		sunsMoney -= plant.price;
-		currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
+		if (addEntity(plant) != -1) {
+			sunsMoney -= plant.price;
+			currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
+		}
 	}
 }
 void uiCollectSuns(RenderWindow& window) {
@@ -7082,7 +7067,7 @@ void defineNightLevels() {
 	levels[6].addWave(5, 15, { normalZombie, zombieBig }, 0);
 	levels[6].addWave(1, 5, { zombotDragon }, 10);
 	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
-	levels[6].addWave(3, 12, {normalZombie, zombieNewspaper}, 5);
+	levels[6].addWave(3, 12, { normalZombie, zombieNewspaper }, 5);
 	levels[6].addWave(5, 15, { zombieConehead, zombieNewspaper }, 8);
 	/*levels[6].addWave(6, 15, {zombieNewspaper, zombieAllStar}, 10);
 	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true);*/
@@ -7753,8 +7738,7 @@ int main() {
 				curBoosterCnt += 5;
 				if (curBoosterCnt > maxBoosterCnt) curBoosterCnt = maxBoosterCnt;
 
-			}
-			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
 				fullscreen = !fullscreen;
 				if (fullscreen) {
 					oldPos = window.getPosition();
