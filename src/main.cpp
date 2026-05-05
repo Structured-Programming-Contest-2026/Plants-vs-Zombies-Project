@@ -6692,7 +6692,7 @@ void DrawCredits(RenderWindow& window) {
 Ain Shams University - FCIS
 
 Omar Hadidi                      Yusuf Yaser
-Simon Adly                         Khaled Ahmed
+Samaan Adly                     Khaled Ahmed
 Philopateer Mark           Omar Hikal
 Jovany George)");
 
