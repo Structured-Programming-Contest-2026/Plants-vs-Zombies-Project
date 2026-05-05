@@ -46,6 +46,7 @@ Vector2i mousePos;
 bool mouseJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
+int bulletShot = 0; // boosted pomegranate
 bool isGameOver = false, isGameWon = false;
 
 // Dragon
@@ -1462,7 +1463,7 @@ Entity defineNormalPlant() {
 	Texture tex;
 	tex.loadFromFile("assets/Peashooter.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][Default_Texture_Index] = tex;
-	textures[TEXTURE_TYPE::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
+	textures[TEXTURE_TYPE ::PLANT_NORMAL][2].loadFromFile("assets/peashooter-attack.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][3].loadFromFile("assets/peashooter-boost.png");
 	/*tex.loadFromFile("assets/Repeater.png");
 	textures[TEXTURE_TYPE::PLANT_NORMAL][1] = tex;*/
@@ -2581,6 +2582,7 @@ Entity definePomegranatePlant() {
 	plant.price = 150;
 	plant.attack = 15;
 	plant.attackTimer = 1.0f;
+	plant.boostAttackTimer = 0.5f;
 	plant.seedCooldown = 5.0f;
 
 	plant.num_animations = 3;
@@ -2591,8 +2593,8 @@ Entity definePomegranatePlant() {
 	plant.animations[2].frames = 53;
 	plant.animations[2].frameTimer = 0.03;
 	// Boosted
-	plant.animations[3].frames = 1;
-	plant.animations[3].frameTimer = 0.1;
+	plant.animations[3].frames = 39;
+	plant.animations[3].frameTimer = 0.03;
 
 	plant.setCurrentAnimation(0);
 
@@ -2600,10 +2602,27 @@ Entity definePomegranatePlant() {
 
 	plant.updateEntity = [](Entity& p) {
 		float currentTimer = p.isBoosted ? p.boostAttackTimer : p.attackTimer;
+		float numBullets = 10;
 
 		if (p.attackClock.getElapsedTime().asSeconds() >= currentTimer) {
 			// Boosted
 			if (p.isBoosted) {
+				p.attackClock.restart();
+
+				Entity newBullet = definePomegranateBullet();
+				newBullet.attack = p.attack;
+				newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
+				bullets.push_back(newBullet);
+
+				bulletShot++;
+				if (bulletShot >= 10) {
+					bulletShot = 0;
+					p.afterAnimation(p);
+					p.afterAnimation = [](Entity&) {};
+
+					p.AnimationForCycles = -1; 
+					p.setCurrentAnimation(0);
+				}
 				return;
 			}
 
@@ -7655,7 +7674,15 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
-			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
+			}
+
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::G) {
+				// Press 'G' to add 5 boosters
+				curBoosterCnt += 5;
+				if (curBoosterCnt > maxBoosterCnt) curBoosterCnt = maxBoosterCnt;
+
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
 				fullscreen = !fullscreen;
 				if (fullscreen) {
 					oldPos = window.getPosition();
