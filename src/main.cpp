@@ -1481,7 +1481,8 @@ Entity defineNormalPlant() {
 	plant.health = 100;
 	plant.attack = 30;
 	plant.attackTimer = 3.0f;
-	plant.boostAttackTimer = 0.5f;	// 6 * 30 per second = 360
+	plant.boostAttackTimer = 1.2f;
+	//plant.boostAttackTimer = 0.7f;	// 6 * 30 per second = 360
 	//planet.attack = 5000;
 	plant.price = 25;
 	plant.scale = 0.75;
@@ -1513,12 +1514,15 @@ Entity defineNormalPlant() {
 					//Bullet newBullet = defineNormalBullet();
 					newBullet.attack = plant.attack;
 					newBullet.x_vel *= 2;
-					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-					bullets.push_back(newBullet);
-					newBullet.position = Vector2f(plant.position.x + 200, plant.position.y + 50);
-					bullets.push_back(newBullet);
-					newBullet.position = Vector2f(plant.position.x + 300, plant.position.y + 50);
-					bullets.push_back(newBullet);
+
+					int nbullets = 8;
+					for (int i = 1; i <= nbullets; i++) {
+						if (i <= 2) newBullet.attack *= 1.5;
+						newBullet.position = Vector2f(plant.position.x + 75 * i, plant.position.y + 50);
+						bullets.push_back(newBullet);
+					}
+
+					//cout << "--- " << nbullets << " bullets at " << currentLevel->clock.getElapsedTime().asSeconds() << endl;
 				}
 				return;	 // to not loop zombies
 			}
@@ -4457,7 +4461,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 				if (touchZombie || snapTouchZombie) {
 					// Damage Zombie
 
-					if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) bullet.attack /= 3;		// TODO: change .. a bad fix for bullet keeps damaging the zombie
+					//if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) bullet.attack /= 3;		// TODO: change .. a bad fix for bullet keeps damaging the zombie
 
 					attackZombie(zombie, bullet.attack, true);
 
