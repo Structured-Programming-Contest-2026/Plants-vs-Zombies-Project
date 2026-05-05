@@ -1599,7 +1599,7 @@ Entity defineNormalPlant() {
 					for (int i = 1; i <= nbullets; i++) {
 						if (i <= 2) newBullet.attack *= 1.5;
 						newBullet.position = Vector2f(plant.position.x + 75 * i, plant.position.y + 50);
-						bullets.push_back(newBullet);
+						addBullet(newBullet);
 					}
 
 					//cout << "--- " << nbullets << " bullets at " << currentLevel->clock.getElapsedTime().asSeconds() << endl;
