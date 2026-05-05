@@ -2,6 +2,9 @@
 bool DEV = true;
 // Delete the storage.txt after modifying
 
+// Set this to 99 to unlock incomplete themes
+int lastLevel = 13;
+
 #include <iostream>
 #include <vector>
 #include <SFML/Graphics.hpp>
@@ -735,7 +738,7 @@ void updateDimensions(Entity& e) {
 	e.height = h;
 
 	if (oldWidth > 0 && oldHeight > 0 && e.gridRow != -1 && e.gridCol != -1) {
-		e.position.x += (oldWidth - e.width) / 2.0f; 
+		e.position.x += (oldWidth - e.width) / 2.0f;
 		e.position.y += (oldHeight - e.height);
 	}
 }
@@ -4934,6 +4937,8 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 void DrawSelectPlants(RenderWindow& window) {
+	if (currentLevel == nullptr) return;
+
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 2.45f) {
 		return;
 	}
@@ -4962,14 +4967,6 @@ void DrawSelectPlants(RenderWindow& window) {
 	text.setFillColor(Color());
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
-
-	if (currentLevel->theme == THEME::NIGHT) {
-		if (currentLevel->selectedPlants.size() == 0) {
-			currentLevel->selectedPlants.push_back(sunflower);
-		} else {
-			currentLevel->selectedPlants[0] = sunflower;
-		}
-	}
 
 	int i = -1;
 	for (auto& plant : currentLevel->plant_types) {
@@ -5008,7 +5005,34 @@ void DrawSelectPlants(RenderWindow& window) {
 	startButton.setScale(Vector2f(1.5f, 1.5f));
 	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
-	if (currentLevel->selectedPlants.empty()) {
+	bool startDisabled = false;
+	if (currentLevel->theme == THEME::NIGHT) {
+		bool hasSunPlant = false;
+
+		for (auto& plant : currentLevel->selectedPlants) {
+			if (plant.category != ENTITY_CATEGORY::PLANT) continue;
+
+			if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER || plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+				hasSunPlant = true;
+				break;
+			}
+		}
+
+		if (!hasSunPlant) {
+			startDisabled = true;
+			{
+				Text text;
+				text.setFont(*font);
+				text.setString("You must have at least one sun producing plant");
+				text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+				text.setOutlineThickness(2);
+				text.setPosition(startButton.getPosition() + Vector2f(110, -32));
+				window.draw(text);
+			}
+		}
+	}
+
+	if (startDisabled || currentLevel->selectedPlants.empty()) {
 		startButton.setColor(Color(64, 64, 64, 255));
 	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
@@ -5038,7 +5062,7 @@ void DrawSelectPlants(RenderWindow& window) {
 	vector<string> notes;
 	if (currentLevel->theme == THEME::NIGHT) {
 
-		notes.push_back("You must have sunflower plant because night\n    theme does not drop suns");
+		notes.push_back("You must have at least one sun producing\n    plant because night theme does not drop suns");
 	}
 	if (currentLevel->lvlNum == 4
 		|| currentLevel->lvlNum == 5
@@ -5069,8 +5093,6 @@ void DrawSelectPlants(RenderWindow& window) {
 		}
 
 		text.setString(content);
-
-		cout << text.getGlobalBounds().getSize().y << endl;
 
 		window.draw(text);
 	}
@@ -5168,28 +5190,30 @@ void DrawRewardsScreen(RenderWindow& window) {
 	text.setOutlineColor(Color::Black);
 	text.setOutlineThickness(6);
 
-	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
-		startButton.setColor(Color(128, 128, 128, 255));
-		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+	if (currentLevel->lvlNum < lastLevel) {
+		if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+			startButton.setColor(Color(128, 128, 128, 255));
+			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
-		if (mouseJustClicked[0]) {
-			claimRewards(*currentLevel);
-			if (currentLevel->lvlNum < number_levels - 1)
-				levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
+			if (mouseJustClicked[0]) {
+				claimRewards(*currentLevel);
+				if (currentLevel->lvlNum < number_levels - 1)
+					levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
 
-			//for (auto& r : currentLevel->rewards) {
-			//	if (r.type == Reward::None) continue;
-			//	r.isClaimed = true;	// maybe when click the claim button
-			//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
-			//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
-			//}
+				//for (auto& r : currentLevel->rewards) {
+				//	if (r.type == Reward::None) continue;
+				//	r.isClaimed = true;	// maybe when click the claim button
+				//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
+				//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
+				//}
 
-			nextLevel();
+				nextLevel();
+			}
 		}
-	}
 
-	window.draw(startButton);
-	window.draw(text);
+		window.draw(startButton);
+		window.draw(text);
+	}
 
 	startButton.setColor(Color::White);
 	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900) - Vector2f(192, 0));
@@ -6372,8 +6396,8 @@ void DrawLevelSelector(RenderWindow& window) {
 			if (levels[i].theme == THEME::NONE) {
 				levels[i].isUnlocked = false; continue;
 			}
-			//levels[i].isUnlocked = i <= 12;
-			levels[i].isUnlocked = true;
+			levels[i].isUnlocked = i <= lastLevel;
+			//levels[i].isUnlocked = true;
 		}
 	}
 
@@ -7471,11 +7495,11 @@ void defineWildWestLevels() {
 
 	// Level 12
 	levels[12].plantReward = redShooterPlant;       levels[12].coinReward = 600;
-	addWave(levels[12], 1, 1, { zombieChickenWrangler }, 0, true);
-	//addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
-	//addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
-	//addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
-	//addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
+	//addWave(levels[12], 1, 1, { zombieChickenWrangler }, 0, true);
+	addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
+	addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
+	addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
+	addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
 }
 
 void defineLostCityLevels() {
@@ -7597,11 +7621,11 @@ void defineRomanLevels() {
 	addWave(levels[22], 20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true);
 
 	//Level 23
-	levels[23].plantReward = inferno;     levels[23].coinReward = 5000;
-	addWave(levels[23], 4, 15, { zombieRomanNormal }, 5);
-	addWave(levels[23], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
-	addWave(levels[23], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
-	addWave(levels[23], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
+	levels[13].plantReward = inferno;     levels[23].coinReward = 5000;
+	addWave(levels[13], 4, 15, { zombieRomanNormal }, 5);
+	addWave(levels[13], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
+	addWave(levels[13], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
+	addWave(levels[13], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
 
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
