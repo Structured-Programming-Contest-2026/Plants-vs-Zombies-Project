@@ -24,6 +24,9 @@ using namespace sf;
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
 
+bool DEV = true;
+// Empty the storage.txt
+
 bool gamePaused = false;
 Clock gamePauseClock;
 Time totalPauseTime = Time::Zero;
@@ -6238,12 +6241,14 @@ void DrawLevelSelector(RenderWindow& window) {
 	Vector2f initialPos = Vector2f(windowSize / 2.0f) - Vector2f(0, 75.0f);
 
 	//For TESTING
-	for (int i = 1; i <= number_levels; i++) {
-		if (levels[i].theme == THEME::NONE) {
-			levels[i].isUnlocked = false; continue;
+	if (DEV) {
+		for (int i = 1; i <= number_levels; i++) {
+			if (levels[i].theme == THEME::NONE) {
+				levels[i].isUnlocked = false; continue;
+			}
+			//levels[i].isUnlocked = i <= 12;
+			levels[i].isUnlocked = true;
 		}
-		//levels[i].isUnlocked = i <= 12;
-		levels[i].isUnlocked = true;
 	}
 
 
@@ -7120,8 +7125,8 @@ void defineAncientLevels() {
 
 	// Levels 7
 	levels[7].plantReward = icePeashooter;     levels[7].coinReward = 300;
-	levels[7].addWave(2, 10, { zombieMummy }, 5);
-	levels[7].addWave(4, 15, { zombieMummy, zombieRa }, 8);
+	levels[7].addWave(1, 5, { zombieMummy }, 10);
+	levels[7].addWave(3, 15, { zombieMummy, zombieRa }, 10);
 	levels[7].addWave(6, 15, { zombieMummy, zombieRa }, 10);
 	levels[7].addWave(15, 20, { zombieMummy, zombieRa, zombieTorch }, 0, true);
 
@@ -7160,10 +7165,10 @@ void defineWildWestLevels() {
 
 	// Level 10
 	levels[10].plantReward = lightningReed;      levels[10].coinReward = 400;
-	levels[10].addWave(3, 12, { zombieCowboy }, 5);
+	levels[10].addWave(1, 12, { zombieCowboy }, 5);
 	levels[10].addWave(4, 15, { zombieCowboy, zombieRedhair }, 8);
 	levels[10].addWave(5, 15, { zombieCowboy, zombieProspector }, 10);
-	levels[10].addWave(18, 20, { zombieCowboy, zombieRedhair, zombieProspector }, 0, true);
+	levels[10].addWave(10, 20, { zombieCowboy, zombieRedhair, zombieProspector }, 0, true);
 
 	// Level 11
 	levels[11].plantReward = snapdragon;       levels[11].coinReward = 500;
@@ -7512,24 +7517,30 @@ int main() {
 
 	vector<Entity> mainPlantTypes = { sunflower, repeaterPlant, normalPlant, wallnut, chomper, icePeashooter, miniShroom, POTATOMINE, doomShroom, CHEERY_BOMB, iceShroom, inferno };//, shroom, sunshroom };
 
-
-	// Unlock starting plants
-	isEntityUnlocked[repeaterPlant.type] =
+	if (DEV) {
+		// Unlock starting plants
+		isEntityUnlocked[repeaterPlant.type] =
+			isEntityUnlocked[normalPlant.type] =
+			isEntityUnlocked[sunflower.type] =
+			isEntityUnlocked[icePeashooter.type] =
+			isEntityUnlocked[chomper.type] =
+			isEntityUnlocked[miniShroom.type] =
+			isEntityUnlocked[POTATOMINE.type] =
+			isEntityUnlocked[doomShroom.type] =
+			isEntityUnlocked[CHEERY_BOMB.type] =
+			isEntityUnlocked[iceShroom.type] =
+			isEntityUnlocked[snapdragon.type] =
+			isEntityUnlocked[lightningReed.type] =
+			isEntityUnlocked[inferno.type] =
+			isEntityUnlocked[redShooterPlant.type] =
+			isEntityUnlocked[Pomegranate.type] =
+			true;
+	} else {
 		isEntityUnlocked[normalPlant.type] =
-		isEntityUnlocked[sunflower.type] =
-		isEntityUnlocked[icePeashooter.type] =
-		isEntityUnlocked[chomper.type] =
-		isEntityUnlocked[miniShroom.type] =
-		isEntityUnlocked[POTATOMINE.type] =
-		isEntityUnlocked[doomShroom.type] =
-		isEntityUnlocked[CHEERY_BOMB.type] =
-		isEntityUnlocked[iceShroom.type] =
-		isEntityUnlocked[snapdragon.type] =
-		isEntityUnlocked[lightningReed.type] =
-		isEntityUnlocked[inferno.type] =
-		isEntityUnlocked[redShooterPlant.type] =
-		isEntityUnlocked[Pomegranate.type] =
-		true;
+			isEntityUnlocked[sunflower.type] =
+			isEntityUnlocked[POTATOMINE.type] =
+			true;
+	}
 
 	// Levels
 	defineDayLevels();
@@ -7540,151 +7551,6 @@ int main() {
 	defineDarkAgesLevels();
 	defineJurassicAgeLevels();
 	defineRomanLevels();
-
-	//---------------------------------------
-	//// Level 1: Day
-	//	levels[1].lvlNum = 1;
-	//	levels[1].plant_types = mainPlantTypes;
-	//	levels[1].zombie_types = { zombie, zombieConehead };
-	//	levels[1].targetZombie = 20;
-	//	//levels[1].targetZombie = 2;
-	//	levels[1].waveLimit = 10; levels[1].waveTimer = 15;
-	//	levels[1].plantReward = chomper;
-	//	levels[1].coinReward = 100;
-	//	levels[1].isUnlocked = true;
-	//	levels[1].startingSuns = 50;
-	//
-	//	levels[1].offsetX = 450;
-	//	levels[1].offsetY = 135;
-	//	levels[1].cellWidth = 150;
-	//	levels[1].cellHeight = 170;
-	//	// Wave Design
-	//	//levels[1].addWave(10, 30, { zombie });	// 
-	//	//levels[1].addWave(1, 10, { zombieConehead});	// 1 then wait 10?
-	//	//levels[1].addWave(10, 20, { zombie });	// Huge .. no more
-	//	//levels[1].addWave(0, 5, { });
-	//	//levels[1].addWave(5, 10, { zombie }, true);
-	//	//levels[1].addWave(5, 2, { zombie }, true);
-	//	//levels[1].addWave(10, 5, { zombie, zombieConehead }, true);
-	//
-	//	levels[1].addWave(1, 5, { zombie }, 5);
-	//	levels[1].addWave(3, 9, { zombie }, 5);
-	//	levels[1].addWave(3, 9, { zombie, zombieConehead }, 7);
-	//	levels[1].addWave(5, 15, { zombie }, 10);
-	//	levels[1].addWave(7, 20, { zombie, zombieConehead }, 15, true);
-	//	levels[1].addWave(5, 15, { zombie }, 5);
-	//	levels[1].addWave(9, 20, { zombie, zombieConehead }, 0, true);
-	//
-	//	setupLevelLawnmowers(levels[1]);
-		//---------------------------------------
-	//---------------------------------------
-		//// Level 2: Night
-		//levels[2].lvlNum = 2;
-		//levels[2].plant_types = mainPlantTypes;
-		//levels[2].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar, zombieShieldGuard };
-		//levels[2].targetZombie = 25;
-		//levels[2].startingSuns = 100;
-		//levels[2].offsetX = 450;
-		//levels[2].offsetY = 135;
-		//levels[2].cellWidth = 150;
-		//levels[2].cellHeight = 170;
-		//levels[2].plantReward = shroom;
-		//levels[2].coinReward = 200;
-		//// Wave Design
-		///*levels[2].addWave(3, 15, {zombieConehead});
-		//levels[2].addWave(5, 15, { zombieConehead, zombieNewspaper, zombieAllStar });
-		//levels[2].addWave(10, 5, { zombieAllStar }, true);*/
-		//levels[2].addWave(1, 5, { zombie }, 5);
-		//levels[2].addWave(3, 9, { zombie }, 10);
-		//levels[2].addWave(3, 9, { zombie, zombieNewspaper }, 5);
-		//levels[2].addWave(3, 9, { zombie, zombieConehead }, 10);
-		//levels[2].addWave(3, 12, { zombie, zombieAllStar }, 10);
-		//levels[2].addWave(3, 12, { zombie }, 0);
-		//levels[2].addWave(7, 20, { zombieConehead, zombieNewspaper }, 15, true);
-		//levels[2].addWave(7, 20, { zombie, zombieNewspaper, zombieAllStar }, 15, true);
-		//levels[2].addWave(9, 20, { zombieNewspaper, zombieAllStar }, 10, true);
-		//levels[2].addWave(6, 20, { zombieAllStar }, 0, true);
-		//setupLevelLawnmowers(levels[2]);
-
-			//------------------------------------------
-			// Level 3: Egypt
-			//levels[3].lvlNum = 3;
-			//levels[3].plant_types = mainPlantTypes;
-			//levels[3].plant_types.push_back(shroom);
-			//levels[3].zombie_types = { zombieTorch, zombieRa, zombieMummy, zombiePharaoh };
-			//levels[3].targetZombie = 30;
-			//levels[3].addReward(500);
-			//levels[3].addReward(wallnut);
-			//levels[3].offsetX = 450;
-			//levels[3].offsetY = 135;
-			//levels[3].cellWidth = 150;
-			//levels[3].cellHeight = 170;
-			//levels[3].plantReward = wallnut;
-			//levels[3].coinReward = 300;
-			//// Wave Design
-			///*levels[3].addWave(2, 15, { zombieMummy });
-			//levels[3].addWave(3, 10, { zombieTorch, zombieMummy });
-			//levels[3].addWave(3, 5, { zombieRa, zombieMummy });
-			//levels[3].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-			//levels[3].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
-			//// 2 2 4 5 8 10
-			//levels[3].addWave(2, 5, { zombieMummy }, 5);
-			//levels[3].addWave(2, 5, { zombieRa, zombieMummy }, 10);
-			//levels[3].addWave(4, 12, { zombieRa, zombieMummy }, 10);
-			//levels[3].addWave(4, 12, { zombieTorch, zombiePharaoh }, 15);
-			//levels[3].addWave(4, 12, { zombieMummy }, 5);
-			//levels[3].addWave(8, 24, { zombieRa, zombieMummy, zombiePharaoh }, 10, true);
-			//levels[3].addWave(4, 12, { zombieMummy }, 5);
-			//levels[3].addWave(9, 23, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 10, true);
-			//levels[3].addWave(4, 16, { zombieMummy }, 5);
-			//levels[3].addWave(10, 22, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, 0, true);
-			//setupLevelLawnmowers(levels[3]);
-
-
-
-			//------------------------------------------
-			// Level 4: Wild West
-			//levels[4].lvlNum = 4;
-			//levels[4].plant_types = mainPlantTypes;
-			//levels[4].zombie_types = { zombie, zombieConehead, zombieNewspaper, zombieAllStar };
-			//levels[4].targetZombie = 30;
-			//levels[4].waveLimit = 12;
-			//levels[4].waveTimer = 15;
-			//levels[4].startingSuns = 3000;
-			//levels[4].isUnlocked = true;
-			//levels[4].offsetX = 450;
-			//levels[4].offsetY = 135;
-			//levels[4].cellWidth = 150;
-			//levels[4].cellHeight = 170;
-			//levels[4].plantReward = repeaterPlant;
-			//levels[4].coinReward = 400;
-			//// Wave Design
-			//levels[4].addWave(10, 20, { zombie });
-			///*levels[4].addWave(3, 10, { zombieTorch, zombieMummy });
-			//levels[4].addWave(3, 5, { zombieRa, zombieMummy });
-			//levels[4].addWave(10, 5, { zombieRa, zombieMummy, zombiePharaoh }, true);
-			//levels[4].addWave(15, 10, { zombieRa, zombieMummy, zombiePharaoh, zombieTorch }, true);*/
-			//setupLevelLawnmowers(levels[4]);
-			////------------------------------------------
-
-			//// Level 5: Squaid Game
-			//levels[5].lvlNum = 5;
-			//levels[5].plant_types = mainPlantTypes;
-			//levels[5].zombie_types = { zombie, zombieConehead, zombiePharaoh, zombieAllStar, zombieBig };
-			//levels[5].targetZombie = 40;
-			//levels[5].waveLimit = 15;
-			//levels[5].waveTimer = 18;
-			//levels[5].startingSuns = 50;
-			//levels[5].isUnlocked = true;
-			//levels[5].offsetX = 450;
-			//levels[5].offsetY = 135;
-			//levels[5].cellWidth = 150;
-			//levels[5].cellHeight = 170;
-			//// Wave Design
-			//levels[4].addWave(10, 20, { zombie });
-			//setupLevelLawnmowers(levels[5]);
-
-
 
 			// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
