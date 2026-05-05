@@ -1,3 +1,6 @@
+bool DEV = true;
+// Delete the storage.txt after modifying
+
 #include <iostream>
 #include <vector>
 #include <SFML/Graphics.hpp>
@@ -23,9 +26,6 @@ using namespace sf;
 #define z_eat_p_distance 100
 #define MAX_SUNS 16
 #define Default_Texture_Index 0
-
-bool DEV = true;
-// Empty the storage.txt
 
 bool gamePaused = false;
 Clock gamePauseClock;
