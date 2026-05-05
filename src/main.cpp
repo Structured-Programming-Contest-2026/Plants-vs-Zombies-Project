@@ -6137,7 +6137,7 @@ void UpdateLevel(RenderWindow& window) {
 						float zomX = offsetX[raw] + (col * 130);
 
 						if (dummyZombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
-							zomY = -250;
+							zomY = -25;
 							zomX = 210;
 						}
 
