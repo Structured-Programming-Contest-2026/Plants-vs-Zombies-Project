@@ -1503,8 +1503,7 @@ Entity defineFireTornadoBullet() {
 
 	return tornado;
 }
-Entity defineFireTornadoBoostedBullet() 
-{
+Entity defineFireTornadoBoostedBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/FireTornadoBoosted.png");
 	textures[TEXTURE_TYPE::FireTornadoBulletBoosted][Default_Texture_Index] = tex;
@@ -2009,8 +2008,7 @@ Entity defineCherryBomb() {
 						float diffX = abs(z.position.x - p.position.x);
 
 						// 3*3
-						if (diffY < 200.0f && diffX < explosionRange) 
-						{
+						if (diffY < 200.0f && diffX < explosionRange) {
 							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 
@@ -2593,7 +2591,7 @@ Entity defineInfernoPlant() {
 	plant.animations[2].animScale = 1.6f;
 	plant.animations[2].offsetX = -25.0f;
 	plant.animations[2].offsetY = -90.0f;
-	
+
 	// Boosted
 	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
@@ -3761,7 +3759,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 		window.draw(plantSprite);
 		plantSprite.setColor(Color::White);//normal highlight
-		
+
 	}
 
 	// Bullets Cleaning
@@ -7882,6 +7880,8 @@ int main() {
 
 	Clock DeltaTimeClock;
 
+	Clock autosaveClock;
+
 	gameClock.restart();
 	while (window.isOpen()) {
 		sf::Time dtTime = DeltaTimeClock.restart();
@@ -7969,6 +7969,11 @@ int main() {
 			DrawMainMenu(window);
 		}
 		window.display();
+
+		if (autosaveClock.getElapsedTime().asSeconds() >= 30.0f) {
+			saveStorage();
+			autosaveClock.restart();
+		}
 	}
 
 	delete font;
