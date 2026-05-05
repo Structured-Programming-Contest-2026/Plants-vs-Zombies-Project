@@ -7393,9 +7393,9 @@ void defineDayLevels() {
 	//addWave(levels[1], 3, 5, { normalZombie }, 10);
 	//addWave(levels[1], 4, 15, { normalZombie, zombieConehead }, 10);
 	//addWave(levels[1], 11, 20, { normalZombie, zombieConehead }, 0, true);
-	easyWave(levels[1], {normalZombie, normalZombie, zombieConehead });
-	medWave(levels[1], {normalZombie, zombieConehead});
-	hugeWave(levels[1], {normalZombie, normalZombie, zombieConehead });
+	easyWave(levels[1], { normalZombie, normalZombie, zombieConehead });
+	medWave(levels[1], { normalZombie, zombieConehead });
+	hugeWave(levels[1], { normalZombie, normalZombie, zombieConehead });
 
 	// Level 2 Med
 	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
@@ -7418,7 +7418,7 @@ void defineDayLevels() {
 	//levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
 	//addWave(levels[3], 1, 5, { zombotDragon }, 10);
 	//levels[3].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true); // moved to level 6
-	medWave(levels[3], { normalZombie });
+	addWave(levels[3], 6, 6, { normalZombie }, 5);
 	addWave(levels[3], 1, 5, { zombotDragon }, 10);
 }
 
@@ -7449,7 +7449,7 @@ void defineNightLevels() {
 	medWave(levels[5], { normalZombie, normalZombie, normalZombie, zombieNewspaper, zombieAllStar, zombieShieldGuard });
 	hugeWave(levels[5], { normalZombie, normalZombie, normalZombie, zombieNewspaper, zombieAllStar, zombieShieldGuard });
 
-	medWave(levels[6], { normalZombie, normalZombie, normalZombie, zombieNewspaper, zombieAllStar, zombieShieldGuard });
+	addWave(levels[6], 6, 6, { normalZombie }, 5);
 	addWave(levels[6], 1, 5, { zombotDragon }, 10);
 
 
@@ -7506,7 +7506,7 @@ void defineAncientLevels() {
 	medWave(levels[8], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa });
 	hugeWave(levels[8], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa });
 
-	medWave(levels[9], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieTorch, zombieRa });
+	addWave(levels[9], 6, 6, { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieTorch, zombieRa }, 5);
 	addWave(levels[9], 1, 5, { zombotDragon }, 10);
 
 
@@ -7558,7 +7558,7 @@ void defineWildWestLevels() {
 	medWave(levels[11], { zombieCowboy, zombieProspector, zombieRedhair });
 	hugeWave(levels[11], { zombieCowboy, zombieProspector, zombieRedhair });
 
-	medWave(levels[12], { zombieCowboy, zombieProspector, zombieRedhair });
+	addWave(levels[12], 6, 6, { zombieCowboy, zombieProspector, zombieRedhair }, 5);
 	addWave(levels[12], 1, 5, { zombotDragon }, 10);
 
 	// Level 10
