@@ -235,6 +235,7 @@ enum class ENTITY_TYPE : uint8_t {
 	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
+	PomegranateBulletBoost,
 	RedBullet,
 	FireDragonBullet,
 
@@ -340,6 +341,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
+	PomegranateBulletBoost,
 	RedBullet,
 	FireDragonBullet,
 
@@ -553,6 +555,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 		break;
 	case ENTITY_TYPE::PomegranateBullet:
 		textureType = TEXTURE_TYPE::PomegranateBullet;
+		break;
+	case ENTITY_TYPE::PomegranateBulletBoost:
+		textureType = TEXTURE_TYPE::PomegranateBulletBoost;
 		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
@@ -1461,6 +1466,16 @@ Entity definePomegranateBullet() {
 	bullet.type = ENTITY_TYPE::PomegranateBullet;
 	bullet.attack = 20;
 	bullet.x_vel = -650.0f;
+
+	return bullet;
+}
+Entity definePomegranateBulletBoost() {
+	textures[TEXTURE_TYPE::PomegranateBulletBoost][Default_Texture_Index].loadFromFile("assets/pomegranate-bullet-boost.png");
+	Entity bullet;
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::PomegranateBulletBoost;
+	bullet.attack = 30;
+	bullet.x_vel = -800.0f;
 
 	return bullet;
 }
@@ -2606,7 +2621,7 @@ Entity definePomegranatePlant() {
 			if (p.isBoosted) {
 				p.attackClock.restart();
 
-				Entity newBullet = definePomegranateBullet();
+				Entity newBullet = definePomegranateBulletBoost();
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
 				bullets.push_back(newBullet);
