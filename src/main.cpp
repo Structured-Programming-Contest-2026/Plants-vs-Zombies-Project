@@ -2,6 +2,8 @@
 bool DEV = true;
 // Delete the storage.txt after modifying
 
+// NOTE: you can click F to get 1000 free suns for testing
+
 // Set this to 99 to unlock incomplete themes
 int lastLevel = 13;
 
