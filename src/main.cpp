@@ -4711,6 +4711,7 @@ void screenFade(RenderWindow& window, float v) {
 
 bool selectingLevel = false;
 bool inStore = false;
+bool inCredits = false;
 Time startMenuItemTime = Time::Zero;
 Time startMainMenuTime = Time::Zero;
 
@@ -6616,6 +6617,103 @@ void DrawStore(RenderWindow& window) {
 	}
 }
 
+void DrawCredits(RenderWindow& window) {
+	Sprite sprite;
+
+	Texture bgTex = getTexture(TEXTURE_TYPE::MAINMENU_BACKGROUND);
+	sprite.setTexture(bgTex);
+	sprite.setPosition(Vector2f(0, 0));
+	sprite.setScale(Vector2f(
+		windowWidth / (float)bgTex.getSize().x,
+		windowHeight / (float)bgTex.getSize().y
+	));
+
+	window.draw(sprite);
+
+	Sprite button;
+	Texture buttonTex = getTexture(TEXTURE_TYPE::WOOD_BUTTON);
+	Vector2f buttonTexSize = Vector2f(buttonTex.getSize());
+
+	button.setTexture(buttonTex);
+	button.setScale(0.225f, 0.225f);
+
+	button.setOrigin(buttonTexSize / 2.0f);
+
+	Text text;
+
+	text.setFont(*loudFont);
+	text.setFillColor(Color::White);
+	text.setOutlineColor(Color::Black);
+	text.setOutlineThickness(4);
+	text.setCharacterSize(48);
+
+	sf::RectangleShape bg;
+	bg.setSize(Vector2f(750, 800));
+	bg.setPosition(windowWidth / 2.0f, windowHeight / 2.0f);
+	bg.setFillColor(Color(0, 0, 0, 128));
+	bg.setOrigin(bg.getSize() / 2.0f);
+	window.draw(bg);
+
+	text.setString("Credits");
+	text.setCharacterSize(64);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setFillColor(Color::Cyan);
+	text.setPosition(Vector2f(windowWidth / 2.0f, 200));
+
+	window.draw(text);
+	text.setFont(*font);
+	text.setCharacterSize(48);
+
+	{
+		Text text;
+		text.setFont(*font);
+
+		text.setString(R"(Plants vs Zombies
+2026 Structured Programming Project
+Ain Shams University - FCIS
+
+Omar Hadidi                      Yusuf Yaser
+Simon Adly                         Khaled Ahmed
+Philopateer Mark           Omar Hikal)");
+
+		text.setOutlineColor(Color::Black);
+		text.setOutlineThickness(4);
+		text.setCharacterSize(40);
+
+		text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+		text.setPosition(windowWidth / 2.0f, windowHeight / 2.0f);
+
+		window.draw(text);
+	}
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth / 2.0f, windowHeight) + Vector2f(0, -70));
+	text.setString(std::string("Back"));
+	text.setFillColor(Color::Red);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			inCredits = false;
+			startMainMenuTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	{
+		float progress = 1 - ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() - 0.25f) / 0.25f;
+		if (progress < 0) progress = 0;
+		screenFade(window, progress);
+	}
+}
+
 void DrawMainMenu(RenderWindow& window) {
 	if ((gameClock.getElapsedTime() - startMenuItemTime).asSeconds() > 0.25f) {
 		if (selectingLevel) {
@@ -6627,10 +6725,15 @@ void DrawMainMenu(RenderWindow& window) {
 			DrawStore(window);
 			return;
 		}
+
+		if (inCredits) {
+			DrawCredits(window);
+			return;
+		}
 	}
 
 	bool buttonsEnabled = true;
-	if (selectingLevel || inStore) buttonsEnabled = false;
+	if (selectingLevel || inStore || inCredits) buttonsEnabled = false;
 
 	Sprite sprite;
 
@@ -6718,6 +6821,27 @@ void DrawMainMenu(RenderWindow& window) {
 	button.setColor(Color::White);
 	text.setFillColor(Color::White);
 	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 150));
+	text.setString(std::string("Credits"));
+	text.setFillColor(Color::Cyan);
+	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
+	text.setPosition(button.getPosition());
+
+	if (buttonsEnabled && button.getGlobalBounds().contains(Vector2f(mousePos))) {
+		button.setColor(Color(128, 128, 128, 255));
+		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+
+		if (mouseJustClicked[0]) {
+			inCredits = true;
+			startMenuItemTime = gameClock.getElapsedTime();
+		}
+	}
+
+	window.draw(button);
+	window.draw(text);
+
+	button.setColor(Color::White);
+	text.setFillColor(Color::White);
+	button.setPosition(Vector2f(windowWidth, windowHeight) / 2.0f + Vector2f(0, 250));
 	text.setString(std::string("Quit Game"));
 	text.setFillColor(Color::Red);
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
@@ -6734,6 +6858,16 @@ void DrawMainMenu(RenderWindow& window) {
 
 	window.draw(button);
 	window.draw(text);
+
+	{
+		Text text;
+		text.setFont(*font);
+
+
+		text.setOrigin(0, text.getGlobalBounds().getSize().y);
+
+		window.draw(text);
+	}
 
 	if (DEV) {
 		Text text;
@@ -6752,7 +6886,7 @@ void DrawMainMenu(RenderWindow& window) {
 		window.draw(text);
 	}
 
-	if (selectingLevel || inStore) {
+	if (selectingLevel || inStore || inCredits) {
 		float progress = (gameClock.getElapsedTime() - startMenuItemTime).asSeconds() / 0.25f;
 		if (progress > 1) progress = 1;
 		screenFade(window, progress);
