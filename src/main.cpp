@@ -2,6 +2,8 @@
 bool DEV = true;
 // Delete the storage.txt after modifying
 
+// NOTE: you can click F to get 1000 free suns for testing
+
 // Set this to 99 to unlock incomplete themes
 int lastLevel = 13;
 
@@ -989,17 +991,17 @@ void addWave(Level& l, int zombieCount = 0, float length = 0, vector<Entity> zom
 	}
 	setTargetZombie(l);
 }
-void easyWave(Level& l,vector<Entity> zombieTypes = {}, float rest = 20) {
+void easyWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
 	int mx = 3, mn = 1;
-	int z = rand() % (mx-mn) + mn; // from mn to mx
+	int z = rand() % (mx - mn) + mn; // from mn to mx
 	//vector<Entity> sliced(zombieTypes.begin(), zombieTypes.begin() + 2);
-	addWave(l, z, z , zombieTypes, 20);
-	addWave(l, z, z , zombieTypes, 20);
-	addWave(l, z, z , zombieTypes, rest);
+	addWave(l, z, z, zombieTypes, 20);
+	addWave(l, z, z, zombieTypes, 20);
+	addWave(l, z, z, zombieTypes, rest);
 }
 
-void medWave(Level& l,vector<Entity> zombieTypes = {}, float rest = 20) {
+void medWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
 	int mx = 7, mn = 5;
 	int z = rand() % (mx - mn) + mn; // from mn to mx
@@ -1009,7 +1011,7 @@ void medWave(Level& l,vector<Entity> zombieTypes = {}, float rest = 20) {
 	addWave(l, z, z, zombieTypes, rest);
 }
 
-void hugeWave(Level& l,vector<Entity> zombieTypes = {}, float rest = 20) {
+void hugeWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
 	int mx = 12, mn = 10;
 	int z = rand() % (mx - mn) + mn; // from mn to mx
@@ -1457,7 +1459,7 @@ Entity defineShroomBullet() {
 	bullet.type = ENTITY_TYPE::ShroomBullet;
 	bullet.attack = 5;
 	bullet.x_vel = -580.0f;
-	bullet.position.x  -= 40;
+	bullet.position.x -= 40;
 
 	return bullet;
 }
@@ -2030,26 +2032,28 @@ Entity defineCherryBomb() {
 
 	cherry.updateEntity = [](Entity& plant) {
 
-		if (plant.attackClock.getElapsedTime().asSeconds() >= 0.5f && plant.currentAnimationIndex != 1) {
-			DoAnimation(plant, 1, 1);
-
-			plant.afterAnimation = [&](Entity& p) {
+		if (plant.attackClock.getElapsedTime().asSeconds() >= 0.5f) {
+			if (plant.currentAnimationIndex != 1) {
+				DoAnimation(plant, 1, 1);
+			} else {
 				float explosionRange = 350.0f;
-				// RANGE OF EXPLOSION 
 
 				for (Entity& z : entities) {
 					if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
-						float diffY = abs(z.position.y - p.position.y);
-						float diffX = abs(z.position.x - p.position.x);
+						float diffY = abs(z.position.y - plant.position.y);
+						float diffX = abs(z.position.x - plant.position.x);
 
 						// 3*3
 						if (diffY < 200.0f && diffX < explosionRange) {
 							z.diedByElectrocution = true;
-							attackZombie(z, p.attack, true);
+							attackZombie(z, plant.attack, true);
 
 						}
 					}
 				}
+			}
+
+			plant.afterAnimation = [&](Entity& p) {
 				//DISAPPER AFTER EXPLOSION
 				p.category = ENTITY_CATEGORY::NONE;
 				p.isDead = true;
@@ -2460,7 +2464,7 @@ Entity defineSnapdragon() {
 	plant.animations[0].frames = 20; // Idle
 	plant.animations[0].frameTimer = 0.1f;
 	plant.animations[0].animScale = 1.0f;
-	
+
 	plant.animations[1].frames = 20; // Attack 
 	plant.animations[1].frameTimer = 0.08f;
 	plant.animations[1].animScale = 1.1f;
@@ -2729,7 +2733,7 @@ Entity definePomegranatePlant() {
 	plant.animations[2].frames = 53;
 	plant.animations[2].frameTimer = 0.03;
 	plant.animations[2].offsetX = -15.0f;
-	plant.animations[2].offsetY = 20.0f; 
+	plant.animations[2].offsetY = 20.0f;
 	// Boosted
 	plant.animations[3].frames = 39;
 	plant.animations[3].frameTimer = 0.03;
@@ -7497,7 +7501,7 @@ void defineAncientLevels() {
 		setupLevelLawnmowers(levels[lvl]);
 	}
 
-	easyWave(levels[7], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa});
+	easyWave(levels[7], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa });
 	medWave(levels[7], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa });
 	hugeWave(levels[7], { zombieTorch, zombieMummy,zombieMummy, zombiePharaoh, zombieRa });
 
@@ -7695,6 +7699,19 @@ void defineRomanLevels() {
 		setupLevelLawnmowers(levels[lvl]);
 	}
 
+	{
+		int lvl = 13;
+		levels[lvl].theme = THEME::ROMAN;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainRomanPlantTypes;
+		levels[lvl].startingSuns = 100;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+
 	//Level 22
 	levels[22].plantReward = Pomegranate; levels[22].coinReward = 4000;
 	addWave(levels[22], 3, 12, { zombieRomanNormal }, 5);
@@ -7703,16 +7720,16 @@ void defineRomanLevels() {
 	addWave(levels[22], 20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true);
 
 	//Level 23
-	levels[23].plantReward = inferno;     levels[23].coinReward = 5000;
+	levels[13].plantReward = inferno;     levels[13].coinReward = 5000;
 	//addWave(levels[23], 4, 15, { zombieRomanNormal }, 5);
 	//addWave(levels[23], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
 	//addWave(levels[23], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
 	//addWave(levels[23], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
 
-	easyWave(levels[11], { zombieRomanConehead, zombieRomanShield });
-	hugeWave(levels[11], { zombieRomanOdessa, zombieRomanConehead, zombieRomanCenturion, zombieRomanConehead });
-	medWave(levels[11], { zombieRomanGargantuar, zombieRomanBusthead, zombieRomanConehead });
-	hugeWave(levels[11], { zombieRomanConehead, zombieRomanGargantuar, zombieRomanConehead });
+	easyWave(levels[13], { zombieRomanConehead, zombieRomanShield });
+	hugeWave(levels[13], { zombieRomanOdessa, zombieRomanConehead, zombieRomanCenturion, zombieRomanConehead });
+	medWave(levels[13], { zombieRomanGargantuar, zombieRomanBusthead, zombieRomanConehead });
+	hugeWave(levels[13], { zombieRomanConehead, zombieRomanGargantuar, zombieRomanConehead });
 
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
