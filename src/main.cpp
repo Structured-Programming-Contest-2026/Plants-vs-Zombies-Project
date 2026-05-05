@@ -1596,8 +1596,8 @@ Entity defineNormalPlant() {
 					newBullet.x_vel *= 2;
 
 					int nbullets = 8;
-					for (int i = 1; i <= nbullets; i++) {
-						if (i <= 2) newBullet.attack *= 1.5;
+					for (int i = 0; i < nbullets; i++) {
+						if (i < 2) newBullet.attack *= 1.5;
 						newBullet.position = Vector2f(plant.position.x + 75 * i, plant.position.y + 50);
 						addBullet(newBullet);
 					}
@@ -7047,6 +7047,7 @@ void defineDayLevels() {
 	// Level 3 Hard
 	levels[3].plantReward = sunshroom;      levels[3].coinReward = 600;
 	levels[3].sunSpawnInterval = 3.f;
+	levels[3].startingSuns = 1000;
 	levels[3].addWave(3, 12, { normalZombie }, 5);
 	//levels[3].addWave(4, 8, { normalZombie, zombieBig }, 5);
 	//levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
@@ -7089,6 +7090,7 @@ void defineNightLevels() {
 
 	// Level 6
 	levels[6].plantReward = doomShroom;   levels[6].coinReward = 400;
+	levels[6].startingSuns = 1500;
 	levels[6].addWave(5, 15, { normalZombie, zombieBig }, 0);
 	levels[6].addWave(1, 5, { zombotDragon }, 10);
 	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
