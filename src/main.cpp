@@ -1984,8 +1984,7 @@ Entity defineCherryBomb() {
 						float diffX = abs(z.position.x - p.position.x);
 
 						// 3*3
-						if (diffY < 200.0f && diffX < explosionRange)
-						{
+						if (diffY < 200.0f && diffX < explosionRange) {
 							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 
@@ -7042,9 +7041,9 @@ void defineDayLevels() {
 	levels[1].isUnlocked = true;
 	levels[1].plantReward = repeaterPlant;      levels[1].coinReward = 100;
 	addWave(levels[1], 2, 5, { normalZombie }, 10);
-	//addWave(levels[1], 3, 5, { normalZombie }, 10);
-	//addWave(levels[1], 4, 15, { normalZombie, zombieConehead }, 10);
-	//addWave(levels[1], 11, 20, { normalZombie, zombieConehead }, 0, true);
+	addWave(levels[1], 3, 5, { normalZombie }, 10);
+	addWave(levels[1], 4, 15, { normalZombie, zombieConehead }, 10);
+	addWave(levels[1], 11, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 2 Med
 	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
@@ -7560,7 +7559,7 @@ int main() {
 	defineJurassicAgeLevels();
 	defineRomanLevels();
 
-			// setting levels background textures //bravooo
+	// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	//for (int lvl = 1; lvl <= number_levels; lvl++) {
