@@ -4139,7 +4139,27 @@ void updatePianistZombie(Entity& zombie) {
 void updateChickenWranglerZombie(Entity& zombie) {
 	if (zombie.health <= 150 && zombie.currentAnimationIndex == 0) {
 		setCurrentAnimation(zombie, 3);
-		addWave(*currentLevel, 10, 5, { zombieChicken });
+		//addWave(*currentLevel, 10, 5, { zombieChicken });
+		for (int i = 0; i < 7; i++) {
+			Entity chicken = zombieChicken;
+			int randRow = gridCell(zombie.position).x + (rand() % 3) - 1;
+			int randCol = gridCell(zombie.position).y + (rand() % 3);
+
+			// this ensures they are in the correct range
+			randRow = max(0, min(gridRows - 1, randRow));
+			randCol = max(0, min(gridCols - 1, randCol));
+
+			chicken.position = { currentLevel->offsetX + randCol * currentLevel->cellWidth, currentLevel->offsetY + randRow * currentLevel->cellHeight };
+
+			chicken.position.x += (-currentLevel->cellWidth / 2.0f + rand() % int(currentLevel->cellWidth)) * 0.5f;
+			chicken.position.y += (-currentLevel->cellHeight / 2.0f + rand() % int(currentLevel->cellHeight)) * 0.5f;
+
+			chicken.gridRow = randRow;
+			chicken.gridCol = randCol;
+			if (addEntity(chicken) != -1) {
+				currentLevel->targetZombie++;
+			}
+		}
 	}
 }
 
@@ -4645,7 +4665,7 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 	if (zombieClock.getElapsedTime().asSeconds() + zombieClockOffset < nextZombieTimer) return;
 
 	auto& waves = currentLevel->waves;
-	cout << "waves.size() : " << waves.size() << " | currentWaveIndex : " << currentWaveIndex << endl;
+	//cout << "waves.size() : " << waves.size() << " | currentWaveIndex : " << currentWaveIndex << endl;
 
 	if (currentWaveIndex >= (int)waves.size()) return;
 	auto& wave = waves[currentWaveIndex];
@@ -7393,10 +7413,11 @@ void defineWildWestLevels() {
 
 	// Level 12
 	levels[12].plantReward = redShooterPlant;       levels[12].coinReward = 600;
-	addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
-	addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
-	addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
-	addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
+	addWave(levels[12], 1, 1, { zombieChickenWrangler }, 0, true);
+	//addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
+	//addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
+	//addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
+	//addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
 }
 
 void defineLostCityLevels() {
