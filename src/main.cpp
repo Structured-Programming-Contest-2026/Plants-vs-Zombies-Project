@@ -914,10 +914,6 @@ struct Level {
 	//for mincart
 	vector<Rail> rails;
 	vector<Minecart> carts;
-	void addRail(int col, int sRow, int eRow) {
-		rails.push_back({ col, sRow, eRow });
-		carts.push_back({ col, sRow, -1 });
-	}
 
 };
 
@@ -969,6 +965,10 @@ void addWave(Level& l, int zombieCount = 0, float length = 0, vector<Entity> zom
 		if (!exists) l.zombie_types.push_back(type);
 	}
 	setTargetZombie(l);
+}
+void addRail(Level& l, int col, int sRow, int eRow) {
+	l.rails.push_back({ col, sRow, eRow });
+	l.carts.push_back({ col, sRow, -1 });
 }
 
 const int number_levels = 24;
@@ -1030,20 +1030,20 @@ struct ShopItem {
 	int* counter = nullptr;	// reference to the item counter (ex: booster count, magic shovel count, etc ..)
 	int maxCount = -1;	// 0 for infinite
 	bool isUnlocked = true;
-	void buy(int amnt) {
-		while (amnt--) {
-			if (coinsMoney >= cost && (counter == nullptr || *counter < maxCount || maxCount == -1)) {
-				coinsMoney -= cost;
-				if (counter != nullptr) (*counter)++;
-				cout << "Purchased " << title << "! Remaining coins: " << coinsMoney << endl;
-			} else {
-				// message 
-				cout << "Not enough coins to purchase " << title << "! Required: " << cost << ", Available: " << coinsMoney << endl;
-				break;
-			}
+};
+void buy(ShopItem& i, int amnt) {
+	while (amnt--) {
+		if (coinsMoney >= i.cost && (i.counter == nullptr || (*i.counter) < i.maxCount || i.maxCount == -1)) {
+			coinsMoney -= i.cost;
+			if (i.counter != nullptr) (*i.counter)++;
+			cout << "Purchased " << i.title << "! Remaining coins: " << coinsMoney << endl;
+		} else {
+			// message 
+			cout << "Not enough coins to purchase " << i.title << "! Required: " << i.cost << ", Available: " << coinsMoney << endl;
+			break;
 		}
 	}
-};
+}
 struct Booster {
 	Clock spawnClock;
 	Clock lifeClock;
@@ -1056,27 +1056,27 @@ struct Booster {
 	//float minDuration = 10.0f;
 	bool isAlive = false;
 	Vector2f position;
-	bool collect() {
-		if (curBoosterCnt >= maxBoosterCnt) {
-			cout << "----------Booster Not Collected ! Boosters already at max capacity!" << endl;
-			return false;
-		}
-		curBoosterCnt++;
-		isAlive = false;
-		spawnClock.restart();
-		cout << "----------Booster collected! total boosters: " << curBoosterCnt << endl;
-		return true;
-	}
-	void activate(Entity& plant) {
-		cout << "activate" << endl;
-		if (!plant.animations[3].frames) {
-			cout << "No Boost for thsi plant\n";
-			return;
-		}
-		curBoosterCnt--;
-		boost(plant);
-	}
 };
+bool collect(Booster& b) {
+	if (curBoosterCnt >= maxBoosterCnt) {
+		cout << "----------Booster Not Collected ! Boosters already at max capacity!" << endl;
+		return false;
+	}
+	curBoosterCnt++;
+	b.isAlive = false;
+	b.spawnClock.restart();
+	cout << "----------Booster collected! total boosters: " << curBoosterCnt << endl;
+	return true;
+}
+void activate(Booster& b, Entity& plant) {
+	cout << "activate" << endl;
+	if (!plant.animations[3].frames) {
+		cout << "No Boost for thsi plant\n";
+		return;
+	}
+	curBoosterCnt--;
+	boost(plant);
+}
 Booster booster;
 void CheckTimer_AddBooster(bool zombieJustDead = false, Vector2f position = { 0,0 }) {
 	//if(10 sec && zombie just dead) ariseBooster
@@ -5345,7 +5345,7 @@ void uiBoostActive(RenderWindow& window) {
 void uiBoostPlant(RenderWindow& window, Entity& clickedEntity) {
 	// Uses the boost on the selected plant
 	isBoostActive = false;
-	booster.activate(clickedEntity);
+	activate(booster, clickedEntity);
 	cout << "======== Booster Activated! Remaining Boosters: " << curBoosterCnt << endl;
 	/*clickedEntity.boosted = true;
 	clickedEntity.boostStartTime = currentLevel->clock.getElapsedTime();
@@ -5355,7 +5355,7 @@ void uiCollectBooster(RenderWindow& window) {
 	if (booster.isAlive && !uiInteracted) {
 		if (isClicked(booster.position, { 200, 200 })) {
 			//if (mousePos.x >= booster.position.x && mousePos.x <= booster.position.x + 200 && mousePos.y >= booster.position.y && mousePos.y <= booster.position.y + 200) {
-			booster.collect();
+			collect(booster);
 			uiInteracted = true;
 		}
 	}
@@ -6521,38 +6521,38 @@ void DrawStore(RenderWindow& window) {
 		}
 		window.draw(text);
 
-		Sprite buy;
+		Sprite buy2;
 
-		buy.setTexture(getTexture(TEXTURE_TYPE::GREEN_BUTTON));
-		buy.setPosition(sprite.getPosition() + Vector2f(512, 24));
+		buy2.setTexture(getTexture(TEXTURE_TYPE::GREEN_BUTTON));
+		buy2.setPosition(sprite.getPosition() + Vector2f(512, 24));
 
 		text.setString("Buy");
 		text.setFillColor(Color::White);
-		text.setPosition(buy.getPosition() + Vector2f(84, 16));
+		text.setPosition(buy2.getPosition() + Vector2f(84, 16));
 		text.setCharacterSize(48);
 
 		if (item.isUnlocked || *item.counter >= item.maxCount) {
 			text.setString("Owned");
-			buy.setColor(Color(96, 96, 96, 255));
+			buy2.setColor(Color(96, 96, 96, 255));
 			text.setFillColor(Color(96, 96, 96, 255));
-			text.setPosition(buy.getPosition() + Vector2f(56, 16));
+			text.setPosition(buy2.getPosition() + Vector2f(56, 16));
 			if (!item.isUnlocked) {
 				text.setString("Max");
-				text.setPosition(buy.getPosition() + Vector2f(84, 16));
+				text.setPosition(buy2.getPosition() + Vector2f(84, 16));
 			}
 		} else if (item.cost > coinsMoney) {
-			buy.setColor(Color(96, 96, 96, 255));
+			buy2.setColor(Color(96, 96, 96, 255));
 			text.setFillColor(Color(96, 96, 96, 255));
-		} else if (buy.getGlobalBounds().contains(Vector2f(mousePos))) {
-			buy.setColor(Color(128, 128, 128, 255));
+		} else if (buy2.getGlobalBounds().contains(Vector2f(mousePos))) {
+			buy2.setColor(Color(128, 128, 128, 255));
 			text.setFillColor(Color(128, 128, 128, 255));
 
 			if (mouseJustClicked[0]) {
-				item.buy(1);
+				buy(item, 1);
 			}
 		}
 
-		window.draw(buy);
+		window.draw(buy2);
 		window.draw(text);
 
 		i++;
