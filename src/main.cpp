@@ -728,18 +728,15 @@ void updateDimensions(Entity& e) {
 	int w = ((float)tex.getSize().x / e.currentAnimation.frames) * e.scale;
 	int h = (float)tex.getSize().y * e.scale;
 
-	// 1. احفظ الأبعاد القديمة قبل ما نعدلها
 	int oldWidth = e.width;
 	int oldHeight = e.height;
 
 	e.width = w;
 	e.height = h;
 
-	// 2. اعمل إزاحة للـ Position عشان النبتة تفضل ثابتة مكانها في الخلية
-	// بنتأكد الأول إن الكيان ده ليه مكان فعلي على الـ Grid (عشان مش كل الـ Entities بنحتاج نعدلها)
 	if (oldWidth > 0 && oldHeight > 0 && e.gridRow != -1 && e.gridCol != -1) {
-		e.position.x += (oldWidth - e.width) / 2.0f; // الحفاظ على التمركز في نص الخلية أفقياً
-		e.position.y += (oldHeight - e.height);      // الحفاظ على ثبات قاعدة النبتة على الأرض رأسياً
+		e.position.x += (oldWidth - e.width) / 2.0f; 
+		e.position.y += (oldHeight - e.height);
 	}
 }
 void setCurrentAnimation(Entity& e, int idx) {
@@ -2042,9 +2039,13 @@ Entity defineMiniShroom() {
 
 	miniShroom.animations[0].frames = 12;
 	miniShroom.animations[0].frameTimer = 0.25f;
+	miniShroom.animations[0].offsetX = 25.0f;
+	miniShroom.animations[0].offsetY = -15.0f;
 
 	miniShroom.animations[1].frames = 10;
 	miniShroom.animations[1].frameTimer = 0.15f;
+	miniShroom.animations[1].offsetX = 25.0f;
+	miniShroom.animations[1].offsetY = -15.0f;
 
 	setCurrentAnimation(miniShroom, 0);
 
