@@ -4924,6 +4924,8 @@ void DrawSeeds(RenderWindow& window) {
 	}
 }
 void DrawSelectPlants(RenderWindow& window) {
+	if (currentLevel == nullptr) return;
+
 	if (currentLevel->clock.getElapsedTime().asSeconds() < 2.45f) {
 		return;
 	}
@@ -4952,14 +4954,6 @@ void DrawSelectPlants(RenderWindow& window) {
 	text.setFillColor(Color());
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
-
-	if (currentLevel->theme == THEME::NIGHT) {
-		if (currentLevel->selectedPlants.size() == 0) {
-			currentLevel->selectedPlants.push_back(sunflower);
-		} else {
-			currentLevel->selectedPlants[0] = sunflower;
-		}
-	}
 
 	int i = -1;
 	for (auto& plant : currentLevel->plant_types) {
@@ -4998,7 +4992,34 @@ void DrawSelectPlants(RenderWindow& window) {
 	startButton.setScale(Vector2f(1.5f, 1.5f));
 	startButton.setPosition(Vector2f(250.0f, 780.0f) + animationOffset);
 
-	if (currentLevel->selectedPlants.empty()) {
+	bool startDisabled = false;
+	if (currentLevel->theme == THEME::NIGHT) {
+		bool hasSunPlant = false;
+
+		for (auto& plant : currentLevel->selectedPlants) {
+			if (plant.category != ENTITY_CATEGORY::PLANT) continue;
+
+			if (plant.type == ENTITY_TYPE::PLANT_SUNFLOWER || plant.type == ENTITY_TYPE::PLANT_SUNSHROOM) {
+				hasSunPlant = true;
+				break;
+			}
+		}
+
+		if (!hasSunPlant) {
+			startDisabled = true;
+			{
+				Text text;
+				text.setFont(*font);
+				text.setString("You must have at least one sun producing plant");
+				text.setOrigin(text.getGlobalBounds().getSize() / 2.0f);
+				text.setOutlineThickness(2);
+				text.setPosition(startButton.getPosition() + Vector2f(110, -32));
+				window.draw(text);
+			}
+		}
+	}
+
+	if (startDisabled || currentLevel->selectedPlants.empty()) {
 		startButton.setColor(Color(64, 64, 64, 255));
 	} else if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
 		startButton.setColor(Color(128, 128, 128, 255));
@@ -5028,7 +5049,7 @@ void DrawSelectPlants(RenderWindow& window) {
 	vector<string> notes;
 	if (currentLevel->theme == THEME::NIGHT) {
 
-		notes.push_back("You must have sunflower plant because night\n    theme does not drop suns");
+		notes.push_back("You must have at least one sun producing\n    plant because night theme does not drop suns");
 	}
 	if (currentLevel->lvlNum == 4
 		|| currentLevel->lvlNum == 5
@@ -5059,8 +5080,6 @@ void DrawSelectPlants(RenderWindow& window) {
 		}
 
 		text.setString(content);
-
-		cout << text.getGlobalBounds().getSize().y << endl;
 
 		window.draw(text);
 	}
@@ -7461,11 +7480,11 @@ void defineWildWestLevels() {
 
 	// Level 12
 	levels[12].plantReward = redShooterPlant;       levels[12].coinReward = 600;
-	addWave(levels[12], 1, 1, { zombieChickenWrangler }, 0, true);
-	//addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
-	//addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
-	//addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
-	//addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
+	//addWave(levels[12], 1, 1, { zombieChickenWrangler }, 0, true);
+	addWave(levels[12], 4, 15, { zombieCowboy, zombieRedhair }, 5);
+	addWave(levels[12], 6, 15, { zombieChickenWrangler, zombieProspector }, 10);
+	addWave(levels[12], 15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
+	addWave(levels[12], 15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
 }
 
 void defineLostCityLevels() {
