@@ -7697,6 +7697,19 @@ void defineRomanLevels() {
 		setupLevelLawnmowers(levels[lvl]);
 	}
 
+	{
+		int lvl = 13;
+		levels[lvl].theme = THEME::ROMAN;
+		levels[lvl].lvlNum = lvl;
+		levels[lvl].plant_types = mainRomanPlantTypes;
+		levels[lvl].startingSuns = 100;
+		levels[lvl].offsetX = 450;
+		levels[lvl].offsetY = 135;
+		levels[lvl].cellWidth = 150;
+		levels[lvl].cellHeight = 170;
+		setupLevelLawnmowers(levels[lvl]);
+	}
+
 	//Level 22
 	levels[22].plantReward = Pomegranate; levels[22].coinReward = 4000;
 	addWave(levels[22], 3, 12, { zombieRomanNormal }, 5);
@@ -7705,16 +7718,16 @@ void defineRomanLevels() {
 	addWave(levels[22], 20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true);
 
 	//Level 23
-	levels[23].plantReward = inferno;     levels[23].coinReward = 5000;
+	levels[13].plantReward = inferno;     levels[13].coinReward = 5000;
 	//addWave(levels[23], 4, 15, { zombieRomanNormal }, 5);
 	//addWave(levels[23], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
 	//addWave(levels[23], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
 	//addWave(levels[23], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
 
-	easyWave(levels[11], { zombieRomanConehead, zombieRomanShield });
-	hugeWave(levels[11], { zombieRomanOdessa, zombieRomanConehead, zombieRomanCenturion, zombieRomanConehead });
-	medWave(levels[11], { zombieRomanGargantuar, zombieRomanBusthead, zombieRomanConehead });
-	hugeWave(levels[11], { zombieRomanConehead, zombieRomanGargantuar, zombieRomanConehead });
+	easyWave(levels[13], { zombieRomanConehead, zombieRomanShield });
+	hugeWave(levels[13], { zombieRomanOdessa, zombieRomanConehead, zombieRomanCenturion, zombieRomanConehead });
+	medWave(levels[13], { zombieRomanGargantuar, zombieRomanBusthead, zombieRomanConehead });
+	hugeWave(levels[13], { zombieRomanConehead, zombieRomanGargantuar, zombieRomanConehead });
 
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
