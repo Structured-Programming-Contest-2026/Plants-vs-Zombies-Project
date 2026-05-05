@@ -1942,8 +1942,8 @@ Entity defineCherryBomb() {
 	cherry.health = 300;
 	cherry.attack = 999;
 	cherry.price = 150;
-	cherry.scale = 1.0f;
-	cherry.seedCooldown = 20.0f;
+	cherry.scale = 20.0f;
+	cherry.seedCooldown = 5.0f;
 
 	cherry.num_animations = 2;
 
@@ -1965,7 +1965,7 @@ Entity defineCherryBomb() {
 			plant.DoAnimation(1, 1);
 
 			plant.afterAnimation = [&](Entity& p) {
-				float explosionRange = 150.0f;
+				float explosionRange = 350.0f;
 				// RANGE OF EXPLOSION 
 
 				for (Entity& z : entities) {
@@ -1974,7 +1974,9 @@ Entity defineCherryBomb() {
 						float diffX = abs(z.position.x - p.position.x);
 
 						// 3*3
-						if (diffY < 120.0f && diffX < explosionRange) {
+						if (diffY < 200.0f && diffX < explosionRange)
+						{
+							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 
 						}
@@ -1982,6 +1984,7 @@ Entity defineCherryBomb() {
 				}
 				//DISAPPER AFTER EXPLOSION
 				p.category = ENTITY_CATEGORY::NONE;
+				p.isDead = true;
 				};
 		}
 		};
