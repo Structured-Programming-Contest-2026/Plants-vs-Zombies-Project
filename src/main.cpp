@@ -2535,7 +2535,7 @@ Entity defineSnapdragon() {
 			if (zombieInRange) {
 				DoAnimation(p, 1, 1);
 				Entity newFire = defineSnapDragonBullet();
-				newFire.position = { p.position.x + p.width, p.position.y };
+				newFire.position = { p.position.x, p.position.y };
 				//newFire.attack = 0; // already damaged below .. but too weak
 				//newFire.scale = 2;
 				addBullet(newFire);
@@ -4278,7 +4278,7 @@ Vector2f gridCellPosition(int r, int c, Entity& e) {	// DONT USE
 float v = 550;
 int targetRow = 3;
 void updateZombotDragon(Entity& zombie) {
-	if (gamePaused) return;
+	if (gamePaused || isGameOver || isGameWon) return;
 
 	Vector2f goodpos = { windowWidth - 450, windowHeight / 2 };
 	if (zombie.position.x <= goodpos.x) {
