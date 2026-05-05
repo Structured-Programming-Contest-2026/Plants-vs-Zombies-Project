@@ -12,6 +12,8 @@ using namespace sf;
 
 // Memory
 #define MAX_ENTITIES 512
+#define MAX_FALLENITEMS 32
+#define MAX_BULLETS 1024
 
 #define gridraws 5
 #define gridcols 9
@@ -786,7 +788,7 @@ struct FallenItem {
 	Vector2f fallPosition;
 	Color color;
 };
-vector<FallenItem> fallenItems;
+FallenItem fallenItems[MAX_FALLENITEMS];
 
 void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::White) {
 	FallenItem item;
@@ -794,7 +796,12 @@ void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::
 	item.clock.restart();
 	item.fallPosition = position;
 	item.color = color;
-	fallenItems.push_back(item);
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		if (fallenItems[i].clock.getElapsedTime().asSeconds() >= 3.5f) {
+			fallenItems[i] = item;
+			break;
+		}
+	}
 }
 
 map<ENTITY_TYPE, Entity> plants;
@@ -812,8 +819,17 @@ int addEntity(Entity& entity) {
 	return -1;
 }
 
-vector<Entity> newBullets;	// test
-vector<Entity> bullets;
+Entity bullets[MAX_BULLETS];
+int addBullet(Entity& bullet) {
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		if (bullets[i].category == ENTITY_CATEGORY::NONE) {
+			bullets[i] = bullet;
+			return i;
+		}
+	}
+
+	return -1;
+}
 
 struct Reward {
 	enum {
@@ -1230,11 +1246,15 @@ void resetLevel() {
 	for (int i = 0; i < MAX_ENTITIES; i++) {
 		entities[i] = Entity{};
 	}
-	bullets.clear();
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		bullets[i] = Entity{};
+	}
 	zombieClock.restart();
 	waveClockX.restart();
 	sunSpawnClock.restart();
-	fallenItems.clear();
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		fallenItems[i] = FallenItem{};
+	}
 
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
@@ -1574,11 +1594,11 @@ Entity defineNormalPlant() {
 					newBullet.attack = plant.attack;
 					newBullet.x_vel *= 2;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					newBullet.position = Vector2f(plant.position.x + 200, plant.position.y + 50);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					newBullet.position = Vector2f(plant.position.x + 300, plant.position.y + 50);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 				return;	 // to not loop zombies
 			}
@@ -1607,7 +1627,7 @@ Entity defineNormalPlant() {
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					//addBullet(newBullet);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 		}
@@ -1668,13 +1688,13 @@ Entity defineRepeaterPlant() {
 				Entity newBullet1 = defineNormalBullet();
 				newBullet1.attack = atk;
 				newBullet1.position = Vector2f(pos.x + 100, pos.y + 50);
-				bullets.push_back(newBullet1);
+				addBullet(newBullet1);
 				//newBullets.push_back(newBullet1);
 
 				Entity newBullet2 = defineNormalBullet();
 				newBullet2.attack = atk;
 				newBullet2.position = Vector2f(pos.x + 50, pos.y + 50);
-				bullets.push_back(newBullet2);
+				addBullet(newBullet2);
 				//newBullets.push_back(newBullet2);
 
 				// Commented By Omar Hadidi - Missing Attack Animation
@@ -1730,7 +1750,7 @@ Entity defineShroomPlant() {
 				Entity newBullet = defineShroomBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 				//newBullets.push_back(newBullet);
 			}
 		}
@@ -1903,7 +1923,7 @@ Entity defineIcePeaShooter() {
 				Entity newBullet = defineIceBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 				//newBullets.push_back(newBullet);
 			}
 		}
@@ -2018,7 +2038,7 @@ Entity defineMiniShroom() {
 					Entity newBullet = defineShroomBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y + 50);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					//newBullets.push_back(newBullet);
 				}
 			}
@@ -2389,7 +2409,7 @@ Entity defineSnapdragon() {
 				Entity newBullet = defineSnapDragonBoostedBullet();
 				newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
 				//newBullet.x_vel *= 2;
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 
 				p.isBoosted = false;
 				//// shoot bullets
@@ -2431,7 +2451,7 @@ Entity defineSnapdragon() {
 				newFire.position = { p.position.x + p.width, p.position.y };
 				//newFire.attack = 0; // already damaged below .. but too weak
 				//newFire.scale = 2;
-				bullets.push_back(newFire);
+				addBullet(newFire);
 				p.attackClock.restart();
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
@@ -2499,7 +2519,7 @@ Entity defineLightningReed() {
 				Entity newBullet = defineLightningBullet();
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 			}
 		}
 		};
@@ -2554,7 +2574,7 @@ Entity defineInfernoPlant() {
 					Entity newBullet = defineFireTornadoBoostedBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 10);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					p.isBoosted = false;
 					p.attackClock.restart();
 				}
@@ -2584,7 +2604,7 @@ Entity defineInfernoPlant() {
 					Entity newBullet = defineFireTornadoBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 
 			}
@@ -2637,16 +2657,16 @@ Entity definePomegranatePlant() {
 				Entity newBullet = definePomegranateBulletBoost();
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
-				bullets.push_back(newBullet);
+				if (addBullet(newBullet) != -1) {
+					bulletShot++;
+					if (bulletShot >= 10) {
+						bulletShot = 0;
+						p.afterAnimation(p);
+						p.afterAnimation = [](Entity&) {};
 
-				bulletShot++;
-				if (bulletShot >= 10) {
-					bulletShot = 0;
-					p.afterAnimation(p);
-					p.afterAnimation = [](Entity&) {};
-
-					p.AnimationForCycles = -1;
-					p.setCurrentAnimation(0);
+						p.AnimationForCycles = -1;
+						p.setCurrentAnimation(0);
+					}
 				}
 				return;
 			}
@@ -2672,7 +2692,7 @@ Entity definePomegranatePlant() {
 					Entity newBullet = definePomegranateBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 
@@ -2730,7 +2750,7 @@ Entity defineRedShooter() {
 					Entity newBullet = defineRedBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 30);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 		}
@@ -4187,7 +4207,7 @@ void updateZombotDragon(Entity& zombie) {
 		Entity newBullet = defineZombotDragonBullet();
 		newBullet.position = { zombie.position.x, zombie.position.y + 50 };
 		newBullet.x_vel = 300;
-		bullets.push_back(newBullet);
+		addBullet(newBullet);
 		// 2- Push a wave
 		// Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombotDragon;
 		currentLevel->addWave(15, 20, { normalZombie, normalZombie, normalZombie, zombieAllStar, zombieRa, zombiePharaoh, zombieProspector, zombieNewspaper, zombieRedhair }, 20, false);
@@ -5547,7 +5567,8 @@ void DrawLevelStats(RenderWindow& window) {
 
 void UpdateFallenItems(RenderWindow& window) {
 	int i = 0;
-	for (auto& item : fallenItems) {
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		FallenItem& item = fallenItems[i];
 		float time = item.clock.getElapsedTime().asSeconds();
 		if (time > 3.5f) continue;
 
