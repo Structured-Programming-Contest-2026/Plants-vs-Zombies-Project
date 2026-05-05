@@ -7043,9 +7043,9 @@ void defineDayLevels() {
 	levels[1].isUnlocked = true;
 	levels[1].plantReward = repeaterPlant;      levels[1].coinReward = 100;
 	addWave(levels[1], 2, 5, { normalZombie }, 10);
-	//addWave(levels[1], 3, 5, { normalZombie }, 10);
-	//addWave(levels[1], 4, 15, { normalZombie, zombieConehead }, 10);
-	//addWave(levels[1], 11, 20, { normalZombie, zombieConehead }, 0, true);
+	addWave(levels[1], 3, 5, { normalZombie }, 10);
+	addWave(levels[1], 4, 15, { normalZombie, zombieConehead }, 10);
+	addWave(levels[1], 11, 20, { normalZombie, zombieConehead }, 0, true);
 
 	// Level 2 Med
 	levels[2].plantReward = CHEERY_BOMB;      levels[2].coinReward = 200;
