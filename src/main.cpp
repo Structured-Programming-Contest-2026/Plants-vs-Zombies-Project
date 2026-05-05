@@ -3369,6 +3369,16 @@ void UpdateSuns(RenderWindow& window) {
 
 		window.draw(uiSprite);
 
+		if (mouseJustClicked[0] && uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+			sunsMoney += suns[i].sunValue;
+
+			cout << "You now have " << sunsMoney << endl;
+
+			suns[i].clicked = true;
+			suns[i].targeted = false; // for ra
+			uiInteracted = true;
+		}
+
 		uiSprite.setRotation(0);
 		uiSprite.setOrigin(0, 0);
 	}
@@ -5290,6 +5300,7 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 	}
 }
 void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col) {
+	if (uiInteracted) return;
 	Entity plant;
 	if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price && currentLevel->selectedPlants[selectedPlant].currentSeedCooldown <= 0) {
 		plant = currentLevel->selectedPlants[selectedPlant];
@@ -5308,25 +5319,7 @@ void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col)
 		}
 	}
 }
-void uiCollectSuns(RenderWindow& window) {
-	for (int i = 0; i < MAX_SUNS; i++) {
-		// Check all suns + Add clicked suns to money
-		Sun& sun = suns[i];
-		if (!isSunAlive(sun)) continue;
 
-		// check mouse pos in sun rect (200x200)
-		if (isClicked(sun.position - Vector2f(100, 100), { 200,200 })) {
-			sunsMoney += suns[i].sunValue;
-
-			cout << "You now have " << sunsMoney << endl;
-
-			suns[i].clicked = true;
-			suns[i].targeted = false; // for ra
-			uiInteracted = true;
-			break;
-		}
-	}
-}
 // boost ui
 void uiBoostActive(RenderWindow& window) {
 	if (isClicked(activateBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
@@ -5464,8 +5457,6 @@ void UI_DrawClick(RenderWindow& window) {
 
 void UI_Interaction(RenderWindow& window) {
 	if (!uiInteracted && mouseJustClicked[0]) {
-		// Collect Suns
-		uiCollectSuns(window);
 		// Collect booster
 		uiCollectBooster(window);
 		// Active boost
