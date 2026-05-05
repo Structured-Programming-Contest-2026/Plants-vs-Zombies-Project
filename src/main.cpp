@@ -693,97 +693,98 @@ struct Entity {
 
 	bool diedByElectrocution = false;//for death by lightning or fire
 
-	// Updates width and height whenever Animation is changed - ex: To calculate zombie position properly
-	void updateDimensions() {
-		if (currentAnimation.frames == 0) {
-			cout << "ERROR: Switching To Animation with 0 frames...";
-			return;
-		}
-
-		TEXTURE_TYPE tType = getTextureType(type);
-		int tIndex = currentAnimationIndex;
-
-		if (category == ENTITY_CATEGORY::ZOMBIE && diedByElectrocution && currentAnimationIndex == 9) {
-			tType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
-			tIndex = 0;
-		}
-
-		Texture tex = getTexture(tType, tIndex);
-		int w = ((float)tex.getSize().x / currentAnimation.frames) * scale;
-		int h = (float)tex.getSize().y * scale;
-
-		width = w, height = h;
-	}
-	void setCurrentAnimation(int idx) {
-		// You MUST change both
-		//cout << "set current animation idx to " << idx << " which has " << animations[idx].frames << " frames , by entity of type " << int(type) << endl;
-		currentAnimationIndex = idx;
-		currentAnimation = animations[currentAnimationIndex];
-		updateDimensions();
-	}
-	void setAllAnimations(int num, Animation anim) {
-		// example : all animations are the same size, time, etc .. 
-		// so zombie.setAllAnimations(2, {frames, frameTimer})
-		num_animations = num;
-		for (int i = 0; i < num; i++) {
-			animations[i] = anim;
-		}
-		updateDimensions();
-	}
-	void nextFrame() {
-		if (gamePaused) return;
-		if (isSuperFrozen) return;
-		// next frame + check animation finish
-		if (currentAnimation.clock.getElapsedTime().asSeconds() >= currentAnimation.frameTimer) {
-			currentAnimation.clock.restart();
-			int& frame = currentAnimation.currentFrame, & cycles = currentAnimation.cycles;
-			frame++;
-			if (frame >= currentAnimation.frames) {
-				cycles++;
-				if (cycles >= AnimationForCycles && AnimationForCycles != -1) {
-					setCurrentAnimation(0); // reset to default
-					AnimationForCycles = -1;
-					afterAnimation(*this);
-				}
-			}
-			frame %= currentAnimation.frames;
-		}
-	}
-	void DoAnimation(int forCycles = 1, int idx = 0) {
-		//if (currentAnimationIndex == idx) return;
-
-		// Add a log inside DoAnimation to verify it's actually switching:
-		if (type == ENTITY_TYPE::ZOMBOT_DRAGON) {
-			cout << "DoAnimation called: idx=" << idx << " currentAnimationIndex=" << currentAnimationIndex << endl;
-			if (currentAnimationIndex == idx) { cout << "SKIPPED - same index\n"; return; }
-		} else if (currentAnimationIndex == idx) return;
-
-		// forCycles = (-1)  ---> Infinite / Manual change
-		AnimationForCycles = forCycles;
-		setCurrentAnimation(idx);
-		updateDimensions();
-		cout << "Doing animation " << idx << " with currentAnimationIndex=" << currentAnimationIndex << endl;
-	}
 
 	int boostCycles = 10;
 	int boostAnimationIdx = 3;
 	//float boostScale = 1.0;
-	void boost() {	// notice that attack clock is adapted to whether you are boosted or not
-		int orgAttackTimer = attackTimer;
-		attackTimer = boostAttackTimer;
-		isBoosted = true;
-		float orgScale = scale;
-		//scale = boostScale;
-		DoAnimation(boostCycles, boostAnimationIdx); // ntimes/eachcycletakes + boolmod
-		afterAnimation = [orgAttackTimer, orgScale](Entity& p) {
-			p.attackTimer = orgAttackTimer;
-			p.isBoosted = false;
-			p.scale = orgScale;
-			};
-	}
 
 	void (*updateEntity)(Entity& entity) = nullptr; // This function should not have problems with Global variables .. but local variables (on its definition) are probably not captured
 };
+
+// Updates width and height whenever Animation is changed - ex: To calculate zombie position properly
+void updateDimensions(Entity& e) {
+	if (e.currentAnimation.frames == 0) {
+		cout << "ERROR: Switching To Animation with 0 frames...";
+		return;
+	}
+
+	TEXTURE_TYPE tType = getTextureType(e.type);
+	int tIndex = e.currentAnimationIndex;
+
+	if (e.category == ENTITY_CATEGORY::ZOMBIE && e.diedByElectrocution && e.currentAnimationIndex == 9) {
+		tType = TEXTURE_TYPE::ZOMBIE_ELECTROCUTED;
+		tIndex = 0;
+	}
+
+	Texture tex = getTexture(tType, tIndex);
+	int w = ((float)tex.getSize().x / e.currentAnimation.frames) * e.scale;
+	int h = (float)tex.getSize().y * e.scale;
+
+	e.width = w, e.height = h;
+}
+void setCurrentAnimation(Entity& e, int idx) {
+	// You MUST change both
+	//cout << "set current animation idx to " << idx << " which has " << animations[idx].frames << " frames , by entity of type " << int(type) << endl;
+	e.currentAnimationIndex = idx;
+	e.currentAnimation = e.animations[e.currentAnimationIndex];
+	updateDimensions(e);
+}
+void setAllAnimations(Entity& e, int num, Animation anim) {
+	// example : all animations are the same size, time, etc .. 
+	// so zombie.setAllAnimations(2, {frames, frameTimer})
+	e.num_animations = num;
+	for (int i = 0; i < num; i++) {
+		e.animations[i] = anim;
+	}
+	updateDimensions(e);
+}
+void nextFrame(Entity& e) {
+	if (gamePaused) return;
+	if (e.isSuperFrozen) return;
+	// next frame + check animation finish
+	if (e.currentAnimation.clock.getElapsedTime().asSeconds() >= e.currentAnimation.frameTimer) {
+		e.currentAnimation.clock.restart();
+		int& frame = e.currentAnimation.currentFrame, & cycles = e.currentAnimation.cycles;
+		frame++;
+		if (frame >= e.currentAnimation.frames) {
+			cycles++;
+			if (cycles >= e.AnimationForCycles && e.AnimationForCycles != -1) {
+				setCurrentAnimation(e, 0); // reset to default
+				e.AnimationForCycles = -1;
+				e.afterAnimation(e);
+			}
+		}
+		frame %= e.currentAnimation.frames;
+	}
+}
+void DoAnimation(Entity& e, int forCycles = 1, int idx = 0) {
+	//if (currentAnimationIndex == idx) return;
+
+	// Add a log inside DoAnimation to verify it's actually switching:
+	if (e.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
+		cout << "DoAnimation called: idx=" << idx << " currentAnimationIndex=" << e.currentAnimationIndex << endl;
+		if (e.currentAnimationIndex == idx) { cout << "SKIPPED - same index\n"; return; }
+	} else if (e.currentAnimationIndex == idx) return;
+
+	// forCycles = (-1)  ---> Infinite / Manual change
+	e.AnimationForCycles = forCycles;
+	setCurrentAnimation(e, idx);
+	updateDimensions(e);
+	cout << "Doing animation " << idx << " with currentAnimationIndex=" << e.currentAnimationIndex << endl;
+}
+void boost(Entity& e) {	// notice that attack clock is adapted to whether you are boosted or not
+	int orgAttackTimer = e.attackTimer;
+	e.attackTimer = e.boostAttackTimer;
+	e.isBoosted = true;
+	float orgScale = e.scale;
+	//scale = boostScale;
+	DoAnimation(e, e.boostCycles, e.boostAnimationIdx); // ntimes/eachcycletakes + boolmod
+	e.afterAnimation = [orgAttackTimer, orgScale](Entity& p) {
+		p.attackTimer = orgAttackTimer;
+		p.isBoosted = false;
+		p.scale = orgScale;
+		};
+}
 
 struct FallenItem {
 	TEXTURE_TYPE texture;
@@ -1071,7 +1072,7 @@ struct Booster {
 			return;
 		}
 		curBoosterCnt--;
-		plant.boost();
+		boost(plant);
 	}
 };
 Booster booster;
@@ -1419,7 +1420,7 @@ Entity defineSnapDragonBullet() {
 	fire.animations[0].frames = 1;
 	//fire.animations[0].frames = 20;
 	fire.animations[0].frameTimer = 10.f;
-	fire.setCurrentAnimation(0);
+	setCurrentAnimation(fire, 0);
 
 	return fire;
 }
@@ -1438,7 +1439,7 @@ Entity defineSnapDragonBoostedBullet() {
 	dragon.num_animations = 1;
 	dragon.animations[0].frames = 14;
 	dragon.animations[0].frameTimer = 0.1f;
-	dragon.setCurrentAnimation(0);
+	setCurrentAnimation(dragon, 0);
 
 	return dragon;
 }
@@ -1456,7 +1457,7 @@ Entity defineZombotDragonBullet() {
 	dragonBullet.num_animations = 1;
 	dragonBullet.animations[0].frames = 13;
 	dragonBullet.animations[0].frameTimer = 0.1f;
-	dragonBullet.setCurrentAnimation(0);
+	setCurrentAnimation(dragonBullet, 0);
 
 	return dragonBullet;
 }
@@ -1476,7 +1477,7 @@ Entity defineFireTornadoBullet() {
 	tornado.num_animations = 1;
 	tornado.animations[0].frames = 1;
 	tornado.animations[0].frameTimer = 0.05f;
-	tornado.setCurrentAnimation(0);
+	setCurrentAnimation(tornado, 0);
 
 	return tornado;
 }
@@ -1495,7 +1496,7 @@ Entity defineFireTornadoBoostedBullet() {
 	tornado.num_animations = 1;
 	tornado.animations[0].frames = 1;
 	tornado.animations[0].frameTimer = 0.05f;
-	tornado.setCurrentAnimation(0);
+	setCurrentAnimation(tornado, 0);
 
 	return tornado;
 }
@@ -1580,7 +1581,7 @@ Entity defineNormalPlant() {
 	// Boost animation
 	plant.animations[3].frameTimer = 0.05f;
 	plant.animations[3].frames = 13;
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_NORMAL] = plant;
 
@@ -1625,7 +1626,7 @@ Entity defineNormalPlant() {
 			}
 			// shoot bullet
 			if (zombieInLane) {
-				plant.DoAnimation(1, 2);
+				DoAnimation(plant, 1, 2);
 
 				if (plant.currentAnimation.currentFrame == plant.currentAnimation.frames / 2) {
 					plant.attackClock.restart();
@@ -1663,7 +1664,7 @@ Entity defineRepeaterPlant() {
 	plant.animations[0].frameTimer = 0.1f;
 	plant.animations[0].frames = 14;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_REPEATER] = plant;
 
@@ -1706,7 +1707,7 @@ Entity defineRepeaterPlant() {
 
 				// Commented By Omar Hadidi - Missing Attack Animation
 				// plant attack animation
-				//plant.DoAnimation(1, 2);
+				//DoAnimation(plant, 1, 2);
 			}
 
 		}
@@ -1730,7 +1731,7 @@ Entity defineShroomPlant() {
 	shroom.num_animations = 2;
 	shroom.animations[0].frameTimer = 0.1f;
 	shroom.animations[0].frames = 30;
-	shroom.setCurrentAnimation(0);
+	setCurrentAnimation(shroom, 0);
 
 	plants[ENTITY_TYPE::PLANT_SHROOM] = shroom;
 
@@ -1787,7 +1788,7 @@ Entity defineSunflower() {
 	// Produce sun animation
 	plant.animations[2].frameTimer = 0.018f;
 	plant.animations[2].frames = 60;
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_SUNFLOWER] = plant;
 
@@ -1796,7 +1797,7 @@ Entity defineSunflower() {
 		// Sun Flower
 		if (plant.attackClock.getElapsedTime().asSeconds() >= 10.0f) {
 			plant.attackClock.restart();
-			plant.DoAnimation(1, 2); // produce sun animation
+			DoAnimation(plant, 1, 2); // produce sun animation
 
 			Sun newSun{};
 			newSun.position = plant.position;
@@ -1840,7 +1841,7 @@ Entity defineSunShroom() {
 	SunShroom.animations[2] = a; // PRODUCE SMALL
 	SunShroom.animations[3] = a; // PRODUCE BIG
 
-	SunShroom.setCurrentAnimation(0);
+	setCurrentAnimation(SunShroom, 0);
 
 	plants[ENTITY_TYPE::PLANT_SUNSHROOM] = SunShroom;
 
@@ -1849,7 +1850,7 @@ Entity defineSunShroom() {
 
 		if (!plant.isFullyGrown && plant.growthTimer >= plant.growthDuration) {
 			plant.isFullyGrown = true;
-			plant.setCurrentAnimation(1);
+			setCurrentAnimation(plant, 1);
 			cout << "SunShroom has grown!" << endl;
 		}
 
@@ -1858,15 +1859,15 @@ Entity defineSunShroom() {
 			plant.attackClock.restart();
 
 			/*if (plant.isFullyGrown) {
-				plant.DoAnimation(1, 3);
+				DoAnimation(plant, 1, 3);
 				plant.afterAnimation = [&plant](Entity& entity) {
-					entity.setCurrentAnimation(1);
+					setCurrentAnimation(entity, 1);
 					};
 			}
 			else {
-				plant.DoAnimation(1, 2);
+				DoAnimation(plant, 1, 2);
 				plant.afterAnimation = [&plant](Entity& entity) {
-					entity.setCurrentAnimation(0);
+					setCurrentAnimation(entity, 0);
 					};
 			}*/ // STILL WOKRING ON ANIMATION
 
@@ -1906,7 +1907,7 @@ Entity defineIcePeaShooter() {
 	a.frameTimer = 0.08f;
 	icePea.animations[0] = a;
 
-	icePea.setCurrentAnimation(0);
+	setCurrentAnimation(icePea, 0);
 
 	plants[ENTITY_TYPE::PLANT_ICE_PEASHOOTER] = icePea;
 
@@ -1961,7 +1962,7 @@ Entity defineCherryBomb() {
 	cherry.animations[1].frames = 7;
 	cherry.animations[1].frameTimer = 0.08f;
 
-	cherry.setCurrentAnimation(0);
+	setCurrentAnimation(cherry, 0);
 	cherry.attackTimer = 1.2f; // Time before explosion
 
 	plants[ENTITY_TYPE::PLANT_CHEERY_BOMB] = cherry;
@@ -1969,7 +1970,7 @@ Entity defineCherryBomb() {
 	cherry.updateEntity = [](Entity& plant) {
 
 		if (plant.attackClock.getElapsedTime().asSeconds() >= 0.5f && plant.currentAnimationIndex != 1) {
-			plant.DoAnimation(1, 1);
+			DoAnimation(plant, 1, 1);
 
 			plant.afterAnimation = [&](Entity& p) {
 				float explosionRange = 350.0f;
@@ -2020,7 +2021,7 @@ Entity defineMiniShroom() {
 	miniShroom.animations[1].frames = 10;
 	miniShroom.animations[1].frameTimer = 0.15f;
 
-	miniShroom.setCurrentAnimation(0);
+	setCurrentAnimation(miniShroom, 0);
 
 	plants[ENTITY_TYPE::PLANT_MINISHROOM] = miniShroom;
 	miniShroom.updateEntity = [](Entity& plant) {
@@ -2041,7 +2042,7 @@ Entity defineMiniShroom() {
 			}
 
 			if (zombieInFront) {
-				plant.DoAnimation(1, 1);
+				DoAnimation(plant, 1, 1);
 
 				if (plant.currentAnimation.currentFrame == 4) {
 					plant.attackClock.restart();
@@ -2083,7 +2084,7 @@ Entity defineWallnut() {
 	wallnut.animations[1] = anim; //half
 	wallnut.animations[2] = anim; //Dying
 
-	wallnut.setCurrentAnimation(0);
+	setCurrentAnimation(wallnut, 0);
 
 
 	plants[ENTITY_TYPE::PLANT_WALLNUT] = wallnut;
@@ -2100,7 +2101,7 @@ Entity defineWallnut() {
 
 		//change state
 		if (plant.currentAnimationIndex != CurrentState) {
-			plant.setCurrentAnimation(CurrentState);
+			setCurrentAnimation(plant, CurrentState);
 			//cout << "Wallnut state changed to: " << CurrentState << " (Health: " << plant.health << ")\n";
 		}
 		};
@@ -2137,7 +2138,7 @@ Entity defineChomperPlant() {
 	anim.frameTimer = 0.15f;
 	Chomper.animations[2] = anim;
 
-	Chomper.setCurrentAnimation(0);
+	setCurrentAnimation(Chomper, 0);
 
 	plants[ENTITY_TYPE::PLANT_CHOMPER] = Chomper;
 
@@ -2162,11 +2163,11 @@ Entity defineChomperPlant() {
 					plant.targetId = zombie.id;
 					zombie.x_vel = 0;
 
-					plant.DoAnimation(1, 1);
+					DoAnimation(plant, 1, 1);
 					plant.afterAnimation = [](Entity& p) {
-						p.DoAnimation(25, 2);
+						DoAnimation(p, 25, 2);
 						p.afterAnimation = [](Entity& e) {
-							e.DoAnimation(-1, 0);
+							DoAnimation(e, -1, 0);
 							e.afterAnimation = [](Entity&) {};
 							};
 						};
@@ -2228,14 +2229,14 @@ Entity definePOTATO_MINE() {
 	mine.animations[2].frameTimer = 0.001f;
 
 
-	mine.setCurrentAnimation(0);
+	setCurrentAnimation(mine, 0);
 	plants[ENTITY_TYPE::PLANT_POTATO_MINE] = mine;
 
 	mine.updateEntity = [](Entity& plant) {
 		if (plant.type == ENTITY_TYPE::PLANT_POTATO_MINE && plant.currentAnimationIndex == 0) {
 			// ready to exp
 			if (plant.attackClock.getElapsedTime().asSeconds() >= 1.0f) {
-				plant.setCurrentAnimation(1);
+				setCurrentAnimation(plant, 1);
 			}
 			return; //cant exp under ground
 		}
@@ -2251,7 +2252,7 @@ Entity definePOTATO_MINE() {
 
 			if (diffY < 60.0f && diffX < triggerRange) {
 
-				plant.DoAnimation(1, 2);
+				DoAnimation(plant, 1, 2);
 
 
 				plant.afterAnimation = [&](Entity& p) {
@@ -2297,7 +2298,7 @@ Entity defineDOOM_SHROOM() {
 	shroom.animations[1].frames = 14;
 	shroom.animations[1].frameTimer = 0.01f;
 
-	shroom.setCurrentAnimation(0);
+	setCurrentAnimation(shroom, 0);
 
 	plants[ENTITY_TYPE::PLANT_DOOM_MINE] = shroom;
 	// update
@@ -2310,7 +2311,7 @@ Entity defineDOOM_SHROOM() {
 			bool inFront = zombie.position.x > plant.position.x &&
 				zombie.position.x < plant.position.x + plant.width * 0.5;
 			if (sameRow == true && inFront == true) {
-				plant.DoAnimation(1, 1);
+				DoAnimation(plant, 1, 1);
 				plant.afterAnimation = [&zombie](Entity& p) {
 					for (Entity& z : entities) {
 						float distY = abs(z.position.y - p.position.y);
@@ -2351,7 +2352,7 @@ Entity defineIceShroom() {
 	plant.animations[0].frames = 11;
 	plant.animations[0].frameTimer = 0.1f;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plant.updateEntity = [](Entity& p) {
 		if (p.attackClock.getElapsedTime().asSeconds() >= 1.5f) {
@@ -2401,7 +2402,7 @@ Entity defineSnapdragon() {
 	plant.animations[3].frames = 23; // Boost
 	plant.animations[3].frameTimer = 0.1f;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_SNAPDRAGON] = plant;
 
@@ -2456,7 +2457,7 @@ Entity defineSnapdragon() {
 			}
 
 			if (zombieInRange) {
-				p.DoAnimation(1, 1);
+				DoAnimation(p, 1, 1);
 				Entity newFire = defineSnapDragonBullet();
 				newFire.position = { p.position.x + p.width, p.position.y };
 				//newFire.attack = 0; // already damaged below .. but too weak
@@ -2504,7 +2505,7 @@ Entity defineLightningReed() {
 	plant.animations[0].frames = 18;
 	plant.animations[0].frameTimer = 0.08f;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_LIGHTNING_REED] = plant;
 
@@ -2565,7 +2566,7 @@ Entity defineInfernoPlant() {
 	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_INFERNO] = plant;
 
@@ -2576,7 +2577,7 @@ Entity defineInfernoPlant() {
 			// Boosted
 			if (p.isBoosted) {
 				p.attack = 60;
-				p.DoAnimation(1, 3);
+				DoAnimation(p, 1, 3);
 				if (p.currentAnimation.currentFrame == 22) {
 
 					p.attackClock.restart();
@@ -2606,7 +2607,7 @@ Entity defineInfernoPlant() {
 
 			if (zombieInLane) {
 
-				p.DoAnimation(1, 2);
+				DoAnimation(p, 1, 2);
 				if (p.currentAnimation.currentFrame == 22) {
 
 					p.attackClock.restart();
@@ -2651,7 +2652,7 @@ Entity definePomegranatePlant() {
 	plant.animations[3].frames = 39;
 	plant.animations[3].frameTimer = 0.03;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 
 	plants[ENTITY_TYPE::PLANT_POMEGRANATE] = plant;
 
@@ -2675,7 +2676,7 @@ Entity definePomegranatePlant() {
 						p.afterAnimation = [](Entity&) {};
 
 						p.AnimationForCycles = -1;
-						p.setCurrentAnimation(0);
+						setCurrentAnimation(p, 0);
 					}
 				}
 				return;
@@ -2695,7 +2696,7 @@ Entity definePomegranatePlant() {
 			}
 
 			if (zombieInLane) {
-				p.DoAnimation(1, 2);
+				DoAnimation(p, 1, 2);
 				if (p.currentAnimation.currentFrame == 22) {
 					p.attackClock.restart();
 
@@ -2733,7 +2734,7 @@ Entity defineRedShooter() {
 	plant.animations[1].frames = 15;
 	plant.animations[1].frameTimer = 0.15f;
 
-	plant.setCurrentAnimation(0);
+	setCurrentAnimation(plant, 0);
 	plants[ENTITY_TYPE::PLANT_RED_SHOOTER] = plant;
 
 
@@ -2753,7 +2754,7 @@ Entity defineRedShooter() {
 			}
 
 			if (zombieInLane) {
-				p.DoAnimation(1, 1);
+				DoAnimation(p, 1, 1);
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
 					p.attackClock.restart();
@@ -2788,7 +2789,7 @@ Entity defineNormalZombie() {
 	anim.frames = 10;
 	anim.frameTimer = 0.1f;
 	zombie.animations[1] = anim;
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 
@@ -2815,7 +2816,7 @@ Entity defineConeheadZombie() {
 	anim.frames = 22;
 	anim.frameTimer = 0.07f;
 	zombie.animations[2] = anim;
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 Entity defineJapaneseZombie() {
@@ -2830,7 +2831,7 @@ Entity defineJapaneseZombie() {
 	zombie.num_animations = 1;
 	zombie.animations[0].frames = 20;
 	zombie.animations[0].frameTimer = .01f;
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -2857,7 +2858,7 @@ Entity defineBigZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[1] = anim; // dying animation
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -2884,7 +2885,7 @@ Entity defineTorchlightZombie() {
 	anim.frames = 8;
 	zombie.animations[1] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 Entity defineRaZombie() {
@@ -2915,7 +2916,7 @@ Entity defineRaZombie() {
 	anim.frameTimer = 0.08f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -2946,7 +2947,7 @@ Entity defineMummyZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -2978,7 +2979,7 @@ Entity defineNewspaperZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3014,7 +3015,7 @@ Entity defineAllStarZombie() {
 	anim.frameTimer = 0.07f;
 	zombie.animations[3] = anim;
 
-	zombie.setCurrentAnimation(2);
+	setCurrentAnimation(zombie, 2);
 
 	return zombie;
 }
@@ -3046,7 +3047,7 @@ Entity definePharaohZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3073,7 +3074,7 @@ Entity defineShieldGuardZombie() {
 	anim.frameTimer = 0.08f;
 	zombie.animations[1] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3105,7 +3106,7 @@ Entity definePianistZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3142,7 +3143,7 @@ Entity defineChickenWranglerZombie() {
 	anim.frameTimer = 0.07f;
 	zombie.animations[3] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3170,7 +3171,7 @@ Entity defineChickenZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[1] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3201,7 +3202,7 @@ Entity defineProspectorZombie() {
 	anim.frameTimer = 0.05f;
 	zombie.animations[3] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 
@@ -3227,7 +3228,7 @@ Entity defineRedhairZombie() {
 	anim.frameTimer = 0.07f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 
@@ -3253,7 +3254,7 @@ Entity defineCowboyZombie() {
 	anim.frameTimer = 0.07f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 
@@ -3302,7 +3303,7 @@ Entity defineZombotDragon() {
 	anim.frameTimer = 0.1f;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	return zombie;
 }
@@ -3415,15 +3416,15 @@ Entity definePogoZombie() {
 	anim.frameTimer = 0.07f;
 	zombie.animations[5] = anim;
 
-	zombie.setCurrentAnimation(3);
+	setCurrentAnimation(zombie, 3);
 
 	zombie.updateEntity = [](Entity& z) {
 		if (z.health <= 150 && z.health > 0 && z.currentAnimationIndex == 3) {
 			z.x_vel = 0.0f;
-			z.DoAnimation(1, 4);
+			DoAnimation(z, 1, 4);
 
 			z.afterAnimation = [](Entity& entity) {
-				entity.setCurrentAnimation(0);
+				setCurrentAnimation(entity, 0);
 				entity.x_vel = 70;
 				};
 		}
@@ -3455,14 +3456,14 @@ Entity defineRomanConehead() {
 	zombie.animations[2] = anim;
 	zombie.animations[3] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	zombie.updateEntity = [](Entity& z) {
 		if (z.health <= 100 && z.health > 0 && !z.shellDestroyed) {
 			z.shellDestroyed = true;
-			z.DoAnimation(1, 3);
+			DoAnimation(z, 1, 3);
 			z.afterAnimation = [](Entity& entity) {
-				entity.setCurrentAnimation(2);
+				setCurrentAnimation(entity, 2);
 				};
 		}
 		};
@@ -3529,11 +3530,11 @@ Entity defineRomanOdessa() {
 	zombie.animations[2] = anim;
 	zombie.animations[3] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 
 	zombie.updateEntity = [](Entity& z) {
 		if (z.health <= 200 && z.health > 0 && z.currentAnimationIndex == 0) {
-			z.setCurrentAnimation(2);
+			setCurrentAnimation(z, 2);
 		}
 		};
 	return zombie;
@@ -3558,7 +3559,7 @@ Entity defineRomanShield() {
 	zombie.animations[0] = anim;
 	zombie.animations[1] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 Entity defineRomanNormal() {
@@ -3580,7 +3581,7 @@ Entity defineRomanNormal() {
 	zombie.animations[0] = anim;
 	zombie.animations[1] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	return zombie;
 }
 
@@ -3606,10 +3607,10 @@ Entity defineRomanGargantuar() {
 	zombie.animations[1] = anim;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	zombie.updateEntity = [](Entity& z) {
 		if (z.health <= 0 && z.currentAnimationIndex == 9) {
-			z.setCurrentAnimation(1);
+			setCurrentAnimation(z, 1);
 			z.x_vel = 0;
 		}
 		};
@@ -3638,10 +3639,10 @@ Entity defineLostCityGargantuar() {
 	zombie.animations[1] = anim;
 	zombie.animations[2] = anim;
 
-	zombie.setCurrentAnimation(0);
+	setCurrentAnimation(zombie, 0);
 	zombie.updateEntity = [](Entity& z) {
 		if (z.health <= 0 && z.currentAnimationIndex == 9) {
-			z.setCurrentAnimation(1);
+			setCurrentAnimation(z, 1);
 			z.x_vel = 0;
 		}
 		};
@@ -3677,7 +3678,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		if (plant.category != ENTITY_CATEGORY::PLANT) continue;
 
 		// Animation
-		if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) plant.nextFrame(); // next frame
+		if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) nextFrame(plant); // next frame
 		plantSprite.setTextureRect(getFrameRect(plant)); // crop textures
 
 		// Update plant - plant attacking system
@@ -3764,22 +3765,22 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				electroAnim.frames = 18;
 				electroAnim.frameTimer = 0.08f;
 				zombie.animations[9] = electroAnim;
-				zombie.DoAnimation(1, 9);
+				DoAnimation(zombie, 1, 9);
 			} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 				if (zombie.currentAnimationIndex == 3) {
-					zombie.DoAnimation(1, 5);
+					DoAnimation(zombie, 1, 5);
 				} else {
-					zombie.DoAnimation(1, 2);
+					DoAnimation(zombie, 1, 2);
 				}
 			} else if (zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON) {
 				// Zombot Dragon Death
 				cout << "---------- 1 You killed Zombot\n";	// maybe message here to kill the boss
 				playZombotDragonDeath();
 				float s = zombie.scale;
-				zombie.DoAnimation(1, 1);
+				DoAnimation(zombie, 1, 1);
 				zombie.afterAnimation = [s](Entity& zombie) {
 					cout << "---------- 2 You killed Zombot\n";	// maybe message here to kill the boss
-					zombie.DoAnimation(1, 4);
+					DoAnimation(zombie, 1, 4);
 					zombie.afterAnimation = [s](Entity& zombie) {
 						cout << "---------- 3 You killed Zombot\n";	// maybe message here to kill the boss
 						zombie.scale = s;
@@ -3789,7 +3790,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 						};
 					};
 			} else {
-				zombie.DoAnimation(1, 1);
+				DoAnimation(zombie, 1, 1);
 
 				if (zombie.type == ENTITY_TYPE::ZOMBIE_NORMAL
 					|| zombie.type == ENTITY_TYPE::ZOMBIE_CONEHEAD
@@ -3898,7 +3899,7 @@ void updateZombieRa(Entity& zombie) {
 			zombie.isUsingAbility = true;
 			zombie.abilityClock.restart();
 			zombie.x_vel = 0;
-			zombie.DoAnimation(-1, 2);
+			DoAnimation(zombie, -1, 2);
 			zombie.scale = 1.5f;
 
 			for (int i = 0; i < MAX_SUNS; i++) {
@@ -3951,7 +3952,7 @@ void updateZombieRa(Entity& zombie) {
 			}
 			zombie.isUsingAbility = false;
 			zombie.x_vel = 110.0f;
-			zombie.setCurrentAnimation(0);
+			setCurrentAnimation(zombie, 0);
 			zombie.scale = 1.0f;
 			zombie.abilityClock.restart();
 		}
@@ -3975,10 +3976,10 @@ void updateZombieAllStars(Entity& zombie) {
 		if (plantAhead) {
 			zombie.isTackling = true;
 			zombie.x_vel = 0;
-			zombie.DoAnimation(1, 3);
+			DoAnimation(zombie, 1, 3);
 			zombie.afterAnimation = [](Entity& entity) {
 				entity.x_vel = 70;
-				entity.setCurrentAnimation(0);
+				setCurrentAnimation(entity, 0);
 				};
 		}
 	}
@@ -4006,7 +4007,7 @@ void updateZombieAllStars(Entity& zombie) {
 }
 void updateNewspaperZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		zombie.setCurrentAnimation(2);
+		setCurrentAnimation(zombie, 2);
 		SpawnFallingItem(TEXTURE_TYPE::ITEM_NEWSPAPER, zombie.position + Vector2f(100, 0));
 		zombie.x_vel = 170.0f;
 		zombie.attackTimer = 0.4f;
@@ -4014,7 +4015,7 @@ void updateNewspaperZombie(Entity& zombie) {
 }
 void updateConeheadZombie(Entity& zombie) {
 	if (zombie.health <= 100 && zombie.currentAnimationIndex == 0) {
-		zombie.setCurrentAnimation(2);
+		setCurrentAnimation(zombie, 2);
 		SpawnFallingItem(TEXTURE_TYPE::ITEM_CONE, zombie.position + Vector2f(100, 0));
 	}
 }
@@ -4023,7 +4024,7 @@ void updatePharaohZombie(Entity& zombie) {
 	if (zombie.health <= 300 && !zombie.shellDestroyed) {
 		zombie.shellDestroyed = true;
 		if (zombie.currentAnimationIndex != 2) {
-			zombie.setCurrentAnimation(2);
+			setCurrentAnimation(zombie, 2);
 			SpawnFallingItem(TEXTURE_TYPE::ITEM_PHAROAH_CASKET, zombie.position + Vector2f(100, 0));
 		}
 		zombie.x_vel = 70;
@@ -4040,7 +4041,7 @@ void updatePianistZombie(Entity& zombie) {
 
 	if (zombie.health <= 250 && zombie.currentAnimationIndex != 2) {
 		zombie.scale = 1.0f;
-		zombie.setCurrentAnimation(2);
+		setCurrentAnimation(zombie, 2);
 		SpawnFallingItem(TEXTURE_TYPE::ITEM_JAR, zombie.position + Vector2f(50, -25));
 	}
 
@@ -4071,7 +4072,7 @@ void updatePianistZombie(Entity& zombie) {
 		if (isEating || !nearAnyPianist) {
 
 			if (e.currentAnimationIndex == 3) {
-				e.setCurrentAnimation(0);
+				setCurrentAnimation(e, 0);
 				e.x_vel = 70;
 			}
 
@@ -4079,7 +4080,7 @@ void updatePianistZombie(Entity& zombie) {
 		}
 
 		if (e.currentAnimationIndex != 3 && e.currentAnimationIndex != 1) {
-			e.setCurrentAnimation(3);
+			setCurrentAnimation(e, 3);
 			e.x_vel = 0.0f;
 			e.storedSunValue = e.gridRow; // storedsunvalue as a random int variable to use from entity struct and used as target row
 			e.abilityClock.restart();
@@ -4115,7 +4116,7 @@ void updatePianistZombie(Entity& zombie) {
 				continue;
 
 			if (e.currentAnimationIndex == 3) {
-				e.setCurrentAnimation(0);
+				setCurrentAnimation(e, 0);
 				e.x_vel = 70;
 			}
 		}
@@ -4124,7 +4125,7 @@ void updatePianistZombie(Entity& zombie) {
 
 void updateChickenWranglerZombie(Entity& zombie) {
 	if (zombie.health <= 150 && zombie.currentAnimationIndex == 0) {
-		zombie.setCurrentAnimation(3);
+		setCurrentAnimation(zombie, 3);
 		currentLevel->addWave(10, 5, { zombieChicken });
 	}
 }
@@ -4206,7 +4207,7 @@ void updateZombotDragon(Entity& zombie) {
 	// Attack
 	if (!zombie.isDead && zombie.health > 0 && zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 		float s = zombie.scale;
-		zombie.DoAnimation(1, 2);
+		DoAnimation(zombie, 1, 2);
 		zombie.afterAnimation = [](Entity& z) {
 			cout << "------- after zombot dragon attack\n";
 			};
@@ -4239,17 +4240,17 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) && zombie.currentAnimationIndex == 0) {
-			zombie.setCurrentAnimation(2);
+			setCurrentAnimation(zombie, 2);
 		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
 			if (zombie.currentAnimationIndex == 0) {
-				zombie.setCurrentAnimation(2);
+				setCurrentAnimation(zombie, 2);
 			}
 		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3) {
-			zombie.setCurrentAnimation(2);
+			setCurrentAnimation(zombie, 2);
 		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO && zombie.currentAnimationIndex == 0) {
-			zombie.setCurrentAnimation(1);
+			setCurrentAnimation(zombie, 1);
 		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
-			zombie.setCurrentAnimation(3);
+			setCurrentAnimation(zombie, 3);
 		} else if (zombie.currentAnimationIndex == 0) {
 			bool isRomanWithHelmet = (
 				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD ||
@@ -4259,7 +4260,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 				);
 
 			if (zombie.num_animations > 3 && !isRomanWithHelmet) {
-				zombie.setCurrentAnimation(3);
+				setCurrentAnimation(zombie, 3);
 			}
 		}
 
@@ -4279,19 +4280,19 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA) {
 						if (zombie.health <= 200)
-							zombie.setCurrentAnimation(2);
+							setCurrentAnimation(zombie, 2);
 						else
-							zombie.setCurrentAnimation(0);
+							setCurrentAnimation(zombie, 0);
 					} else if
 						(zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
-						zombie.setCurrentAnimation(0);
+						setCurrentAnimation(zombie, 0);
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_COWBOY) {
-						zombie.setCurrentAnimation(0);
+						setCurrentAnimation(zombie, 0);
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_GARGANTUAR || zombie.type == ENTITY_TYPE::ZOMBIE_LOSTCITY_GARGANTUAR) {
 						if (zombie.currentAnimationIndex == 2) {
-							zombie.setCurrentAnimation(0);
+							setCurrentAnimation(zombie, 0);
 						}
 					}
 
@@ -4300,10 +4301,10 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD) {
 						if (zombie.shellDestroyed)
-							zombie.setCurrentAnimation(2);
-						else zombie.setCurrentAnimation(0);
+							setCurrentAnimation(zombie, 2);
+						else setCurrentAnimation(zombie, 0);
 					} else {
-						zombie.setCurrentAnimation(0);
+						setCurrentAnimation(zombie, 0);
 					}
 				}
 				plant.category = ENTITY_CATEGORY::NONE;
@@ -4333,7 +4334,7 @@ void DrawZombies(RenderWindow& window) {
 		if (disappearedDead) continue;
 
 		// zombie Animation
-		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) zombie.nextFrame(); // next frame
+		if ((!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer)) || zombie.enteredHome) nextFrame(zombie); // next frame
 		IntRect frameRect = getFrameRect(zombie);
 		zombieSprite.setTextureRect(frameRect); // crop texture
 
@@ -4580,7 +4581,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 			if (bullet.num_animations > 0 && bullet.animations[bullet.currentAnimationIndex].frames > 0) {
 				// Animation
 				if (!isGameOver && (!isGameWon || currentLevel->winClock.getElapsedTime().asSeconds() < wincooldowntimer))
-					bullet.nextFrame(); // next frame
+					nextFrame(bullet); // next frame
 				bulletSprite.setTextureRect(getFrameRect(bullet)); // crop textures
 			} else {
 				bulletSprite.setTextureRect(IntRect{ 0, 0, (int)bulletTex.getSize().x, (int)bulletTex.getSize().y });
