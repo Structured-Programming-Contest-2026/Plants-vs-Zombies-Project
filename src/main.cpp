@@ -585,6 +585,9 @@ struct Animation {
 	float frameTimer = 1.0f;
 	int currentFrame = 0;
 	int cycles = 0;
+	float animScale = 1.0f;
+	float offsetX = 0.0f;
+	float offsetY = 0.0f;
 	Clock clock;
 };
 
@@ -718,10 +721,24 @@ void updateDimensions(Entity& e) {
 	}
 
 	Texture tex = getTexture(tType, tIndex);
+	float finalScale = e.scale * e.currentAnimation.animScale;
+
 	int w = ((float)tex.getSize().x / e.currentAnimation.frames) * e.scale;
 	int h = (float)tex.getSize().y * e.scale;
 
-	e.width = w, e.height = h;
+	// 1. احفظ الأبعاد القديمة قبل ما نعدلها
+	int oldWidth = e.width;
+	int oldHeight = e.height;
+
+	e.width = w;
+	e.height = h;
+
+	// 2. اعمل إزاحة للـ Position عشان النبتة تفضل ثابتة مكانها في الخلية
+	// بنتأكد الأول إن الكيان ده ليه مكان فعلي على الـ Grid (عشان مش كل الـ Entities بنحتاج نعدلها)
+	if (oldWidth > 0 && oldHeight > 0 && e.gridRow != -1 && e.gridCol != -1) {
+		e.position.x += (oldWidth - e.width) / 2.0f; // الحفاظ على التمركز في نص الخلية أفقياً
+		e.position.y += (oldHeight - e.height);      // الحفاظ على ثبات قاعدة النبتة على الأرض رأسياً
+	}
 }
 void setCurrentAnimation(Entity& e, int idx) {
 	// You MUST change both
@@ -1445,7 +1462,6 @@ Entity defineSnapDragonBoostedBullet() {
 
 	return dragon;
 }
-
 Entity defineZombotDragonBullet() {
 	textures[TEXTURE_TYPE::ZombotDragonBullet][Default_Texture_Index].loadFromFile("assets/zombot-dragon-bullet.png");
 
@@ -1463,7 +1479,6 @@ Entity defineZombotDragonBullet() {
 
 	return dragonBullet;
 }
-
 Entity defineFireTornadoBullet() {
 	Texture tex;
 	tex.loadFromFile("assets/FireTornado.png");
@@ -1474,16 +1489,18 @@ Entity defineFireTornadoBullet() {
 	tornado.type = ENTITY_TYPE::FireTornadoBullet;
 	tornado.attack = 1;
 	tornado.x_vel = -250.0f;
-	tornado.scale = 0.85f;
+	//tornado.scale = 0.85f;
 
 	tornado.num_animations = 1;
-	tornado.animations[0].frames = 1;
-	tornado.animations[0].frameTimer = 0.05f;
+	tornado.animations[0].frames = 12;
+	tornado.animations[0].frameTimer = 0.15f;
+	tornado.animations[0].animScale = 1.5f;
 	setCurrentAnimation(tornado, 0);
 
 	return tornado;
 }
-Entity defineFireTornadoBoostedBullet() {
+Entity defineFireTornadoBoostedBullet() 
+{
 	Texture tex;
 	tex.loadFromFile("assets/FireTornadoBoosted.png");
 	textures[TEXTURE_TYPE::FireTornadoBulletBoosted][Default_Texture_Index] = tex;
@@ -1496,8 +1513,10 @@ Entity defineFireTornadoBoostedBullet() {
 	tornado.scale = 1.2f;
 
 	tornado.num_animations = 1;
-	tornado.animations[0].frames = 1;
+	tornado.animations[0].frames = 7;
 	tornado.animations[0].frameTimer = 0.05f;
+	tornado.animations[0].animScale = 2.0f;
+
 	setCurrentAnimation(tornado, 0);
 
 	return tornado;
@@ -1952,17 +1971,19 @@ Entity defineCherryBomb() {
 	cherry.health = 300;
 	cherry.attack = 999;
 	cherry.price = 150;
-	cherry.scale = 20.0f;
+	cherry.scale = 1.0f;
 	cherry.seedCooldown = 5.0f;
 
 	cherry.num_animations = 2;
 
 	cherry.animations[0].frames = 11;
 	cherry.animations[0].frameTimer = 0.1f;
+	cherry.animations[0].animScale = 1.0f;
 
 
 	cherry.animations[1].frames = 7;
 	cherry.animations[1].frameTimer = 0.08f;
+	cherry.animations[1].animScale = 1.0f;
 
 	setCurrentAnimation(cherry, 0);
 	cherry.attackTimer = 1.2f; // Time before explosion
@@ -1984,7 +2005,8 @@ Entity defineCherryBomb() {
 						float diffX = abs(z.position.x - p.position.x);
 
 						// 3*3
-						if (diffY < 200.0f && diffX < explosionRange) {
+						if (diffY < 200.0f && diffX < explosionRange) 
+						{
 							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 
@@ -2552,7 +2574,7 @@ Entity defineInfernoPlant() {
 	plant.attack = 10;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
-	plant.scale = 1.0f;
+	//plant.scale = 1.0f;
 	plant.attackTimer = 6.0f;
 	plant.boostAttackTimer = 1.0f;
 
@@ -2560,12 +2582,20 @@ Entity defineInfernoPlant() {
 	// Idle
 	plant.animations[0].frames = 40;
 	plant.animations[0].frameTimer = 0.08f;
+	plant.animations[0].animScale = 1.0f;
 	// Attack
 	plant.animations[2].frames = 34;
 	plant.animations[2].frameTimer = 0.1f;
+	plant.animations[2].animScale = 1.6f;
+	plant.animations[2].offsetX = -25.0f;
+	plant.animations[2].offsetY = -90.0f;
+	
 	// Boosted
 	plant.animations[3].frames = 35;
 	plant.animations[3].frameTimer = 0.1;
+	plant.animations[3].animScale = 1.9f;
+	plant.animations[3].offsetX = -35.0f;
+	plant.animations[3].offsetY = -120.0f;
 
 	setCurrentAnimation(plant, 0);
 
@@ -2649,9 +2679,13 @@ Entity definePomegranatePlant() {
 	// Attack
 	plant.animations[2].frames = 53;
 	plant.animations[2].frameTimer = 0.03;
+	plant.animations[2].offsetX = -15.0f; // هترجعها شمال شوية
+	plant.animations[2].offsetY = 20.0f;  // هتنزلها لتحت شوية
 	// Boosted
 	plant.animations[3].frames = 39;
 	plant.animations[3].frameTimer = 0.03;
+	plant.animations[3].offsetX = -25.0f;
+	plant.animations[3].offsetY = 10.0f;
 
 	setCurrentAnimation(plant, 0);
 
@@ -3699,7 +3733,15 @@ void DrawPlantsGrid(RenderWindow& window) {
 		// Update Sprite
 		plantSprite.setPosition(plant.position);
 		plantSprite.setTexture(textures[getTextureType(plant.type)][plant.currentAnimationIndex]);
-		plantSprite.setScale(Vector2f(plant.scale, plant.scale));
+
+		float finalScale = plant.scale * plant.currentAnimation.animScale;
+		plantSprite.setScale(Vector2f(finalScale, finalScale));
+
+		float drawX = plant.position.x + plant.currentAnimation.offsetX;
+		float drawY = plant.position.y + plant.currentAnimation.offsetY;
+
+		plantSprite.setPosition(Vector2f(drawX, drawY));
+
 		//hover for the plants
 		if (isRelocating && selectedPlantIndex != -1 &&
 			plant.gridRow == entities[selectedPlantIndex].gridRow &&
@@ -3715,7 +3757,7 @@ void DrawPlantsGrid(RenderWindow& window) {
 		}
 		window.draw(plantSprite);
 		plantSprite.setColor(Color::White);//normal highlight
-		plantSprite.setScale(Vector2f(1.0f, 1.0f));//Normal Scale for the other plants
+		
 	}
 
 	// Bullets Cleaning
@@ -4439,7 +4481,8 @@ void DrawZombies(RenderWindow& window) {
 			texIndex = 0;
 		}
 		zombieSprite.setTexture(textures[texType][texIndex]);
-		zombieSprite.setScale(Vector2f(zombie.scale, zombie.scale));
+		float finalScale = zombie.scale * zombie.currentAnimation.animScale;
+		zombieSprite.setScale(Vector2f(finalScale, finalScale));
 
 		if (!isGameOver) {
 			int damage = 255 - (std::max(1 - ((currentLevel->clock.getElapsedTime() - zombie.lastDamaged).asSeconds() / 0.25f), 0.0f) * 155);
