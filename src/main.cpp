@@ -10,6 +10,11 @@
 using namespace std;
 using namespace sf;
 
+// Memory
+#define MAX_ENTITIES 512
+#define MAX_FALLENITEMS 32
+#define MAX_BULLETS 1024
+
 #define gridraws 5
 #define gridcols 9
 //#define cellWidth 150
@@ -46,6 +51,7 @@ Vector2i mousePos;
 bool mouseJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
+int bulletShot = 0; // boosted pomegranate
 bool isGameOver = false, isGameWon = false;
 
 // Dragon
@@ -234,6 +240,7 @@ enum class ENTITY_TYPE : uint8_t {
 	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
+	PomegranateBulletBoost,
 	RedBullet,
 	FireDragonBullet,
 
@@ -339,6 +346,7 @@ enum class TEXTURE_TYPE : uint8_t {
 	SnapDragonBoostBullet,
 	FireTornadoBulletBoosted,
 	PomegranateBullet,
+	PomegranateBulletBoost,
 	RedBullet,
 	FireDragonBullet,
 
@@ -553,6 +561,9 @@ TEXTURE_TYPE getTextureType(ENTITY_TYPE type) {
 	case ENTITY_TYPE::PomegranateBullet:
 		textureType = TEXTURE_TYPE::PomegranateBullet;
 		break;
+	case ENTITY_TYPE::PomegranateBulletBoost:
+		textureType = TEXTURE_TYPE::PomegranateBulletBoost;
+		break;
 	default:
 		textureType = TEXTURE_TYPE::NONE;
 		break;
@@ -579,7 +590,7 @@ struct Bullet {
 	Vector2f velocity;
 	int attack = 0;
 	int idx = -1;
-	int x_vel = 0.05f;
+	float x_vel = 0.05f;
 	// type
 	// Animation
 
@@ -777,7 +788,7 @@ struct FallenItem {
 	Vector2f fallPosition;
 	Color color;
 };
-vector<FallenItem> fallenItems;
+FallenItem fallenItems[MAX_FALLENITEMS];
 
 void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::White) {
 	FallenItem item;
@@ -785,14 +796,40 @@ void SpawnFallingItem(TEXTURE_TYPE tex, Vector2f position, Color color = Color::
 	item.clock.restart();
 	item.fallPosition = position;
 	item.color = color;
-	fallenItems.push_back(item);
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		if (fallenItems[i].clock.getElapsedTime().asSeconds() >= 3.5f) {
+			fallenItems[i] = item;
+			break;
+		}
+	}
 }
 
 map<ENTITY_TYPE, Entity> plants;
 
-vector<Entity> entities;
-vector<Entity> newBullets;	// test
-vector<Entity> bullets;
+Entity entities[MAX_ENTITIES];
+
+int addEntity(Entity& entity) {
+	for (int i = 0; i < MAX_ENTITIES; i++) {
+		if (entities[i].category == ENTITY_CATEGORY::NONE) {
+			entities[i] = entity;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+Entity bullets[MAX_BULLETS];
+int addBullet(Entity& bullet) {
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		if (bullets[i].category == ENTITY_CATEGORY::NONE) {
+			bullets[i] = bullet;
+			return i;
+		}
+	}
+
+	return -1;
+}
 
 struct Reward {
 	enum {
@@ -837,7 +874,7 @@ struct Level {
 	THEME theme = THEME::NONE;
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
-	int startingSuns = 3000;
+	int startingSuns = 50;
 	float sunSpawnInterval = 7.0f;
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
@@ -1206,12 +1243,18 @@ void resetLevel() {
 	for (int i = 0; i < gridRows; i++) {
 		currentLevel->lawnmowers[i].setRow(i, currentLevel->offsetX, currentLevel->offsetY, currentLevel->cellHeight);
 	}
-	entities.clear();
-	bullets.clear();
+	for (int i = 0; i < MAX_ENTITIES; i++) {
+		entities[i] = Entity{};
+	}
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		bullets[i] = Entity{};
+	}
 	zombieClock.restart();
 	waveClockX.restart();
 	sunSpawnClock.restart();
-	fallenItems.clear();
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		fallenItems[i] = FallenItem{};
+	}
 
 	currentLevel->plantsSelectedTime = Time::Zero;
 	currentLevel->arePlantsSelected = false;
@@ -1349,7 +1392,7 @@ Entity defineShroomBullet() {
 	textures[TEXTURE_TYPE::ShroomBullet][Default_Texture_Index] = tex;
 
 	Entity bullet{};
-	bullet.scale = 0.3;
+	bullet.scale = 0.2;
 	bullet.category = ENTITY_CATEGORY::Bullet;
 	bullet.type = ENTITY_TYPE::ShroomBullet;
 	bullet.attack = 5;
@@ -1463,7 +1506,44 @@ Entity definePomegranateBullet() {
 
 	return bullet;
 }
+Entity definePomegranateBulletBoost() {
+	textures[TEXTURE_TYPE::PomegranateBulletBoost][Default_Texture_Index].loadFromFile("assets/pomegranate-bullet-boost.png");
+	Entity bullet;
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::PomegranateBulletBoost;
+	bullet.attack = 30;
+	bullet.x_vel = -800.0f;
 
+	return bullet;
+}
+Entity defineLightningBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/LightningBullet.png");
+	textures[TEXTURE_TYPE::LightningBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::LightningBullet;
+	bullet.attack = 15000;
+	bullet.x_vel = -1500.0f;
+	bullet.scale = 0.2f;
+
+	return bullet;
+}
+Entity defineRedBullet() {
+	Texture tex;
+	tex.loadFromFile("assets/red_bullet.png");
+	textures[TEXTURE_TYPE::RedBullet][Default_Texture_Index] = tex;
+
+	Entity bullet{};
+	bullet.category = ENTITY_CATEGORY::Bullet;
+	bullet.type = ENTITY_TYPE::RedBullet;
+	bullet.attack = 40;
+	bullet.x_vel = -600.0f;
+	bullet.scale = 0.2f;
+
+	return bullet;
+}
 
 // plants
 Entity defineNormalPlant() {
@@ -1478,7 +1558,7 @@ Entity defineNormalPlant() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_NORMAL;
-	plant.health = 100;
+	plant.health = 80;
 	plant.attack = 30;
 	plant.attackTimer = 3.0f;
 	plant.boostAttackTimer = 1.2f;
@@ -1551,7 +1631,7 @@ Entity defineNormalPlant() {
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
 					//addBullet(newBullet);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 		}
@@ -1560,34 +1640,7 @@ Entity defineNormalPlant() {
 
 }
 
-Entity defineLightningBullet() {
-	Texture tex;
-	tex.loadFromFile("assets/LightningBullet.png");
-	textures[TEXTURE_TYPE::LightningBullet][Default_Texture_Index] = tex;
 
-	Entity bullet{};
-	bullet.category = ENTITY_CATEGORY::Bullet;
-	bullet.type = ENTITY_TYPE::LightningBullet;
-	bullet.attack = 15000;
-	bullet.x_vel = -1500.0f;
-	bullet.scale = 0.2f;
-
-	return bullet;
-}
-Entity defineRedBullet() {
-	Texture tex;
-	tex.loadFromFile("assets/red_bullet.png");
-	textures[TEXTURE_TYPE::RedBullet][Default_Texture_Index] = tex;
-
-	Entity bullet{};
-	bullet.category = ENTITY_CATEGORY::Bullet;
-	bullet.type = ENTITY_TYPE::RedBullet;
-	bullet.attack = 40;
-	bullet.x_vel = -600.0f;
-	bullet.scale = 0.2f;
-
-	return bullet;
-}
 
 Entity defineRepeaterPlant() {
 	Texture tex;
@@ -1639,16 +1692,14 @@ Entity defineRepeaterPlant() {
 				Entity newBullet1 = defineNormalBullet();
 				newBullet1.attack = atk;
 				newBullet1.position = Vector2f(pos.x + 100, pos.y + 50);
-				bullets.push_back(newBullet1);
+				addBullet(newBullet1);
 				//newBullets.push_back(newBullet1);
-				//entities.push_back(newBullet1);
 
 				Entity newBullet2 = defineNormalBullet();
 				newBullet2.attack = atk;
 				newBullet2.position = Vector2f(pos.x + 50, pos.y + 50);
-				bullets.push_back(newBullet2);
+				addBullet(newBullet2);
 				//newBullets.push_back(newBullet2);
-				//entities.push_back(newBullet2);
 
 				// Commented By Omar Hadidi - Missing Attack Animation
 				// plant attack animation
@@ -1667,11 +1718,11 @@ Entity defineShroomPlant() {
 	Entity shroom;
 	shroom.category = ENTITY_CATEGORY::PLANT;
 	shroom.type = ENTITY_TYPE::PLANT_SHROOM;
-	shroom.health = 500;
+	shroom.health = 50;
 	//shroom.attack = 0;
-	shroom.attack = 20;
+	shroom.attack = 10;
 	shroom.price = 15;
-	shroom.scale = 0.9;
+	shroom.scale = 0.8;
 	// Idle animation
 	shroom.num_animations = 2;
 	shroom.animations[0].frameTimer = 0.1f;
@@ -1703,9 +1754,8 @@ Entity defineShroomPlant() {
 				Entity newBullet = defineShroomBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y + 50);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 				//newBullets.push_back(newBullet);
-				//entities.push_back(newBullet)
 			}
 		}
 
@@ -1725,7 +1775,7 @@ Entity defineSunflower() {
 	plant.health = 80;
 	plant.attack = 0;
 	plant.price = 50;
-	plant.scale = 1.2;
+	plant.scale = 1.1;
 
 	plant.num_animations = 3;
 	// Idle animation
@@ -1762,7 +1812,7 @@ Entity defineSunShroom() {
 	Entity SunShroom;
 	SunShroom.category = ENTITY_CATEGORY::PLANT;
 	SunShroom.type = ENTITY_TYPE::PLANT_SUNSHROOM;
-	SunShroom.health = 100;
+	SunShroom.health = 50;
 	SunShroom.attack = 0;
 	SunShroom.price = 25;
 
@@ -1877,9 +1927,8 @@ Entity defineIcePeaShooter() {
 				Entity newBullet = defineIceBullet();
 				newBullet.attack = plant.attack;
 				newBullet.position = Vector2f(plant.position.x + 100, plant.position.y);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 				//newBullets.push_back(newBullet);
-				//entities.push_back(newBullet);
 			}
 		}
 		};
@@ -1895,7 +1944,7 @@ Entity defineCherryBomb() {
 	cherry.category = ENTITY_CATEGORY::PLANT;
 	cherry.type = ENTITY_TYPE::PLANT_CHEERY_BOMB;
 	cherry.health = 300;
-	cherry.attack = 9999;
+	cherry.attack = 999;
 	cherry.price = 150;
 	cherry.scale = 1.0f;
 	cherry.seedCooldown = 20.0f;
@@ -1955,7 +2004,7 @@ Entity defineMiniShroom() {
 	miniShroom.attack = 30;
 	miniShroom.price = 0;
 	miniShroom.seedCooldown = 5.0f;
-	miniShroom.scale = 0.75f;
+	miniShroom.scale = 0.4f;
 
 	miniShroom.num_animations = 2;
 
@@ -1993,7 +2042,7 @@ Entity defineMiniShroom() {
 					Entity newBullet = defineShroomBullet();
 					newBullet.attack = plant.attack;
 					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y + 50);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					//newBullets.push_back(newBullet);
 				}
 			}
@@ -2007,7 +2056,7 @@ Entity defineWallnut() {
 	wallnut.category = ENTITY_CATEGORY::PLANT;
 	wallnut.type = ENTITY_TYPE::PLANT_WALLNUT;
 	//wallnut.health = 40000;
-	wallnut.health = 400;
+	wallnut.health = 500;
 	wallnut.price = 50;
 	wallnut.scale = 2.0f;
 
@@ -2055,7 +2104,7 @@ Entity defineChomperPlant() {
 	Entity Chomper;
 	Chomper.category = ENTITY_CATEGORY::PLANT;
 	Chomper.type = ENTITY_TYPE::PLANT_CHOMPER;
-	Chomper.health = 300;
+	Chomper.health = 100;
 	Chomper.price = 150;
 	Chomper.scale = 0.85;
 	Chomper.attack = 10000;
@@ -2157,7 +2206,7 @@ Entity definePOTATO_MINE() {
 	Entity mine{};
 	mine.category = ENTITY_CATEGORY::PLANT;
 	mine.type = ENTITY_TYPE::PLANT_POTATO_MINE;
-	mine.health = 200;
+	mine.health = 300;
 	mine.attack = 1800;
 	mine.price = 25;
 	mine.scale = 0.6f;
@@ -2192,7 +2241,7 @@ Entity definePOTATO_MINE() {
 			float diffX = abs(zombie.position.x - plant.position.x);
 
 
-			float triggerRange = (plant.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 200.0f : 50.0f;
+			float triggerRange = 50.0f;
 
 			if (diffY < 60.0f && diffX < triggerRange) {
 
@@ -2200,25 +2249,12 @@ Entity definePOTATO_MINE() {
 
 
 				plant.afterAnimation = [&](Entity& p) {
-
-					plant.afterAnimation = [&](Entity& p) {
-						float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
-
-						for (Entity& z : entities) {
-							if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
-								if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-
-								}
-							}
-						}
-						p.category = ENTITY_CATEGORY::NONE;
-						};
-					float damageRange = (p.type == ENTITY_TYPE::PLANT_DOOM_MINE) ? 300.0f : 80.0f;
+					float damageRange = 80.0f;
 
 					for (Entity& z : entities) {
 						if (z.category == ENTITY_CATEGORY::ZOMBIE && !z.isDead) {
 							if (abs(z.position.y - p.position.y) < 100.0f && abs(z.position.x - p.position.x) < damageRange) {
-								z.health -= p.attack;
+								attackZombie(z, p.attack, true);
 							}
 						}
 					}
@@ -2300,7 +2336,7 @@ Entity defineIceShroom() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_ICESHROOM;
-	plant.health = 100;
+	plant.health = 80;
 	plant.price = 75;
 	plant.seedCooldown = 20.0f;
 	plant.scale = 1.0f;
@@ -2341,7 +2377,7 @@ Entity defineSnapdragon() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_SNAPDRAGON;
-	plant.health = 300;
+	plant.health = 150;
 	plant.attack = 50;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
@@ -2377,7 +2413,7 @@ Entity defineSnapdragon() {
 				Entity newBullet = defineSnapDragonBoostedBullet();
 				newBullet.position = Vector2f(p.position.x + 100, p.position.y + 50);
 				//newBullet.x_vel *= 2;
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 
 				p.isBoosted = false;
 				//// shoot bullets
@@ -2419,7 +2455,7 @@ Entity defineSnapdragon() {
 				newFire.position = { p.position.x + p.width, p.position.y };
 				//newFire.attack = 0; // already damaged below .. but too weak
 				//newFire.scale = 2;
-				bullets.push_back(newFire);
+				addBullet(newFire);
 				p.attackClock.restart();
 
 				if (p.currentAnimation.currentFrame == p.currentAnimation.frames / 2) {
@@ -2451,7 +2487,7 @@ Entity defineLightningReed() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_LIGHTNING_REED;
-	plant.health = 300;
+	plant.health = 100;
 	plant.attack = 50;
 	plant.price = 125;
 	plant.seedCooldown = 7.5f;
@@ -2487,7 +2523,7 @@ Entity defineLightningReed() {
 				Entity newBullet = defineLightningBullet();
 				newBullet.attack = p.attack;
 				newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
-				bullets.push_back(newBullet);
+				addBullet(newBullet);
 			}
 		}
 		};
@@ -2504,7 +2540,7 @@ Entity defineInfernoPlant() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_INFERNO;
-	plant.health = 300;
+	plant.health = 150;
 	plant.attack = 10;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
@@ -2542,7 +2578,7 @@ Entity defineInfernoPlant() {
 					Entity newBullet = defineFireTornadoBoostedBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 10);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 					p.isBoosted = false;
 					p.attackClock.restart();
 				}
@@ -2572,7 +2608,7 @@ Entity defineInfernoPlant() {
 					Entity newBullet = defineFireTornadoBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 60, p.position.y - 20);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 
 			}
@@ -2595,6 +2631,7 @@ Entity definePomegranatePlant() {
 	plant.price = 150;
 	plant.attack = 15;
 	plant.attackTimer = 1.0f;
+	plant.boostAttackTimer = 0.5f;
 	plant.seedCooldown = 5.0f;
 
 	plant.num_animations = 3;
@@ -2605,8 +2642,8 @@ Entity definePomegranatePlant() {
 	plant.animations[2].frames = 53;
 	plant.animations[2].frameTimer = 0.03;
 	// Boosted
-	plant.animations[3].frames = 1;
-	plant.animations[3].frameTimer = 0.1;
+	plant.animations[3].frames = 39;
+	plant.animations[3].frameTimer = 0.03;
 
 	plant.setCurrentAnimation(0);
 
@@ -2614,10 +2651,27 @@ Entity definePomegranatePlant() {
 
 	plant.updateEntity = [](Entity& p) {
 		float currentTimer = p.isBoosted ? p.boostAttackTimer : p.attackTimer;
+		float numBullets = 10;
 
 		if (p.attackClock.getElapsedTime().asSeconds() >= currentTimer) {
 			// Boosted
 			if (p.isBoosted) {
+				p.attackClock.restart();
+
+				Entity newBullet = definePomegranateBulletBoost();
+				newBullet.attack = p.attack;
+				newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
+				if (addBullet(newBullet) != -1) {
+					bulletShot++;
+					if (bulletShot >= 10) {
+						bulletShot = 0;
+						p.afterAnimation(p);
+						p.afterAnimation = [](Entity&) {};
+
+						p.AnimationForCycles = -1;
+						p.setCurrentAnimation(0);
+					}
+				}
 				return;
 			}
 
@@ -2642,7 +2696,7 @@ Entity definePomegranatePlant() {
 					Entity newBullet = definePomegranateBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 70);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 
@@ -2700,7 +2754,7 @@ Entity defineRedShooter() {
 					Entity newBullet = defineRedBullet();
 					newBullet.attack = p.attack;
 					newBullet.position = Vector2f(p.position.x + 80, p.position.y + 30);
-					bullets.push_back(newBullet);
+					addBullet(newBullet);
 				}
 			}
 		}
@@ -2967,7 +3021,7 @@ Entity definePharaohZombie() {
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBIE_PHARAOH;
-	zombie.health = 600;
+	zombie.health = 500;
 	zombie.attack = 10;
 	zombie.x_vel = 70;
 	// Animations
@@ -3323,9 +3377,9 @@ Entity definePogoZombie() {
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBIE_POGO;
-	zombie.health = 350;
+	zombie.health = 200;
 	zombie.attack = 10;
-	zombie.x_vel = 170;
+	zombie.x_vel = 150;
 	zombie.scale = 1.0f;
 	zombie.num_animations = 6;
 
@@ -3430,7 +3484,7 @@ Entity defineRomanCenturion() {
 
 	Entity zombie = defineRomanConehead();
 	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION;
-	zombie.health = 800;
+	zombie.health = 600;
 	return zombie;
 }
 
@@ -3454,7 +3508,7 @@ Entity defineRomanOdessa() {
 	Entity zombie{};
 	zombie.category = ENTITY_CATEGORY::ZOMBIE;
 	zombie.type = ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA;
-	zombie.health = 500;
+	zombie.health = 300;
 	zombie.attack = 10;
 	zombie.x_vel = 70;
 	zombie.scale = 0.50f;
@@ -3670,6 +3724,7 @@ bool healthDone_DyingZombie(Entity& zombie) {
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PIANIST && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR && zombie.currentAnimationIndex == 3)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 3)
+			|| (zombie.type == ENTITY_TYPE::ZOMBIE_CHICKENWRANGLER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_NEWSPAPER && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_ALLSTAR && zombie.currentAnimationIndex == 2)
 			|| (zombie.type == ENTITY_TYPE::ZOMBIE_PHARAOH && zombie.currentAnimationIndex == 2)
@@ -3899,7 +3954,7 @@ void updateZombieRa(Entity& zombie) {
 void updateZombieAllStars(Entity& zombie) {
 	if (!zombie.hasTackled && !zombie.isTackling) {
 		bool plantAhead = false;
-		for (int i = 0; i < entities.size(); i++) {
+		for (int i = 0; i < MAX_ENTITIES; i++) {
 			if (entities[i].category != ENTITY_CATEGORY::PLANT)
 				continue;
 			if (entities[i].isDead)
@@ -3924,7 +3979,7 @@ void updateZombieAllStars(Entity& zombie) {
 
 	if (zombie.isTackling) {
 		if (zombie.currentAnimation.currentFrame >= 8) {
-			for (int i = 0; i < entities.size(); i++) {
+			for (int i = 0; i < MAX_ENTITIES; i++) {
 				if (entities[i].category != ENTITY_CATEGORY::PLANT)
 					continue;
 				if (entities[i].isDead)
@@ -4156,7 +4211,7 @@ void updateZombotDragon(Entity& zombie) {
 		Entity newBullet = defineZombotDragonBullet();
 		newBullet.position = { zombie.position.x, zombie.position.y + 50 };
 		newBullet.x_vel = 300;
-		bullets.push_back(newBullet);
+		addBullet(newBullet);
 		// 2- Push a wave
 		// Entity normalZombie, zombieJapanese, zombieBig, zombieTorch, zombieRa, zombieMummy, zombieConehead, zombieNewspaper, zombieAllStar, zombiePharaoh, zombieShieldGuard, zombieCowboy, zombieRedhair, zombieProspector, zombiePogo, zombiePianist, zombotDragon;
 		currentLevel->addWave(15, 20, { normalZombie, normalZombie, normalZombie, zombieAllStar, zombieRa, zombiePharaoh, zombieProspector, zombieNewspaper, zombieRedhair }, 20, false);
@@ -4172,6 +4227,7 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 
 	if (zombie.position.x - (plant.position.x + plant.width - eatDistance) <= 0) {
 		zombie.x_vel = 0;
+
 
 		if ((zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 			zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
@@ -4189,14 +4245,23 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 		} else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA && (zombie.currentAnimationIndex == 0 || zombie.currentAnimationIndex == 2)) {
 			zombie.setCurrentAnimation(3);
 		} else if (zombie.currentAnimationIndex == 0) {
-			if (zombie.num_animations > 3) {
+			bool isRomanWithHelmet = (
+				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD ||
+				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD ||
+				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION ||
+				zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD
+				);
+
+			if (zombie.num_animations > 3 && !isRomanWithHelmet) {
 				zombie.setCurrentAnimation(3);
 			}
 		}
+
 		if (zombie.attackClock.getElapsedTime().asSeconds() >= zombie.attackTimer) {
 			zombie.attackClock.restart();
 			plant.health -= zombie.attack;
 			plant.lastDamaged = currentLevel->clock.getElapsedTime();
+
 
 			if (plant.health <= 0) {
 				if (zombie.health > 0) {
@@ -4207,9 +4272,12 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 					}
 
 					if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_ODESSA) {
-						if (zombie.health <= 200) zombie.setCurrentAnimation(2);
-						else zombie.setCurrentAnimation(0);
-					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
+						if (zombie.health <= 200)
+							zombie.setCurrentAnimation(2);
+						else
+							zombie.setCurrentAnimation(0);
+					} else if
+						(zombie.type == ENTITY_TYPE::ZOMBIE_POGO) {
 						zombie.setCurrentAnimation(0);
 					} else if (zombie.type == ENTITY_TYPE::ZOMBIE_PROSPECTOR ||
 						zombie.type == ENTITY_TYPE::ZOMBIE_REDHAIR ||
@@ -4219,6 +4287,15 @@ void zombieEatPlant(Entity& zombie, Entity& plant) {
 						if (zombie.currentAnimationIndex == 2) {
 							zombie.setCurrentAnimation(0);
 						}
+					}
+
+					else if (zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CONEHEAD ||
+						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUCKETHEAD ||
+						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_CENTURION ||
+						zombie.type == ENTITY_TYPE::ZOMBIE_ROMAN_BUSTHEAD) {
+						if (zombie.shellDestroyed)
+							zombie.setCurrentAnimation(2);
+						else zombie.setCurrentAnimation(0);
 					} else {
 						zombie.setCurrentAnimation(0);
 					}
@@ -4476,7 +4553,7 @@ void UpdateAndDrawBullets(RenderWindow& window) {
 						zombie.freezeTimer = 3.0f;
 					}
 
-					
+
 					if (bullet.type != ENTITY_TYPE::SnapDragonBoostBullet || (bullet.type == ENTITY_TYPE::SnapDragonBoostBullet && zombie.type == ENTITY_TYPE::ZOMBOT_DRAGON)) {
 						// [ if boosted snapdragon bullet touch zombot dragon it disappears, so that it damages it only once, otherwise it continues ]
 						// End of the bullet
@@ -4585,10 +4662,11 @@ void CheckTimer_AddZombie(RenderWindow& window) {
 	auto [raw, column] = gridCell(newZombie.position);
 	newZombie.id = nextEntityId++;
 	newZombie.gridRow = raw, newZombie.gridCol = column;
-	entities.push_back(newZombie);
-	createdZombiesCount++;
-	curWaveZombieCnt++;
-	dz++;
+	if (addEntity(newZombie) != -1) {
+		createdZombiesCount++;
+		curWaveZombieCnt++;
+		dz++;
+	}
 }
 void CheckTimer_AddSun(RenderWindow& window) {
 	if (currentLevel == nullptr) return;
@@ -4873,7 +4951,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 
 	screenFade(window, 0.5f * std::min((diff - 4.5f) / 1.0f, 1.0f));
 
-	if (unlockedPlant) window.draw(text);
+	window.draw(text);
 
 	float progress = (diff - 5.0f) / 0.5f;
 	if (progress < 0) progress = 0;
@@ -4899,6 +4977,7 @@ void DrawRewardsScreen(RenderWindow& window) {
 	}
 
 	packetBg.setPosition(Vector2f(960 + 200, 540));
+	if (!unlockedPlant) packetBg.setPosition(Vector2f(960, 540));
 	window.draw(packetBg);
 
 	{
@@ -5170,7 +5249,7 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 		return;
 	}
 	if (!isRelocating && clickedEntity.category == ENTITY_CATEGORY::PLANT) {
-		for (int i = 0; i < entities.size(); i++) {
+		for (int i = 0; i < MAX_ENTITIES; i++) {
 			if (entities[i].category == ENTITY_CATEGORY::PLANT &&
 				entities[i].gridRow == row && entities[i].gridCol == col && !entities[i].isDead) {
 				selectedPlantIndex = i;
@@ -5215,9 +5294,10 @@ void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col)
 
 		plant.position = Vector2f(x, y);
 		plant.attackClock.restart();
-		entities.push_back(plant);
-		sunsMoney -= plant.price;
-		currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
+		if (addEntity(plant) != -1) {
+			sunsMoney -= plant.price;
+			currentLevel->selectedPlants[selectedPlant].currentSeedCooldown = plant.seedCooldown;
+		}
 	}
 }
 void uiCollectSuns(RenderWindow& window) {
@@ -5491,7 +5571,8 @@ void DrawLevelStats(RenderWindow& window) {
 
 void UpdateFallenItems(RenderWindow& window) {
 	int i = 0;
-	for (auto& item : fallenItems) {
+	for (int i = 0; i < MAX_FALLENITEMS; i++) {
+		FallenItem& item = fallenItems[i];
 		float time = item.clock.getElapsedTime().asSeconds();
 		if (time > 3.5f) continue;
 
@@ -6965,7 +7046,7 @@ void defineDayLevels() {
 
 	// Level 3 Hard
 	levels[3].plantReward = sunshroom;      levels[3].coinReward = 600;
-	levels[3].startingSuns = 1000;		levels[3].sunSpawnInterval = 3.f;
+	levels[3].sunSpawnInterval = 3.f;
 	levels[3].addWave(3, 12, { normalZombie }, 5);
 	//levels[3].addWave(4, 8, { normalZombie, zombieBig }, 5);
 	//levels[3].addWave(5, 15, { normalZombie, zombieConehead }, 8);
@@ -7008,13 +7089,12 @@ void defineNightLevels() {
 
 	// Level 6
 	levels[6].plantReward = doomShroom;   levels[6].coinReward = 400;
-	levels[6].startingSuns = 1000;
 	levels[6].addWave(5, 15, { normalZombie, zombieBig }, 0);
 	levels[6].addWave(1, 5, { zombotDragon }, 10);
 	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieBig }, 0, true);
-	/*levels[6].addWave(3, 12, {normalZombie, zombieNewspaper}, 5);
+	levels[6].addWave(3, 12, { normalZombie, zombieNewspaper }, 5);
 	levels[6].addWave(5, 15, { zombieConehead, zombieNewspaper }, 8);
-	levels[6].addWave(6, 15, { zombieNewspaper, zombieAllStar }, 10);
+	/*levels[6].addWave(6, 15, {zombieNewspaper, zombieAllStar}, 10);
 	levels[6].addWave(16, 20, { normalZombie, zombieConehead, zombieNewspaper, zombieAllStar }, 0, true);*/
 }
 
@@ -7055,7 +7135,7 @@ void defineAncientLevels() {
 	levels[9].addWave(4, 15, { zombieMummy, zombieRa }, 5);
 	levels[9].addWave(6, 15, { zombieTorch, zombiePharaoh }, 10);
 	levels[9].addWave(15, 20, { zombieMummy, zombieRa, zombieTorch, zombiePharaoh }, 15, true);
-	levels[9].addWave(15, 20, { zombieMummy, zombieRa, zombieTorch, zombiePharaoh, zombieAllStar }, 0, true);
+	levels[9].addWave(15, 20, { zombieMummy, zombieRa, zombieTorch, zombiePharaoh }, 0, true);
 }
 
 void defineWildWestLevels() {
@@ -7096,7 +7176,7 @@ void defineWildWestLevels() {
 	levels[12].addWave(4, 15, { zombieCowboy, zombieRedhair }, 5);
 	levels[12].addWave(6, 15, { zombieChickenWrangler, zombieProspector }, 10);
 	levels[12].addWave(15, 20, { zombieCowboy, zombieRedhair, zombieProspector, zombieChickenWrangler, zombiePianist }, 15, true);
-	levels[12].addWave(15, 20, { /*zombiePogo*/ zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
+	levels[12].addWave(15, 20, { zombiePianist, zombieChickenWrangler, zombieCowboy, zombieProspector }, 0, true);
 }
 
 void defineLostCityLevels() {
@@ -7250,6 +7330,10 @@ int main() {
 	Vector2u oldSize;
 
 	window.setSize(Vector2u(1280, 720));
+
+	VideoMode desktop = VideoMode::getDesktopMode();
+	window.setPosition(Vector2i((desktop.width - window.getSize().x) / 2.0f, (desktop.height - window.getSize().y) / 2.0f));
+
 	Event event;
 
 	textures[TEXTURE_TYPE::LOGO][Default_Texture_Index].loadFromFile("assets/logo.png");
@@ -7286,20 +7370,6 @@ int main() {
 	// Loading Textures + Defining entities
 
 	// Plants
-	Entity normalPlant = defineNormalPlant();
-	Entity repeaterPlant = defineRepeaterPlant();
-	Entity shroom = defineShroomPlant();
-	Entity sunflower = defineSunflower();
-	Entity wallnut = defineWallnut();
-	Entity chomper = defineChomperPlant();
-	Entity sunshroom = defineSunShroom();
-	Entity icePeashooter = defineIcePeaShooter();
-	Entity miniShroom = defineMiniShroom();
-	Entity POTATOMINE = definePOTATO_MINE();
-	Entity doomShroom = defineDOOM_SHROOM();
-	Entity CHEERY_BOMB = defineCherryBomb();
-	Entity iceShroom = defineIceShroom();
-
 
 	normalPlant = defineNormalPlant();
 	repeaterPlant = defineRepeaterPlant();
@@ -7686,6 +7756,13 @@ int main() {
 				// FOR TESTING ONLY
 				if (curBoosterCnt) isBoostActive = true;
 				cout << "Booster Pressed! Waiting to click plant" << endl;
+			}
+
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::G) {
+				// Press 'G' to add 5 boosters
+				curBoosterCnt += 5;
+				if (curBoosterCnt > maxBoosterCnt) curBoosterCnt = maxBoosterCnt;
+
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F11) {
 				fullscreen = !fullscreen;
 				if (fullscreen) {
