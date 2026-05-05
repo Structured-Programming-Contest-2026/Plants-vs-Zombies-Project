@@ -4023,7 +4023,7 @@ void updateNewspaperZombie(Entity& zombie) {
 		setCurrentAnimation(zombie, 2);
 		SpawnFallingItem(TEXTURE_TYPE::ITEM_NEWSPAPER, zombie.position + Vector2f(100, 0));
 		zombie.x_vel = 170.0f;
-		zombie.attackTimer = 0.4f;
+		zombie.attack = 50;
 	}
 }
 void updateConeheadZombie(Entity& zombie) {
