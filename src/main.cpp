@@ -888,6 +888,7 @@ struct Level {
 	vector<Entity> selectedPlants;
 	vector<Wave> waves;
 	int lvlNum = 0;
+	int additionalZombiesSpawned = 0;
 	int targetZombie = 20,	// total zombies in a level 
 		waveLimit = 10,		// a wave has up to (waveLimit) zombies
 		waveTimer = 15,		// between waves
@@ -952,6 +953,7 @@ void claimRewards(Level& l) {
 void setTargetZombie(Level& l) {
 	l.targetZombie = 0;
 	for (auto& w : l.waves) l.targetZombie += w.zombieCount;
+	l.targetZombie += l.additionalZombiesSpawned;
 }
 void addWave(Level& l, int zombieCount = 0, float length = 0, vector<Entity> zombieTypes = {}, float rest = 0, bool isHuge = false) {
 	l.waves.push_back(Wave(zombieCount, length, zombieTypes, isHuge));
@@ -4140,10 +4142,10 @@ void updateChickenWranglerZombie(Entity& zombie) {
 	if (zombie.health <= 150 && zombie.currentAnimationIndex == 0) {
 		setCurrentAnimation(zombie, 3);
 		//addWave(*currentLevel, 10, 5, { zombieChicken });
-		for (int i = 0; i < 7; i++) {
+		for (int i = 0; i < 10; i++) {
 			Entity chicken = zombieChicken;
 			int randRow = gridCell(zombie.position).x + (rand() % 3) - 1;
-			int randCol = gridCell(zombie.position).y + (rand() % 3);
+			int randCol = gridCell(zombie.position).y + (rand() % 3) - 1;
 
 			// this ensures they are in the correct range
 			randRow = max(0, min(gridRows - 1, randRow));
@@ -4158,6 +4160,7 @@ void updateChickenWranglerZombie(Entity& zombie) {
 			chicken.gridCol = randCol;
 			if (addEntity(chicken) != -1) {
 				currentLevel->targetZombie++;
+				currentLevel->additionalZombiesSpawned++;
 			}
 		}
 	}
@@ -5792,6 +5795,8 @@ void DrawLevelDetails(RenderWindow& window) {
 
 	bool pausingEnabled = !(!currentLevel->arePlantsSelected || (currentLevel->clock.getElapsedTime().asSeconds() - currentLevel->plantsSelectedTime.asSeconds() < 4.0f));
 
+	if (isGameOver || isGameWon) pausingEnabled = false;
+
 	if (!pausingEnabled) {
 		text.setString("Main Menu");
 	}
@@ -5817,8 +5822,10 @@ void DrawLevelDetails(RenderWindow& window) {
 
 	text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
 
-	window.draw(button);
-	window.draw(text);
+	if (!isGameOver && !isGameWon) {
+		window.draw(button);
+		window.draw(text);
+	}
 }
 
 void DrawPauseMenu(RenderWindow& window) {
