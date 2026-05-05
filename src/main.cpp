@@ -880,7 +880,7 @@ struct Level {
 	vector<Entity> zombie_types;
 	vector<Entity> plant_types;
 	int startingSuns = 50;
-	float sunSpawnInterval = 7.0f;
+	float sunSpawnInterval = 3.f;
 	bool arePlantsSelected = false;
 	bool isUnlocked = false;
 	vector<Entity> selectedPlants;
@@ -1984,8 +1984,7 @@ Entity defineCherryBomb() {
 						float diffX = abs(z.position.x - p.position.x);
 
 						// 3*3
-						if (diffY < 200.0f && diffX < explosionRange)
-						{
+						if (diffY < 200.0f && diffX < explosionRange) {
 							z.diedByElectrocution = true;
 							attackZombie(z, p.attack, true);
 
@@ -3370,6 +3369,16 @@ void UpdateSuns(RenderWindow& window) {
 
 		window.draw(uiSprite);
 
+		if (mouseJustClicked[0] && uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+			sunsMoney += suns[i].sunValue;
+
+			cout << "You now have " << sunsMoney << endl;
+
+			suns[i].clicked = true;
+			suns[i].targeted = false; // for ra
+			uiInteracted = true;
+		}
+
 		uiSprite.setRotation(0);
 		uiSprite.setOrigin(0, 0);
 	}
@@ -4685,8 +4694,8 @@ void CheckTimer_AddSun(RenderWindow& window) {
 		sunSpawnClock.restart();
 
 		Sun sun{};
-		sun.position = Vector2f(rand() % (windowWidth - 200) + 100, -215);
-		sun.distance = rand() % 750;
+		sun.position = Vector2f(rand() % (windowWidth - int(currentLevel->offsetX) - 300) + currentLevel->offsetX, -215);
+		sun.distance = rand() % (windowHeight / 3) + windowHeight / 3; // in the 2nd third
 		sun.clicked = false;
 
 		addSun(sun);
@@ -5291,6 +5300,7 @@ void uiMagicShovel(RenderWindow& window, Entity& clickedEntity, int row, int col
 	}
 }
 void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col) {
+	if (uiInteracted) return;
 	Entity plant;
 	if (sunsMoney >= currentLevel->selectedPlants[selectedPlant].price && currentLevel->selectedPlants[selectedPlant].currentSeedCooldown <= 0) {
 		plant = currentLevel->selectedPlants[selectedPlant];
@@ -5309,25 +5319,7 @@ void uiNormalMode(RenderWindow& window, Entity& clickedEntity, int row, int col)
 		}
 	}
 }
-void uiCollectSuns(RenderWindow& window) {
-	for (int i = 0; i < MAX_SUNS; i++) {
-		// Check all suns + Add clicked suns to money
-		Sun& sun = suns[i];
-		if (!isSunAlive(sun)) continue;
 
-		// check mouse pos in sun rect (200x200)
-		if (isClicked(sun.position - Vector2f(100, 100), { 200,200 })) {
-			sunsMoney += suns[i].sunValue;
-
-			cout << "You now have " << sunsMoney << endl;
-
-			suns[i].clicked = true;
-			suns[i].targeted = false; // for ra
-			uiInteracted = true;
-			break;
-		}
-	}
-}
 // boost ui
 void uiBoostActive(RenderWindow& window) {
 	if (isClicked(activateBoosterBtnPos, { 100, 100 }, { 0, -100 })) {
@@ -5465,8 +5457,6 @@ void UI_DrawClick(RenderWindow& window) {
 
 void UI_Interaction(RenderWindow& window) {
 	if (!uiInteracted && mouseJustClicked[0]) {
-		// Collect Suns
-		uiCollectSuns(window);
 		// Collect booster
 		uiCollectBooster(window);
 		// Active boost
@@ -7029,7 +7019,6 @@ void defineDayLevels() {
 		levels[lvl].theme = THEME::DAY;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainDayPlantTypes;
-		levels[lvl].sunSpawnInterval = 8.0f;
 		levels[lvl].targetZombie = 20;
 		levels[lvl].waveLimit = 10; levels[1].waveTimer = 15;
 		levels[lvl].startingSuns = 50;
@@ -7057,7 +7046,6 @@ void defineDayLevels() {
 
 	// Level 3 Hard
 	levels[3].plantReward = sunshroom;      levels[3].coinReward = 600;
-	levels[3].sunSpawnInterval = 3.f;
 	levels[3].startingSuns = 1000;
 	addWave(levels[3], 3, 12, { normalZombie }, 5);
 	//levels[3].addWave(4, 8, { normalZombie, zombieBig }, 5);
@@ -7119,7 +7107,6 @@ void defineAncientLevels() {
 		levels[lvl].theme = THEME::ANCIENT;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainAncientPlantTypes;
-		levels[lvl].sunSpawnInterval = 7.0f;
 		levels[lvl].startingSuns = 50;
 		levels[lvl].targetZombie = 30;
 		levels[lvl].offsetX = 450;
@@ -7160,7 +7147,6 @@ void defineWildWestLevels() {
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainWildWestPlantTypes;
 		levels[lvl].startingSuns = 50;
-		levels[lvl].sunSpawnInterval = 6.0f;
 		levels[lvl].targetZombie = 30;
 		levels[lvl].offsetX = 450;
 		levels[lvl].offsetY = 135;
@@ -7295,7 +7281,6 @@ void defineRomanLevels() {
 		levels[lvl].theme = THEME::ROMAN;
 		levels[lvl].lvlNum = lvl;
 		levels[lvl].plant_types = mainRomanPlantTypes;
-		levels[lvl].sunSpawnInterval = 6.5f;
 		levels[lvl].startingSuns = 100;
 		levels[lvl].offsetX = 450;
 		levels[lvl].offsetY = 135;
@@ -7528,12 +7513,12 @@ int main() {
 		isEntityUnlocked[repeaterPlant.type] =
 			isEntityUnlocked[normalPlant.type] =
 			isEntityUnlocked[sunflower.type] =
-			isEntityUnlocked[icePeashooter.type] =
+			//isEntityUnlocked[icePeashooter.type] =
 			isEntityUnlocked[chomper.type] =
-			isEntityUnlocked[miniShroom.type] =
+			//isEntityUnlocked[miniShroom.type] =
 			isEntityUnlocked[POTATOMINE.type] =
-			isEntityUnlocked[doomShroom.type] =
-			isEntityUnlocked[CHEERY_BOMB.type] =
+			//isEntityUnlocked[doomShroom.type] =
+			//isEntityUnlocked[CHEERY_BOMB.type] =
 			isEntityUnlocked[iceShroom.type] =
 			isEntityUnlocked[snapdragon.type] =
 			isEntityUnlocked[lightningReed.type] =
@@ -7541,6 +7526,13 @@ int main() {
 			isEntityUnlocked[redShooterPlant.type] =
 			isEntityUnlocked[Pomegranate.type] =
 			true;
+		isEntityUnlocked[sunshroom.type] =
+			isEntityUnlocked[icePeashooter.type] =
+			isEntityUnlocked[miniShroom.type] =
+			isEntityUnlocked[doomShroom.type] =
+			isEntityUnlocked[CHEERY_BOMB.type] =
+			false;
+
 	} else {
 		isEntityUnlocked[normalPlant.type] =
 			isEntityUnlocked[sunflower.type] =
@@ -7558,7 +7550,7 @@ int main() {
 	defineJurassicAgeLevels();
 	defineRomanLevels();
 
-			// setting levels background textures //bravooo
+	// setting levels background textures //bravooo
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND][0].loadFromFile("assets/levels/level1.png");
 	textures[TEXTURE_TYPE::LEVEL_BACKGROUND_HOUSE][0].loadFromFile("assets/levels/level1_house.png");
 	//for (int lvl = 1; lvl <= number_levels; lvl++) {
