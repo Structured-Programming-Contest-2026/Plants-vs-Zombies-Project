@@ -1642,7 +1642,7 @@ Entity defineNormalPlant() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
-						zombie.position.x > plant.position.x &&
+						zombie.position.x > plant.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -1703,7 +1703,7 @@ Entity defineRepeaterPlant() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
-						zombie.position.x > plant.position.x &&
+						zombie.position.x > plant.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -1769,7 +1769,7 @@ Entity defineShroomPlant() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
-						zombie.position.x > plant.position.x &&
+						zombie.position.x > plant.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -1943,7 +1943,7 @@ Entity defineIcePeaShooter() {
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
-						zombie.position.x > plant.position.x &&
+						zombie.position.x > plant.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -2555,7 +2555,7 @@ Entity defineLightningReed() {
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
-						zombie.position.x > p.position.x &&
+						zombie.position.x > p.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -2643,7 +2643,7 @@ Entity defineInfernoPlant() {
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
-						zombie.position.x > p.position.x &&
+						zombie.position.x > p.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -2694,8 +2694,8 @@ Entity definePomegranatePlant() {
 	// Attack
 	plant.animations[2].frames = 53;
 	plant.animations[2].frameTimer = 0.03;
-	plant.animations[2].offsetX = -15.0f; // هترجعها شمال شوية
-	plant.animations[2].offsetY = 20.0f;  // هتنزلها لتحت شوية
+	plant.animations[2].offsetX = -15.0f;
+	plant.animations[2].offsetY = 20.0f; 
 	// Boosted
 	plant.animations[3].frames = 39;
 	plant.animations[3].frameTimer = 0.03;
@@ -2737,7 +2737,7 @@ Entity definePomegranatePlant() {
 			for (Entity& zombie : entities) {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
-						zombie.position.x > p.position.x &&
+						zombie.position.x > p.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
@@ -2795,7 +2795,7 @@ Entity defineRedShooter() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
-						zombie.position.x > p.position.x &&
+						zombie.position.x > p.position.x - 80.0f &&
 						zombie.position.x < windowWidth - 50.0f) {
 						zombieInLane = true;
 						break;
