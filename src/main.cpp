@@ -53,6 +53,7 @@ float delta_time = 1.0f;
 Vector2i mousePos;
 // left - right
 bool mouseJustClicked[2];
+bool arrowJustClicked[2];
 bool uiInteracted = false;
 int nextEntityId = 0; // for ra
 int bulletShot = 0; // boosted pomegranate
@@ -6299,6 +6300,7 @@ void DrawLevelSelector(RenderWindow& window) {
 	}
 
 
+	int realLevelsNum = 0;
 	for (int i = 0; i < number_levels; i++) {
 		if (!levels[i + 1].isUnlocked) continue;	// skip locked levels
 
@@ -6387,6 +6389,23 @@ void DrawLevelSelector(RenderWindow& window) {
 
 		window.draw(ribbonSprite);
 
+		realLevelsNum++;
+
+	}
+
+	if (arrowJustClicked[0]) {
+		if (selectedLevel > 0) {
+			previousSelectedLevel = selectedLevel;
+			selectedLevel--;
+			selectionChanged.restart();
+		}
+	}
+	if (arrowJustClicked[1]) {
+		if (selectedLevel < realLevelsNum - 1) {
+			previousSelectedLevel = selectedLevel;
+			selectedLevel++;
+			selectionChanged.restart();
+		}
 	}
 
 	{
@@ -6403,10 +6422,10 @@ void DrawLevelSelector(RenderWindow& window) {
 		playButton.setScale(Vector2f(0.6f, 0.6f));
 		playButton.setColor(Color::White);
 
-		if (playButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (playButton.getGlobalBounds().contains(Vector2f(mousePos)) || Keyboard::isKeyPressed(Keyboard::Enter)) {
 			playButton.setColor(Color(128, 128, 128, 255));
 
-			if (mouseJustClicked[0]) {
+			if (mouseJustClicked[0] || Keyboard::isKeyPressed(Keyboard::Enter)) {
 				startLevel(selectedLevel + 1);
 			}
 		}
@@ -7805,6 +7824,8 @@ int main() {
 		uiInteracted = false;
 		mouseJustClicked[0] = false;
 		mouseJustClicked[1] = false;
+		arrowJustClicked[0] = false;
+		arrowJustClicked[1] = false;
 
 		if (Keyboard::isKeyPressed(Keyboard::LShift)) {
 			delta_time = 0.2;
@@ -7816,6 +7837,10 @@ int main() {
 			} else if (event.type == sf::Event::MouseButtonPressed) {
 				if (event.mouseButton.button == sf::Mouse::Left) mouseJustClicked[0] = true;
 				else if (event.mouseButton.button == sf::Mouse::Right) mouseJustClicked[1] = true; //edit_bug
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Left) {
+				arrowJustClicked[0] = true;
+			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right) {
+				arrowJustClicked[1] = true;
 			} else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F) {
 				// FOR TESTING ONLY
 				sunsMoney += 1000;
