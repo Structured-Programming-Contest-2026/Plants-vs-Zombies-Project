@@ -1940,7 +1940,7 @@ Entity defineCherryBomb() {
 	cherry.category = ENTITY_CATEGORY::PLANT;
 	cherry.type = ENTITY_TYPE::PLANT_CHEERY_BOMB;
 	cherry.health = 300;
-	cherry.attack = 9999;
+	cherry.attack = 999;
 	cherry.price = 150;
 	cherry.scale = 1.0f;
 	cherry.seedCooldown = 20.0f;
@@ -2373,7 +2373,7 @@ Entity defineSnapdragon() {
 	Entity plant;
 	plant.category = ENTITY_CATEGORY::PLANT;
 	plant.type = ENTITY_TYPE::PLANT_SNAPDRAGON;
-	plant.health = 100;
+	plant.health = 150;
 	plant.attack = 50;
 	plant.price = 150;
 	plant.seedCooldown = 7.5f;
