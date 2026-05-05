@@ -1421,6 +1421,7 @@ Entity defineShroomBullet() {
 	bullet.type = ENTITY_TYPE::ShroomBullet;
 	bullet.attack = 5;
 	bullet.x_vel = -580.0f;
+	bullet.position.x  -= 40;
 
 	return bullet;
 }
@@ -2033,18 +2034,18 @@ Entity defineMiniShroom() {
 	miniShroom.attack = 30;
 	miniShroom.price = 0;
 	miniShroom.seedCooldown = 5.0f;
-	miniShroom.scale = 0.4f;
+	miniShroom.scale = 0.7f;
 
 	miniShroom.num_animations = 2;
 
 	miniShroom.animations[0].frames = 12;
 	miniShroom.animations[0].frameTimer = 0.25f;
-	miniShroom.animations[0].offsetX = 25.0f;
+	miniShroom.animations[0].offsetX = -10.0f;
 	miniShroom.animations[0].offsetY = -15.0f;
 
 	miniShroom.animations[1].frames = 10;
 	miniShroom.animations[1].frameTimer = 0.15f;
-	miniShroom.animations[1].offsetX = 25.0f;
+	miniShroom.animations[1].offsetX = -10.0f;
 	miniShroom.animations[1].offsetY = -15.0f;
 
 	setCurrentAnimation(miniShroom, 0);
@@ -2074,7 +2075,7 @@ Entity defineMiniShroom() {
 					plant.attackClock.restart();
 					Entity newBullet = defineShroomBullet();
 					newBullet.attack = plant.attack;
-					newBullet.position = Vector2f(plant.position.x + 70, plant.position.y + 50);
+					newBullet.position = Vector2f(plant.position.x + 30, plant.position.y + 30);
 					addBullet(newBullet);
 					//newBullets.push_back(newBullet);
 				}
@@ -2421,12 +2422,20 @@ Entity defineSnapdragon() {
 
 	plant.animations[0].frames = 20; // Idle
 	plant.animations[0].frameTimer = 0.1f;
-
+	plant.animations[0].animScale = 1.0f;
+	
 	plant.animations[1].frames = 20; // Attack 
 	plant.animations[1].frameTimer = 0.08f;
+	plant.animations[1].animScale = 1.1f;
+	plant.animations[1].offsetX = -10.0f;
+	plant.animations[1].offsetY = 0;
 
 	plant.animations[3].frames = 23; // Boost
 	plant.animations[3].frameTimer = 0.1f;
+	plant.animations[3].animScale = 2.5f;
+	plant.animations[3].offsetX = -200.0f;
+	plant.animations[3].offsetY = -230.0f;
+
 
 	setCurrentAnimation(plant, 0);
 
