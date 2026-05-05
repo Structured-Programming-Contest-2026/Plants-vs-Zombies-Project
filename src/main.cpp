@@ -3369,7 +3369,7 @@ void UpdateSuns(RenderWindow& window) {
 
 		window.draw(uiSprite);
 
-		if (mouseJustClicked[0] && uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
+		if (!uiInteracted && mouseJustClicked[0] && uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
 			sunsMoney += suns[i].sunValue;
 
 			cout << "You now have " << sunsMoney << endl;
@@ -4834,7 +4834,7 @@ void DrawSeeds(RenderWindow& window) {
 			uiSprite.setColor(Color(128, 128, 128, 255));
 			plantSprite.setColor(Color(128, 128, 128, 255));
 
-			if (mouseJustClicked[0]) {
+			if (!uiInteracted && mouseJustClicked[0]) {
 				uiInteracted = true;
 				if (currentLevel->arePlantsSelected) {
 					if (plant.currentSeedCooldown <= 0 && sunsMoney >= plant.price) {
@@ -5327,6 +5327,7 @@ void uiBoostActive(RenderWindow& window) {
 			uiInteracted = true;
 			if (curBoosterCnt > 0) {
 				isBoostActive = true;
+				uiInteracted = true;
 			} else {
 				// maybe show some message that you cant have more boosters
 			}
@@ -5372,7 +5373,7 @@ void UI_DrawClick(RenderWindow& window) {
 	else uiSprite.setColor(Color::White);
 
 	if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
-		if (mouseJustClicked[0]) {
+		if (!uiInteracted && mouseJustClicked[0]) {
 			isShovelActive = !isShovelActive;
 			isRelocateActive = false;
 			isBoostActive = false;
@@ -5396,7 +5397,7 @@ void UI_DrawClick(RenderWindow& window) {
 	if (curMagicShovelCnt <= 0) {
 		uiSprite.setColor(Color(100, 100, 100, 255));
 	} else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
-		if (mouseJustClicked[0]) {
+		if (!uiInteracted && mouseJustClicked[0]) {
 			isRelocateActive = !isRelocateActive;
 			isShovelActive = false; //NORMAL SHOVEL AND MAGIC SHOVEL DON'T MIX
 			isBoostActive = false;
@@ -5432,7 +5433,7 @@ void UI_DrawClick(RenderWindow& window) {
 	if (curBoosterCnt <= 0) {
 		uiSprite.setColor(Color(100, 100, 100, 255));
 	} else if (uiSprite.getGlobalBounds().contains(Vector2f(mousePos))) {
-		if (mouseJustClicked[0]) {
+		if (!uiInteracted && mouseJustClicked[0]) {
 			isBoostActive = !isBoostActive;
 			isShovelActive = false;
 			isRelocateActive = false;
