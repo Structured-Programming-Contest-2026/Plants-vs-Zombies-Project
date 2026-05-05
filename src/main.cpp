@@ -14,6 +14,8 @@ bool DEV = true;
 using namespace std;
 using namespace sf;
 
+int lastLevel = 99;
+
 // Memory
 #define MAX_ENTITIES 512
 #define MAX_FALLENITEMS 32
@@ -735,7 +737,7 @@ void updateDimensions(Entity& e) {
 	e.height = h;
 
 	if (oldWidth > 0 && oldHeight > 0 && e.gridRow != -1 && e.gridCol != -1) {
-		e.position.x += (oldWidth - e.width) / 2.0f; 
+		e.position.x += (oldWidth - e.width) / 2.0f;
 		e.position.y += (oldHeight - e.height);
 	}
 }
@@ -5178,28 +5180,30 @@ void DrawRewardsScreen(RenderWindow& window) {
 	text.setOutlineColor(Color::Black);
 	text.setOutlineThickness(6);
 
-	if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
-		startButton.setColor(Color(128, 128, 128, 255));
-		text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
+	if (currentLevel->lvlNum < lastLevel) {
+		if (startButton.getGlobalBounds().contains(Vector2f(mousePos))) {
+			startButton.setColor(Color(128, 128, 128, 255));
+			text.setFillColor(text.getFillColor() * Color(128, 128, 128, 255));
 
-		if (mouseJustClicked[0]) {
-			claimRewards(*currentLevel);
-			if (currentLevel->lvlNum < number_levels - 1)
-				levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
+			if (mouseJustClicked[0]) {
+				claimRewards(*currentLevel);
+				if (currentLevel->lvlNum < number_levels - 1)
+					levels[currentLevel->lvlNum + 1].isUnlocked = true; // unlock next level
 
-			//for (auto& r : currentLevel->rewards) {
-			//	if (r.type == Reward::None) continue;
-			//	r.isClaimed = true;	// maybe when click the claim button
-			//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
-			//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
-			//}
+				//for (auto& r : currentLevel->rewards) {
+				//	if (r.type == Reward::None) continue;
+				//	r.isClaimed = true;	// maybe when click the claim button
+				//	if (r.type == Reward::Plant) cout << "- Won Plant " << int(r.plantType) << '\n';
+				//	else if (r.type == Reward::Coins) cout << "- Won " << r.coins << " Coins\n";
+				//}
 
-			nextLevel();
+				nextLevel();
+			}
 		}
-	}
 
-	window.draw(startButton);
-	window.draw(text);
+		window.draw(startButton);
+		window.draw(text);
+	}
 
 	startButton.setColor(Color::White);
 	startButton.setPosition(Vector2f(windowWidth / 2.0f, 900) - Vector2f(192, 0));
@@ -6382,8 +6386,8 @@ void DrawLevelSelector(RenderWindow& window) {
 			if (levels[i].theme == THEME::NONE) {
 				levels[i].isUnlocked = false; continue;
 			}
-			//levels[i].isUnlocked = i <= 12;
-			levels[i].isUnlocked = true;
+			levels[i].isUnlocked = i <= lastLevel;
+			//levels[i].isUnlocked = true;
 		}
 	}
 
