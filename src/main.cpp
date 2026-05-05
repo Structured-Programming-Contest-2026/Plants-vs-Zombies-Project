@@ -1,3 +1,4 @@
+// Set DEV to true if you want to unlock all levels and plants
 bool DEV = true;
 // Delete the storage.txt after modifying
 
@@ -4886,6 +4887,14 @@ void DrawSelectPlants(RenderWindow& window) {
 
 	Vector2u seedPacketSize = getTexture(TEXTURE_TYPE::SEEDPACKET).getSize();
 
+	if (currentLevel->theme == THEME::NIGHT) {
+		if (currentLevel->selectedPlants.size() == 0) {
+			currentLevel->selectedPlants.push_back(sunflower);
+		} else {
+			currentLevel->selectedPlants[0] = sunflower;
+		}
+	}
+
 	int i = -1;
 	for (auto& plant : currentLevel->plant_types) {
 		if (!isEntityUnlocked[plant.type]) continue;
@@ -4949,6 +4958,46 @@ void DrawSelectPlants(RenderWindow& window) {
 	text.setCharacterSize(24);
 
 	window.draw(text);
+
+	vector<string> notes;
+	if (currentLevel->theme == THEME::NIGHT) {
+
+		notes.push_back("You must have sunflower plant because night\n    theme does not drop suns");
+	}
+	if (currentLevel->lvlNum == 4
+		|| currentLevel->lvlNum == 5
+		|| currentLevel->lvlNum == 6) {
+
+		notes.push_back("Shield guard only dies from scardy shroom");
+	}
+
+	if (currentLevel->lvlNum == 3
+		|| currentLevel->lvlNum == 6) {
+
+		notes.push_back("Big Dragon shoots fire that burns the whole row");
+	}
+
+	if (notes.size() != 0) {
+		sf::RectangleShape bg;
+		bg.setSize(Vector2f(750, 40 * (notes.size() + 2) + 25 * 2));
+		bg.setPosition(1150, 1080 - (bg.getSize().y + 20));
+		bg.setFillColor(Color(0, 0, 0, 255 * v));
+		window.draw(bg);
+
+		text.setPosition(bg.getPosition() + Vector2f(25, 25));
+		text.setFillColor(Color::White);
+
+		std::string content = "Level Notes:";
+		for (auto& s : notes) {
+			content += "\n - " + s;
+		}
+
+		text.setString(content);
+
+		cout << text.getGlobalBounds().getSize().y << endl;
+
+		window.draw(text);
+	}
 }
 void DrawRewardsScreen(RenderWindow& window) {
 	bool unlockedPlant = currentLevel->plantReward.plantType != ENTITY_TYPE::NONE;
@@ -6685,6 +6734,23 @@ void DrawMainMenu(RenderWindow& window) {
 
 	window.draw(button);
 	window.draw(text);
+
+	if (DEV) {
+		Text text;
+		text.setFont(*font);
+
+		sf::RectangleShape bg;
+		bg.setSize(Vector2f(750, 40 * (2 + 2) + 25 * 2));
+		bg.setPosition(1150, 850);
+		bg.setFillColor(Color(0, 0, 0, 255 * v));
+		window.draw(bg);
+
+		text.setPosition(bg.getPosition() + Vector2f(25, 25));
+		text.setFillColor(Color::White);
+		text.setString("WARNING\nDEV mode is TRUE. This unlocks all levels and plants\nfor testing. Set it to FALSE in the first line in the code and\ndelete storage.txt to not unlock them by default");
+
+		window.draw(text);
+	}
 
 	if (selectingLevel || inStore) {
 		float progress = (gameClock.getElapsedTime() - startMenuItemTime).asSeconds() / 0.25f;
