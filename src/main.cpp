@@ -6693,7 +6693,8 @@ Ain Shams University - FCIS
 
 Omar Hadidi                      Yusuf Yaser
 Simon Adly                         Khaled Ahmed
-Philopateer Mark           Omar Hikal)");
+Philopateer Mark           Omar Hikal
+Jovany George)");
 
 		text.setOutlineColor(Color::Black);
 		text.setOutlineThickness(4);
