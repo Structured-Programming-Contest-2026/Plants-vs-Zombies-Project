@@ -2,6 +2,9 @@
 bool DEV = true;
 // Delete the storage.txt after modifying
 
+// Set this to 99 to unlock incomplete themes
+int lastLevel = 13;
+
 #include <iostream>
 #include <vector>
 #include <SFML/Graphics.hpp>
@@ -13,8 +16,6 @@ bool DEV = true;
 
 using namespace std;
 using namespace sf;
-
-int lastLevel = 99;
 
 // Memory
 #define MAX_ENTITIES 512
@@ -7611,11 +7612,11 @@ void defineRomanLevels() {
 	addWave(levels[22], 20, 20, { zombieRomanNormal, zombieRomanConehead, zombieRomanShield }, 0, true);
 
 	//Level 23
-	levels[23].plantReward = inferno;     levels[23].coinReward = 5000;
-	addWave(levels[23], 4, 15, { zombieRomanNormal }, 5);
-	addWave(levels[23], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
-	addWave(levels[23], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
-	addWave(levels[23], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
+	levels[13].plantReward = inferno;     levels[23].coinReward = 5000;
+	addWave(levels[13], 4, 15, { zombieRomanNormal }, 5);
+	addWave(levels[13], 6, 15, { zombieRomanConehead, zombieRomanShield }, 10);
+	addWave(levels[13], 8, 15, { zombieRomanBuckethead, zombieRomanOdessa }, 10);
+	addWave(levels[13], 25, 20, { zombieRomanNormal, zombieRomanBuckethead, zombieRomanShield, zombieRomanOdessa }, 0, true);
 
 	//Level 24
 	levels[24].plantReward.plantType = ENTITY_TYPE::NONE;
