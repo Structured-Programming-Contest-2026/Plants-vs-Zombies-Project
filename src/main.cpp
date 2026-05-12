@@ -47,7 +47,9 @@ windowHeight = 1080;
 const int edgeSpace = edgespace; // when zombie reaches this space, It disappears (end of screen) - should end game later
 const int eatDistance = z_eat_p_distance;
 
-const float zombie_x_vel = 30;
+const int zombieAppearDistance = 200;	// zombie appear to be shooted
+const float zombie_x_vel = 30;	// as unit, zombie takes 1x or 2x or 6x ..etc
+
 
 // Drawables
 RectangleShape gameOverScreen, gameWonScreen;
@@ -993,7 +995,8 @@ void addWave(Level& l, int zombieCount = 0, float length = 0, vector<Entity> zom
 }
 void easyWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
-	int mx = 3, mn = 1;
+	int mx = 6, mn = 3;
+	//int mx = 3, mn = 1;
 	int z = rand() % (mx - mn) + mn; // from mn to mx
 	//vector<Entity> sliced(zombieTypes.begin(), zombieTypes.begin() + 2);
 	addWave(l, z, z, zombieTypes, 20);
@@ -1003,7 +1006,8 @@ void easyWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 
 void medWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
-	int mx = 7, mn = 5;
+	int mx = 14, mn = 12;
+	//int mx = 7, mn = 5;
 	int z = rand() % (mx - mn) + mn; // from mn to mx
 	//vector<Entity> sliced(zombieTypes.begin() + 2, zombieTypes.begin() + );
 	addWave(l, z, z, zombieTypes, 20);
@@ -1013,7 +1017,8 @@ void medWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 
 void hugeWave(Level& l, vector<Entity> zombieTypes = {}, float rest = 20) {
 	// Easy
-	int mx = 12, mn = 10;
+	int mx = 24, mn = 22;
+	//int mx = 12, mn = 10;
 	int z = rand() % (mx - mn) + mn; // from mn to mx
 	//vector<Entity> sliced(zombieTypes.begin(), zombieTypes.begin() + 2);
 	addWave(l, z, z, zombieTypes, 10, true);
@@ -1679,7 +1684,7 @@ Entity defineNormalPlant() {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
 						zombie.position.x > plant.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -1740,7 +1745,7 @@ Entity defineRepeaterPlant() {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
 						zombie.position.x > plant.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -1806,7 +1811,7 @@ Entity defineShroomPlant() {
 
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
 						zombie.position.x > plant.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -1980,7 +1985,7 @@ Entity defineIcePeaShooter() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && zombie.health > 0) {
 					if (abs(zombie.position.y - plant.position.y) < 100.0f &&
 						zombie.position.x > plant.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -2594,7 +2599,7 @@ Entity defineLightningReed() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
 						zombie.position.x > p.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -2682,7 +2687,7 @@ Entity defineInfernoPlant() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
 						zombie.position.x > p.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -2776,7 +2781,7 @@ Entity definePomegranatePlant() {
 				if (zombie.category == ENTITY_CATEGORY::ZOMBIE && !zombie.isDead && zombie.health > 0) {
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
 						zombie.position.x > p.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -2834,7 +2839,7 @@ Entity defineRedShooter() {
 
 					if (abs(zombie.position.y - p.position.y) < 100.0f &&
 						zombie.position.x > p.position.x - 80.0f &&
-						zombie.position.x < windowWidth - 50.0f) {
+						zombie.position.x < windowWidth - zombieAppearDistance) {
 						zombieInLane = true;
 						break;
 					}
@@ -3884,6 +3889,15 @@ bool healthDone_DyingZombie(Entity& zombie) {
 				playZombotDragonDeath();
 				float s = zombie.scale;
 				DoAnimation(zombie, 1, 1);
+
+				// Kill all remaining zombies
+				for (auto& zombie : entities) {
+					if (zombie.category != ENTITY_CATEGORY::ZOMBIE) continue;
+					attackZombie(zombie);
+				}
+				currentWaveIndex = currentLevel->waves.size();
+				deadZombieCount = currentLevel->targetZombie;
+				
 				zombie.afterAnimation = [s](Entity& zombie) {
 					cout << "---------- 2 You killed Zombot\n";	// maybe message here to kill the boss
 					DoAnimation(zombie, 1, 4);
