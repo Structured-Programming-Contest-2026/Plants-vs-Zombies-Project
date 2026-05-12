@@ -3002,6 +3002,9 @@ Entity defineRaZombie() {
 	// ability
 	anim.frames = 30;
 	anim.frameTimer = 0.08f;
+	anim.animScale = 1.5f; // 
+	anim.offsetX = -20;
+	anim.offsetY = -85;
 	zombie.animations[2] = anim;
 
 	setCurrentAnimation(zombie, 0);
@@ -4006,7 +4009,7 @@ void updateZombieRa(Entity& zombie) {
 			zombie.abilityClock.restart();
 			zombie.x_vel = 0;
 			DoAnimation(zombie, -1, 2);
-			zombie.scale = 1.5f;
+			//zombie.scale = 1.5f;
 
 			for (int i = 0; i < MAX_SUNS; i++) {
 				if (isSunAlive(suns[i]) && !suns[i].targeted && suns[i].position.y >= 0) {
@@ -4059,7 +4062,7 @@ void updateZombieRa(Entity& zombie) {
 			zombie.isUsingAbility = false;
 			zombie.x_vel = zombie_x_vel * 3;
 			setCurrentAnimation(zombie, 0);
-			zombie.scale = 1.0f;
+			//zombie.scale = 1.0f;
 			zombie.abilityClock.restart();
 		}
 	}
@@ -4547,7 +4550,15 @@ void DrawZombies(RenderWindow& window) {
 		Vector2f adjustedPosition = zombie.position;
 		adjustedPosition.y -= (actualHeight - currentLevel->cellHeight);	// as if legs on ground of the cell- so head above the cell instead of legs below the cell
 
-		zombieSprite.setPosition(adjustedPosition);
+		/*float finalScale = plant.scale * plant.currentAnimation.animScale;
+		plantSprite.setScale(Vector2f(finalScale, finalScale));*/
+
+		float drawX = adjustedPosition.x + zombie.currentAnimation.offsetX;
+		float drawY = adjustedPosition.y + zombie.currentAnimation.offsetY;
+
+		zombieSprite.setPosition(Vector2f(drawX, drawY));
+
+
 		TEXTURE_TYPE texType = getTextureType(zombie.type);
 		int texIndex = zombie.currentAnimationIndex;
 
